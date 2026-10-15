@@ -4,9 +4,11 @@
 package database
 
 import (
+	"strings"
 	"testing"
 	"time"
 
+	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
@@ -229,11 +231,11 @@ func TestGetRecordCIDs_IdentityVerified(t *testing.T) {
 		opts []types.FilterOption
 		want []string
 	}{
-		"identity verified":          {[]types.FilterOption{types.WithIdentityVerified()}, []string{marketing}},
+		"identity verified":          {[]types.FilterOption{types.WithIdentityVerified(true)}, []string{marketing}},
 		"owner verified":             {[]types.FilterOption{types.WithOwnerVerified()}, []string{marketing, healthcare}},
 		"verified is owner verified": {[]types.FilterOption{types.WithVerified(true)}, []string{marketing, healthcare}},
 		"not verified is owner not":  {[]types.FilterOption{types.WithVerified(false)}, []string{code}},
-		"both verified":              {[]types.FilterOption{types.WithIdentityVerified(), types.WithOwnerVerified()}, []string{marketing}},
+		"both verified":              {[]types.FilterOption{types.WithIdentityVerified(true), types.WithOwnerVerified()}, []string{marketing}},
 		"verified with subject":      {[]types.FilterOption{types.WithOwners("dns:*"), types.WithOwnerVerified()}, []string{healthcare}},
 	}
 
@@ -255,4 +257,46 @@ func TestCountRecords_IdentityFiltersDoNotDuplicate(t *testing.T) {
 	count, err := db.CountRecords(types.WithIdentities("*"), types.WithOwners("*"), types.WithOwnerVerified())
 	require.NoError(t, err)
 	assert.Equal(t, uint32(2), count)
+}
+
+// identityVerified=false has the semantics of verified=false: records without a
+// verified identity claim, which includes records that carry no claim at all.
+func TestGetCatalogEntries_IdentityVerifiedFilter(t *testing.T) {
+	db := setupTestDB(t)
+	require.NoError(t, db.AddRecord(a2aRecord))
+	require.NoError(t, db.AddRecord(mcpRecord))
+	require.NoError(t, db.AddRecord(containerRecord))
+	seedClaim(t, db, "cid-a2a", types.ClaimRoleIdentity, "did:web:acme.com:agents:alpha", types.ClaimStatusVerified)
+	seedClaim(t, db, "cid-mcp", types.ClaimRoleIdentity, "did:web:acme.com:agents:bravo", types.ClaimStatusFailed)
+
+	tests := []struct {
+		name string
+		opt  types.FilterOption
+		want []string
+	}{
+		{name: "verified keeps the verified claim only", opt: types.WithIdentityVerified(true), want: []string{"cid-a2a"}},
+		{name: "not verified keeps failed and unclaimed records", opt: types.WithIdentityVerified(false), want: []string{"cid-mcp", "cid-both"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			entries, _, err := db.GetCatalogEntries(tt.opt)
+			require.NoError(t, err)
+
+			got := make([]string, 0, len(entries))
+			for _, entry := range entries {
+				cid := strings.TrimPrefix(entry.GetIdentifier(), "urn:ai:org.agntcy:cid:")
+				got = append(got, cid)
+
+				status := entry.GetMetadata()[catalogv1.TrustStatusMetadataKey].GetStructValue().AsMap()
+				assert.Equal(t, cid == "cid-a2a", status["identityVerified"], "identityVerified of %s", cid)
+			}
+
+			assert.ElementsMatch(t, tt.want, got)
+
+			count, err := db.CountCatalogEntries(tt.opt)
+			require.NoError(t, err)
+			assert.Equal(t, uint32(len(tt.want)), count) //nolint:gosec // G115: test fixture sizes
+		})
+	}
 }

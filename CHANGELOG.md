@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **UI**: catalog cards and the detail view show the identity claim's result as a badge, green when it verified and red when the last check failed; the detail view lists both claims under "Claims"; an "Identity verified" status filter appears once a record can match it
+- **Catalog**: the `agntcy.dir.trust.v1.Status` entry metadata carries `identityVerified` and a `claims` list (role, subject, status, verifiedAt) beside `trusted` and `verified`
+- **AI Finder**: `identityVerified` filter field, tri-state like `verified`; `false` matches records without a verified identity claim
+
+### Fixed
+- **UI**: annotation chips show the full `key=value`, so values that are URIs such as `ans://v1.0.0.host` are no longer cut at the colon
+
 ## [v1.8.0] - 2026-10-15
 
 ### Added

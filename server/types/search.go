@@ -76,7 +76,7 @@ type RecordFilters struct {
 	Descriptions       []string              // Match against record description field.
 	Identities         []string              // Match against the subject of the identity claim.
 	Owners             []string              // Match against the subject of the ownership claim.
-	IdentityVerified   bool                  // Keep only records whose identity claim was verified.
+	IdentityVerified   *bool                 // true keeps records whose identity claim verified, false those without one; nil does not filter.
 	OwnerVerified      bool                  // Keep only records whose ownership claim was verified.
 	Excluded           ExcludedRecordFilters // Negated (exclude) counterparts of the fields above.
 
@@ -506,10 +506,12 @@ func WithOwners(subjects ...string) FilterOption {
 	}
 }
 
-// WithIdentityVerified keeps only records whose identity claim was verified.
-func WithIdentityVerified() FilterOption {
+// WithIdentityVerified filters records by whether their identity claim verified;
+// false keeps the records without a verified identity claim, including records
+// that carry no identity claim at all.
+func WithIdentityVerified(verified bool) FilterOption {
 	return func(sc *RecordFilters) {
-		sc.IdentityVerified = true
+		sc.IdentityVerified = &verified
 	}
 }
 

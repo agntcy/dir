@@ -27,6 +27,7 @@ import (
 	"github.com/multiformats/go-multibase"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	gomegatypes "github.com/onsi/gomega/types"
 )
 
 // identityStatusOutput is the JSON shape printed by `dirctl identity status --output json`.
@@ -211,7 +212,7 @@ var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, func() {
 
 		var (
 			goodSubject, otherSubject string
-			goodKeyPath               string
+			goodKeyPath, otherKeyPath string
 			verifiedCID, failedCID    string
 			claimResult               = func(cid, role string) string {
 				var status identityStatusOutput
@@ -256,7 +257,7 @@ var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, func() {
 
 		ginkgo.It("should verify a claim signed with the key its subject carries", func() {
 			goodKeyPath, goodSubject = writeDIDKey("good")
-			_, otherSubject = writeDIDKey("other")
+			otherKeyPath, otherSubject = writeDIDKey("other")
 
 			verifiedCID = pushRecord("example.com/identity-e2e/verified", map[string]string{
 				corev1.AnnotationKeyIdentity: goodSubject,
@@ -310,35 +311,39 @@ var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, func() {
 			gomega.Expect(searchCIDs("--verified=false")).NotTo(gomega.ContainSubstring(verifiedCID))
 		})
 
-		// The AI Finder reports a verified owner as the entry's trust status and
-		// filters on it. Only environments with an HTTP gateway run this.
-		ginkgo.It("should report a verified owner in the AI Finder", func(ctx ginkgo.SpecContext) {
+		// The AI Finder reports both claim results as the entry's trust status and
+		// filters on them. Only environments with an HTTP gateway run this.
+		ginkgo.It("should report claim results in the AI Finder", func(ctx ginkgo.SpecContext) {
 			if testEnv.Config.GatewayAddress == "" {
 				ginkgo.Skip("HTTP gateway address not configured for this environment")
 			}
 
-			// A record with an MCP module projects to an AI Catalog entry.
-			var fields map[string]any
-			gomega.Expect(json.Unmarshal(testdata.ExpectedRecordV100JSON, &fields)).To(gomega.Succeed())
+			// pushCatalogRecord pushes the MCP test record, which projects to an AI
+			// Catalog entry, with the given claim declarations.
+			pushCatalogRecord := func(name string, annotations map[string]string) string {
+				var fields map[string]any
+				gomega.Expect(json.Unmarshal(testdata.ExpectedRecordV100JSON, &fields)).To(gomega.Succeed())
 
-			fields["annotations"] = map[string]string{corev1.AnnotationKeyOwner: goodSubject}
+				fields["annotations"] = annotations
 
-			data, err := json.Marshal(fields)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+				data, err := json.Marshal(fields)
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			path := filepath.Join(tempDir, "catalog-owner.json")
-			gomega.Expect(os.WriteFile(path, data, 0o600)).To(gomega.Succeed())
+				path := filepath.Join(tempDir, name+".json")
+				gomega.Expect(os.WriteFile(path, data, 0o600)).To(gomega.Succeed())
 
-			catalogCID := testEnv.CLI.Push(path).WithArgs("--output", "raw").ShouldSucceed()
-			pushed = append(pushed, catalogCID)
+				cid := testEnv.CLI.Push(path).WithArgs("--output", "raw").ShouldSucceed()
+				pushed = append(pushed, cid)
 
-			_ = claim("--record", catalogCID, "--role", "owner", "--key", goodKeyPath).ShouldSucceed()
+				return cid
+			}
 
-			verified := url.Values{"filter": {"displayName=burger_seller_agent AND verified=true"}}.Encode()
-
-			gomega.Eventually(func(g gomega.Gomega) {
-				status, body := getAgents(ctx, verified)
-				g.Expect(status).To(gomega.Equal(http.StatusOK))
+			// listAgents returns the trust status of every burger_seller_agent entry
+			// the filter lists, keyed by CID. It asserts through g, so inside an
+			// Eventually a transient answer is retried rather than failing the spec.
+			listAgents := func(g gomega.Gomega, filter string) map[string]map[string]any {
+				status, body := getAgents(ctx, url.Values{"filter": {"displayName=burger_seller_agent AND " + filter}}.Encode())
+				g.Expect(status).To(gomega.Equal(http.StatusOK), body)
 
 				var response struct {
 					Results []struct {
@@ -349,24 +354,60 @@ var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, func() {
 
 				g.Expect(json.Unmarshal([]byte(body), &response)).To(gomega.Succeed())
 
-				found := false
-
+				trust := make(map[string]map[string]any, len(response.Results))
 				for _, entry := range response.Results {
-					if entryCID(entry.Identifier) == catalogCID {
-						found = true
-
-						g.Expect(entry.Metadata[catalogv1.TrustStatusMetadataKey]).To(gomega.HaveKeyWithValue("verified", true))
-					}
+					trust[entryCID(entry.Identifier)] = entry.Metadata[catalogv1.TrustStatusMetadataKey]
 				}
 
-				g.Expect(found).To(gomega.BeTrue(), "the verified owner is listed under verified=true")
+				return trust
+			}
+
+			// claimOf matches one published claim entry; the stored error text must
+			// never be among its keys.
+			claimOf := func(role, status string) gomegatypes.GomegaMatcher {
+				return gomega.And(
+					gomega.HaveKeyWithValue("role", role),
+					gomega.HaveKeyWithValue("subject", goodSubject),
+					gomega.HaveKeyWithValue("status", status),
+					gomega.Not(gomega.HaveKey("error")),
+				)
+			}
+
+			claimedCID := pushCatalogRecord("catalog-claimed", map[string]string{
+				corev1.AnnotationKeyIdentity: goodSubject,
+				corev1.AnnotationKeyOwner:    goodSubject,
+			})
+			_ = claim("--record", claimedCID, "--role", "identity", "--key", goodKeyPath).ShouldSucceed()
+			_ = claim("--record", claimedCID, "--role", "owner", "--key", goodKeyPath).ShouldSucceed()
+
+			// The same subject, claimed with a key it does not carry.
+			wrongKeyCID := pushCatalogRecord("catalog-wrong-key", map[string]string{corev1.AnnotationKeyIdentity: goodSubject})
+			_ = claim("--record", wrongKeyCID, "--role", "identity", "--key", otherKeyPath).ShouldSucceed()
+
+			gomega.Eventually(func() []string {
+				return []string{claimResult(claimedCID, "identity"), claimResult(claimedCID, "owner"), claimResult(wrongKeyCID, "identity")}
+			}).WithTimeout(verifyTimeout).WithPolling(verifyPoll).Should(gomega.Equal([]string{"verified", "verified", "failed"}))
+
+			// The catalog follows the stored results once the indexer has caught up.
+			gomega.Eventually(func(g gomega.Gomega) {
+				verified := listAgents(g, "verified=true AND identityVerified=true")
+				g.Expect(verified).To(gomega.HaveKey(claimedCID))
+				g.Expect(verified).NotTo(gomega.HaveKey(wrongKeyCID))
+				g.Expect(verified[claimedCID]).To(gomega.HaveKeyWithValue("verified", true))
+				g.Expect(verified[claimedCID]).To(gomega.HaveKeyWithValue("identityVerified", true))
+				g.Expect(verified[claimedCID]["claims"]).To(gomega.ConsistOf(claimOf("identity", "verified"), claimOf("owner", "verified")))
+
+				unverified := listAgents(g, "identityVerified=false")
+				g.Expect(unverified).To(gomega.HaveKey(wrongKeyCID))
+				g.Expect(unverified).NotTo(gomega.HaveKey(claimedCID))
+				g.Expect(unverified[wrongKeyCID]).To(gomega.HaveKeyWithValue("identityVerified", false))
+				g.Expect(unverified[wrongKeyCID]["claims"]).To(gomega.ConsistOf(claimOf("identity", "failed")))
 			}).WithContext(ctx).WithTimeout(verifyTimeout).WithPolling(verifyPoll).Should(gomega.Succeed())
 
-			unverified := url.Values{"filter": {"displayName=burger_seller_agent AND verified=false"}}.Encode()
+			gomega.Expect(listAgents(gomega.Default, "verified=false")).NotTo(gomega.HaveKey(claimedCID))
 
-			status, body := getAgents(ctx, unverified)
-			gomega.Expect(status).To(gomega.Equal(http.StatusOK))
-			gomega.Expect(body).NotTo(gomega.ContainSubstring(catalogCID))
+			status, body := getAgents(ctx, url.Values{"filter": {"identityVerified=maybe"}}.Encode())
+			gomega.Expect(status).To(gomega.Equal(http.StatusBadRequest), body)
 		})
 
 		ginkgo.It("should only search for what is there", func() {

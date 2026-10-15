@@ -1,21 +1,29 @@
 <script lang="ts">
-	import type { AICardFilterCriteria, CatalogTag } from '$lib/types';
+	import type { AICardFilterCriteria, CatalogTag, StatusFilter, StatusFilterOption } from '$lib/types';
+	import { STATUS_FILTERS } from '$lib/types';
 	import TagFilterSection from './TagFilterSection.svelte';
 
 	interface Props {
 		catalogTags: CatalogTag[];
 		tagsLoading?: boolean;
+		availableStatusFilters?: Set<StatusFilter>;
 		criteria: AICardFilterCriteria;
 		onCriteriaChange: (criteria: AICardFilterCriteria) => void;
 	}
 
-	let { catalogTags, tagsLoading = false, criteria, onCriteriaChange }: Props = $props();
+	let {
+		catalogTags,
+		tagsLoading = false,
+		availableStatusFilters = new Set<StatusFilter>(),
+		criteria,
+		onCriteriaChange
+	}: Props = $props();
 
 	import { untrack } from 'svelte';
 
 	let searchQuery = $state(untrack(() => criteria.searchQuery));
 	let mediaTypes = $state<Set<string>>(new Set(untrack(() => criteria.mediaTypes)));
-	let statusFilters = $state<Set<string>>(new Set(untrack(() => criteria.statusFilters)));
+	let statusFilters = $state<Set<StatusFilter>>(new Set(untrack(() => criteria.statusFilters)));
 	let scanSafe = $state(untrack(() => criteria.scanSafe));
 	let activeTags = $state<Set<string>>(new Set(untrack(() => criteria.activeTags)));
 
@@ -37,12 +45,20 @@
 		});
 	}
 
-	function handleStatusFilter(value: string, checked: boolean) {
+	function handleStatusFilter(value: StatusFilter, checked: boolean) {
 		const next = new Set(statusFilters);
 		if (checked) next.add(value);
 		else next.delete(value);
 		statusFilters = next;
 		notifyChange();
+	}
+
+	/**
+	 * A filter flagged hiddenUntilMatch waits for a record it can match, except
+	 * that a shared `?status=…` link must still show the control that clears it.
+	 */
+	function showStatusFilter(opt: StatusFilterOption): boolean {
+		return !opt.hiddenUntilMatch || availableStatusFilters.has(opt.value) || statusFilters.has(opt.value);
 	}
 
 	function ensureMediaTypesSelection(next: Set<string>) {
@@ -210,16 +226,18 @@
 	<div class="flex-shrink-0">
 		<span class="block text-xs font-semibold uppercase tracking-wide text-ink-medium mb-2">Status</span>
 		<div class="space-y-1.5">
-			{#each [['trusted', 'Trusted']] as [value, label]}
-				<label class="flex items-center gap-2 text-sm text-ink cursor-pointer">
-					<input
-						type="checkbox"
-						checked={statusFilters.has(value)}
-						onchange={(e) => handleStatusFilter(value, (e.target as HTMLInputElement).checked)}
-						class="rounded border-line-strong text-brand-500 focus:ring-brand-500"
-					/>
-					<span>{label}</span>
-				</label>
+			{#each STATUS_FILTERS as opt (opt.value)}
+				{#if showStatusFilter(opt)}
+					<label class="flex items-center gap-2 text-sm text-ink cursor-pointer">
+						<input
+							type="checkbox"
+							checked={statusFilters.has(opt.value)}
+							onchange={(e) => handleStatusFilter(opt.value, (e.target as HTMLInputElement).checked)}
+							class="rounded border-line-strong text-brand-500 focus:ring-brand-500"
+						/>
+						<span>{opt.label}</span>
+					</label>
+				{/if}
 			{/each}
 			<label class="flex items-center gap-2 text-sm text-ink cursor-pointer">
 				<input

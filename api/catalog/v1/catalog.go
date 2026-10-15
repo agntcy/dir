@@ -42,6 +42,13 @@ const (
 
 	TrustStatusMetadataKey = "agntcy.dir.trust.v1.Status"
 
+	// Claim vocabulary as the catalog publishes it under TrustStatusMetadataKey,
+	// the lower-case forms the CLI prints.
+	ClaimRoleIdentity   = "identity"
+	ClaimRoleOwner      = "owner"
+	ClaimStatusVerified = "verified"
+	ClaimStatusFailed   = "failed"
+
 	verificationStatusVerified = "verified"
 )
 
@@ -99,9 +106,25 @@ type UsageMetricsData interface {
 	GetProviderCount() uint32
 }
 
+// ClaimSummary summarizes one identity claim result for embedding in catalog
+// metadata. Role is ClaimRoleIdentity or ClaimRoleOwner and Status
+// ClaimStatusVerified or ClaimStatusFailed; both are published as they are.
+// GetVerifiedAt is the time of the last check, whatever its outcome.
+type ClaimSummary interface {
+	GetRole() string
+	GetSubject() string
+	GetStatus() string
+	GetVerifiedAt() time.Time
+}
+
+// TrustStatus is the trust summary an entry carries under TrustStatusMetadataKey.
+// Verified reports the owner claim, IdentityVerified the identity claim, and
+// Claims every claim's last result.
 type TrustStatus struct {
-	Trusted  bool
-	Verified bool
+	Trusted          bool
+	Verified         bool
+	IdentityVerified bool
+	Claims           []ClaimSummary
 }
 
 type convertOptions struct {
@@ -137,6 +160,38 @@ func WithTrustStatus(status TrustStatus) ConvertOption {
 	return func(opts *convertOptions) {
 		opts.trustStatus = &status
 	}
+}
+
+// DeriveTrustStatusFromClaims derives a record's trust status from its signature
+// statuses and every stored claim result: Trusted when any signature verified,
+// Verified when the owner claim did, IdentityVerified when the identity claim
+// did. Claims is set only when there are any, so the catalog omits an empty list.
+func DeriveTrustStatusFromClaims(signatureStatuses []string, claims []ClaimSummary) TrustStatus {
+	var ownerStatus string
+
+	identityVerified := false
+
+	for _, claim := range claims {
+		if claim == nil {
+			continue
+		}
+
+		switch {
+		case strings.EqualFold(claim.GetRole(), ClaimRoleOwner):
+			ownerStatus = claim.GetStatus()
+		case strings.EqualFold(claim.GetRole(), ClaimRoleIdentity):
+			identityVerified = strings.EqualFold(claim.GetStatus(), ClaimStatusVerified)
+		}
+	}
+
+	status := DeriveTrustStatus(signatureStatuses, ownerStatus)
+	status.IdentityVerified = identityVerified
+
+	if len(claims) > 0 {
+		status.Claims = claims
+	}
+
+	return status
 }
 
 // DeriveTrustStatus derives a record's trust status: Verified when its ownership
@@ -557,19 +612,59 @@ func injectTrustStatus(entry *CatalogEntry, status *TrustStatus) {
 		return
 	}
 
-	val, err := structpb.NewValue(map[string]any{
-		"trusted":  status.Trusted,
-		"verified": status.Verified,
-	})
-	if err != nil {
-		return
-	}
-
 	if entry.Metadata == nil {
 		entry.Metadata = make(map[string]*structpb.Value)
 	}
 
-	entry.Metadata[TrustStatusMetadataKey] = val
+	entry.Metadata[TrustStatusMetadataKey] = buildTrustStatusValue(status)
+}
+
+// buildTrustStatusValue uses the typed structpb constructors, which cannot fail,
+// so no claim text can cost a record its trust status.
+func buildTrustStatusValue(status *TrustStatus) *structpb.Value {
+	fields := map[string]*structpb.Value{
+		"trusted":          structpb.NewBoolValue(status.Trusted),
+		"verified":         structpb.NewBoolValue(status.Verified),
+		"identityVerified": structpb.NewBoolValue(status.IdentityVerified),
+	}
+
+	if claims := claimValues(status.Claims); len(claims) > 0 {
+		fields["claims"] = structpb.NewListValue(&structpb.ListValue{Values: claims})
+	}
+
+	return structpb.NewStructValue(&structpb.Struct{Fields: fields})
+}
+
+// claimValues lists the claims by role, so the order does not depend on how the
+// rows were loaded.
+func claimValues(claims []ClaimSummary) []*structpb.Value {
+	sorted := make([]ClaimSummary, 0, len(claims))
+
+	for _, claim := range claims {
+		if claim != nil {
+			sorted = append(sorted, claim)
+		}
+	}
+
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].GetRole() < sorted[j].GetRole() })
+
+	values := make([]*structpb.Value, 0, len(sorted))
+
+	for _, claim := range sorted {
+		fields := map[string]*structpb.Value{
+			"role":    structpb.NewStringValue(strings.ToValidUTF8(claim.GetRole(), "\uFFFD")),
+			"subject": structpb.NewStringValue(strings.ToValidUTF8(claim.GetSubject(), "\uFFFD")),
+			"status":  structpb.NewStringValue(strings.ToValidUTF8(claim.GetStatus(), "\uFFFD")),
+		}
+
+		if at := claim.GetVerifiedAt(); !at.IsZero() {
+			fields["verifiedAt"] = structpb.NewStringValue(at.UTC().Format(time.RFC3339))
+		}
+
+		values = append(values, structpb.NewStructValue(&structpb.Struct{Fields: fields}))
+	}
+
+	return values
 }
 
 func objectToStruct(goObj proto.Message) (*structpb.Struct, error) {
