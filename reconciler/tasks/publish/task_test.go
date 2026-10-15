@@ -72,7 +72,7 @@ func TestTask_Run_DBError_ReturnsError(t *testing.T) {
 	assert.Empty(t, db.created)
 }
 
-func TestTask_Run_AppliesDomainFilterAndLimit(t *testing.T) {
+func TestTask_Run_AppliesDomainAndSkillFilters(t *testing.T) {
 	t.Parallel()
 
 	var got types.RecordFilters
@@ -86,11 +86,16 @@ func TestTask_Run_AppliesDomainFilterAndLimit(t *testing.T) {
 			return nil, nil
 		},
 	}
-	task, err := NewTask(Config{Enabled: true, Criteria: Criteria{Domains: []string{"research", "analytics"}}, Limit: 25}, db)
+	task, err := NewTask(Config{
+		Enabled:  true,
+		Criteria: Criteria{Domains: []string{"research", "analytics"}, Skills: []string{"threat_detection", "nlp"}},
+		Limit:    25,
+	}, db)
 	require.NoError(t, err)
 
 	require.NoError(t, task.Run(context.Background()))
 	assert.Equal(t, []string{"research", "analytics"}, got.DomainNames)
+	assert.Equal(t, []string{"threat_detection", "nlp"}, got.SkillNames)
 	assert.Equal(t, 25, got.Limit)
 	assert.Equal(t, 0, got.Offset)
 }
@@ -114,6 +119,7 @@ func TestTask_Run_EmptyDomains_DoesNotFilter(t *testing.T) {
 
 	require.NoError(t, task.Run(context.Background()))
 	assert.Empty(t, got.DomainNames)
+	assert.Empty(t, got.SkillNames)
 }
 
 func TestTask_Run_DryRun_DoesNotCreatePublication(t *testing.T) {
