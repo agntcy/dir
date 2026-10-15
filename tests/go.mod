@@ -19,10 +19,10 @@ require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2
 	github.com/Agent-Card/ai-catalog-go v0.2.1
 	github.com/agntcy/dir-importer v1.5.5
-	github.com/agntcy/dir/api v1.7.2-0.20261013134305-9252429b1042
-	github.com/agntcy/dir/cli v1.7.1
-	github.com/agntcy/dir/client v1.7.2-0.20261013134305-9252429b1042
-	github.com/agntcy/dir/server v1.7.1
+	github.com/agntcy/dir/api v1.8.0
+	github.com/agntcy/dir/cli v1.8.0
+	github.com/agntcy/dir/client v1.8.0
+	github.com/agntcy/dir/server v1.8.0
 	github.com/brianvoe/gofakeit/v7 v7.14.1
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/google/uuid v1.6.0
@@ -99,8 +99,8 @@ require (
 	github.com/agntcy/dir-runtime/server v1.4.0 // indirect
 	github.com/agntcy/dir-runtime/store v1.4.0 // indirect
 	github.com/agntcy/dir-runtime/utils v1.4.0 // indirect
-	github.com/agntcy/dir/reconciler v1.7.1 // indirect
-	github.com/agntcy/dir/utils v1.7.1 // indirect
+	github.com/agntcy/dir/reconciler v1.8.0 // indirect
+	github.com/agntcy/dir/utils v1.8.0 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260910081500-f0c6172a010a // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/anchore/go-struct-converter v0.1.0 // indirect
