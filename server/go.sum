@@ -2,8 +2,8 @@ buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20260911081041-07202faeff63.1 h1
 buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20260911081041-07202faeff63.1/go.mod h1:Voz9x/pEvz+DPx3gEAa/c9iYptXI0pfCzqWYFNbYqtg=
 buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260911081041-07202faeff63.2 h1:LHUjHjbPYFl0BbgXHmW4lTHq01QCCoUvvohzxHo8lk0=
 buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260911081041-07202faeff63.2/go.mod h1:OKrypRTN8TPQY+X9elmC8r4XIo+5jZbfVEo2O1zm3FY=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260929072728-9967424cbd6a.2 h1:RBDFrhZ8FhRDIKsjQK/30QKFahpvd7A4fb9USo+Ebp4=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260929072728-9967424cbd6a.2/go.mod h1:fFU895SO7wQQGKQjtcNazRJgE8pigwfwTLmf4W2gRsk=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2 h1:ELaYxCuG5tF7zlWM2OJVpa42/+s7ssz49CaTawsl4P4=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2/go.mod h1:fFU895SO7wQQGKQjtcNazRJgE8pigwfwTLmf4W2gRsk=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.2 h1:NbnlmV26O7oZ1iM5tsCI+GEx+3ZSdrhvnKQ/eWSrLiY=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.2/go.mod h1:TCt1lluMFnctISJXvkIQ4x3ABrPuUKCWKyjKdkJNBpw=
 buf.build/go/protovalidate v1.4.0 h1:UjLrYbt5VX7+TMOs2+pG5FhZhIG1mSfK4EIopbb4LcM=
@@ -633,8 +633,8 @@ github.com/spf13/viper v1.3.2/go.mod h1:ZiWeW+zYFKm7srdB9IoDzzZXaJaI5eL9QjNiN/DM
 github.com/spf13/viper v1.8.1/go.mod h1:o0Pch8wJ9BVSWGQMbra6iw0oQ5oktSIBaujf1rJH9Ns=
 github.com/spf13/viper v1.21.0 h1:x5S+0EU27Lbphp4UKm1C+1oQO+rKx36vfCoaVebLFSU=
 github.com/spf13/viper v1.21.0/go.mod h1:P0lhsswPGWD/1lZJ9ny3fYnVqxiegrlNrEmgLjbTCAY=
-github.com/spiffe/go-spiffe/v2 v2.8.2 h1:jUEsvCMD6fH25J8K/w3q/XnIx8W1lb8+YLaEEHIjHmc=
-github.com/spiffe/go-spiffe/v2 v2.8.2/go.mod h1:w2CLWKLMTX/PPYUEUPv3ltH0RXsw5S8suwNF46w9/Aw=
+github.com/spiffe/go-spiffe/v2 v2.9.0 h1:g5qTg3qIP1HXV+GzuyEfSJFVxUCpEP5Ui1OINVJHPB4=
+github.com/spiffe/go-spiffe/v2 v2.9.0/go.mod h1:w2CLWKLMTX/PPYUEUPv3ltH0RXsw5S8suwNF46w9/Aw=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.5.3 h1:jmXUvGomnU1o3W/V5h2VEradbpJDwGrzugQQvL0POH4=
 github.com/stretchr/objx v0.5.3/go.mod h1:rDQraq+vQZU7Fde9LOZLr8Tax6zZvy4kuNKF+QYS+U0=

@@ -16,13 +16,13 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 v1.6.8
 
 require (
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260929072728-9967424cbd6a.2
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2
 	github.com/Agent-Card/ai-catalog-go v0.2.1
 	github.com/agntcy/dir-importer v1.5.5
-	github.com/agntcy/dir/api v1.7.2-0.20261013134305-9252429b1042
-	github.com/agntcy/dir/cli v1.7.1
-	github.com/agntcy/dir/client v1.7.2-0.20261013134305-9252429b1042
-	github.com/agntcy/dir/server v1.7.1
+	github.com/agntcy/dir/api v1.8.0
+	github.com/agntcy/dir/cli v1.8.0
+	github.com/agntcy/dir/client v1.8.0
+	github.com/agntcy/dir/server v1.8.0
 	github.com/brianvoe/gofakeit/v7 v7.14.1
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/google/uuid v1.6.0
@@ -33,7 +33,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
-	github.com/spiffe/go-spiffe/v2 v2.8.2
+	github.com/spiffe/go-spiffe/v2 v2.9.0
 	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12
 	gorm.io/gorm v1.31.2
@@ -99,8 +99,8 @@ require (
 	github.com/agntcy/dir-runtime/server v1.4.0 // indirect
 	github.com/agntcy/dir-runtime/store v1.4.0 // indirect
 	github.com/agntcy/dir-runtime/utils v1.4.0 // indirect
-	github.com/agntcy/dir/reconciler v1.7.1 // indirect
-	github.com/agntcy/dir/utils v1.7.1 // indirect
+	github.com/agntcy/dir/reconciler v1.8.0 // indirect
+	github.com/agntcy/dir/utils v1.8.0 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260910081500-f0c6172a010a // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/anchore/go-struct-converter v0.1.0 // indirect
@@ -226,7 +226,7 @@ require (
 	github.com/flynn/noise v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/fvbommel/sortorder v1.1.0 // indirect
-	github.com/fxamacker/cbor/v2 v2.9.4 // indirect
+	github.com/fxamacker/cbor/v2 v2.9.6 // indirect
 	github.com/glebarez/go-sqlite v1.22.0 // indirect
 	github.com/glebarez/sqlite v1.11.0 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.8 // indirect
@@ -587,7 +587,7 @@ require (
 	github.com/zclconf/go-cty v1.19.0 // indirect
 	github.com/zclconf/go-cty-yaml v1.2.0 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
-	github.com/zitadel/oidc/v3 v3.51.11 // indirect
+	github.com/zitadel/oidc/v3 v3.51.13 // indirect
 	github.com/zitadel/schema v1.3.2 // indirect
 	gitlab.com/gitlab-org/api/client-go v1.46.0 // indirect
 	go.etcd.io/bbolt v1.5.0 // indirect

@@ -14,11 +14,11 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 v1.6.8
 
 require (
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260929072728-9967424cbd6a.2
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2
 	buf.build/go/protovalidate v1.4.0
 	cel.dev/cel-go v0.32.0
-	github.com/agntcy/dir/api v1.7.1
-	github.com/agntcy/dir/utils v1.7.1
+	github.com/agntcy/dir/api v1.8.0
+	github.com/agntcy/dir/utils v1.8.0
 	github.com/agntcy/oasf-sdk/pkg v1.1.0
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/glebarez/sqlite v1.11.0
@@ -43,7 +43,7 @@ require (
 	github.com/prometheus/client_golang v1.24.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
-	github.com/spiffe/go-spiffe/v2 v2.8.2
+	github.com/spiffe/go-spiffe/v2 v2.9.0
 	github.com/stretchr/testify v1.12.1
 	golang.org/x/crypto v0.57.0
 	golang.org/x/time v0.16.0

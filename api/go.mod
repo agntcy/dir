@@ -4,7 +4,7 @@ go 1.27.2
 
 require (
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260911081041-07202faeff63.2
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260929072728-9967424cbd6a.2
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.2
 	github.com/agntcy/oasf-sdk/pkg v1.1.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.31.0

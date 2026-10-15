@@ -8,14 +8,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Identity**: `ans://` claims verify through the Agent Name Service. The claim's identity certificate is trusted once a transparency log on `reconciler.identity.ans.trusted_log_hosts` attests it for the agent; `dirctl identity claim --cert` takes the certificate (#2173, #2174)
-- **Search**: `ListRecordSummaries` RPC for paginated, database-backed record summaries (#2328, #2259)
 - **UI**: catalog cards and the detail view show the identity claim's result as a badge, green when it verified and red when the last check failed; the detail view lists both claims under "Claims"; an "Identity verified" status filter appears once a record can match it
 - **Catalog**: the `agntcy.dir.trust.v1.Status` entry metadata carries `identityVerified` and a `claims` list (role, subject, status, verifiedAt) beside `trusted` and `verified`
 - **AI Finder**: `identityVerified` filter field, tri-state like `verified`; `false` matches records without a verified identity claim
 
 ### Fixed
 - **UI**: annotation chips show the full `key=value`, so values that are URIs such as `ans://v1.0.0.host` are no longer cut at the colon
+
+## [v1.8.0] - 2026-10-15
+
+### Added
+- **Identity**: verifiable identity and ownership claims. A record declares its subjects in the `agntcy.dir/identity` and `agntcy.dir/owner` annotations; the publisher signs a claim and pushes it as a referrer, and the reconciler verifies it against the subject's current keys. Includes `identity.v1` claim types (#2221), claim signing and verification with detached JWS (#2223), key resolvers for `dns:`, `https://`, `did:web`, `did:key` and `spiffe://` subjects with an SSRF-guarded `safefetch` client (#2242), claim storage, `IdentityService` (`GetIdentityStatus`, `Resolve`) and claim search filters (#2257), the Go SDK and `dirctl identity` commands (#2261), the reconciler verification task (#2262), and documentation (#2289, #2212)
+- **Identity**: `ans://` claims verify through the Agent Name Service. The claim's identity certificate is trusted once a transparency log on `reconciler.identity.ans.trusted_log_hosts` attests it for the agent; `dirctl identity claim --cert` takes the certificate (#2173, #2174, #2300, #2304)
+- **Policy**: content policy framework (#2205). Validators gain `opa` (#2204) and `cel` (#2224) providers and an `evaluate` op that turns a validator into a content policy (#2266); per-record verdicts are persisted (#2226) and produced by a new reconciler policy task (#2229), which runs as soon as a record is pushed (#2271)
+- **Policy**: enforcement of content policies on every read path. The database gate covers search, catalog, resolve and filter values (#2235); reads by CID, referrers and export (#2237); the peer RPC (#2238); and explicit-CID publication and identity status lookups (#2241). Enforcement is configured per kind of read (`search`, `fetch`) as `off`, `shadow` or `enforce` and is reported through `dir_policy_gate_*` metrics (#2248). A new policy is enforced once its verdicts cover the records (#2249). `PolicyAuditService` serves excluded records to named auditors and logs every call (#2253). A candidate policy can be tried before it is deployed (#2275). End-to-end coverage in `tests/e2e/policy` (#2267)
+- **Reconciler**: `prune-untrusted` job (#2220) with a signature status filter, `prune.criteria.signature_statuses` (`verified`, `failed`, `unsigned`) (#2312), and `sync-netsec` job (#2298), which move the `prune-untrusted` and `sync-netsec` Kubernetes CronJobs into the reconciler (#2136, #2294)
+- **Runtime**: transport-neutral `locators` on workloads (#2302). `ListWorkloadsRequest` filters workloads by name, skills, domains, authors, schema versions, locator protocols, runtime types and reachability (#2332)
+- **Search**: `ListRecordSummaries` RPC for paginated, database-backed record summaries (#2328, #2259)
+- **CLI**: per-context `sigstore` settings for `dirctl sign`, `push --sign`, `import --sign` and `verify`, also set with `DIRECTORY_CLIENT_SIGSTORE_*` (#2260)
+- **CLI**: `dirctl` is published to WinGet as `AGNTCY.dirctl`, with a Windows zip attached to each stable release and a privacy policy in `cli/PRIVACY.md` (#2335, #2334)
+- **UI**: AI Catalog filters, sort and pagination are kept in the URL (#2311, #1937)
+- **UI**: gateway static files are rebuilt on Renovate updates, with a pre-commit warning when they are stale (#2324)
+
+### Changed
+- **Dir**: **BREAKING**: `naming.v1` is removed. Identity claims replace domain-name verification, so the naming API, `dirctl naming`, the `naming` server config, the name reconciler task, its Helm values and environment variables, and the `name_verifications` table (migration `005_drop_name_verifications`) are gone. `Client.Resolve` now calls `IdentityService.Resolve`; `dirctl identity resolve` and `install outdated` keep working (#2263, #2219)
+- **CLI**: **BREAKING**: `dirctl mcp serve` and the embedded `dir-mcp` dependency are removed. Install `dir-mcp` separately; `dirctl import` with the LLM enricher now launches it from `PATH` and stops with install instructions when it is missing. `Client.GetVerificationInfo` and `GetVerificationInfoByName` are removed, use `GetIdentityStatus`. The built-in `org.agntcy/directory` record is skill-only, and MCP entries written by earlier `dirctl init` runs are still removed by `dirctl uninstall` (#2297)
+- **Dir**: **BREAKING**: `RequestRegistryCredentials` is granted only by an authorization rule that names the caller's SPIFFE ID (exactly, or a prefix ending in `*`); a trust-domain rule no longer grants it. Deployments that let peers sync through a trust-domain rule must add a rule naming each peer, for example `p,spiffe://partner.org/ns/dir/sa/dir-apiserver,/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials`. The default Helm and OpenShift policies named a service path that matched nothing and are corrected (#2246, #2245)
+- **Dir**: `oasf_api_validation` is replaced by a `validators` list (`provider`, `op`, `config`) (#2158), nested under `policy` (#2303). The `content_policies` ConfigMap is renamed `policies` (#2210). The policies directory holds OPA and CEL files as well as other policy content
+- **API**: `Workload.addresses` and `Workload.ports` are deprecated in favour of `locators` and are still populated (#2302, #2299)
+- **Deps**: bump Go to 1.27.2, zot to v2.1.22, grpc-health-probe to v0.4.59, cisco-ai-mcp-scanner to 4.8.6, PostgreSQL, Helm zot chart (v0.1.125, v0.1.126), `golang.org/x/*`, `google.golang.org/grpc` v1.84.0, `libp2p` v0.50.0, `opa` v1.21.0, `grpc-gateway` v2.31.0, `sigstore` v1.11.0, `k8s.io/apimachinery` v0.37.1, `zitadel/oidc` v3.51.3, `go-spiffe` v2.8.2, and other modules (#2190, #2192, #2195, #2200, #2202, #2203, #2230, #2280, #2283, #2285, #2286, #2287, #2288, #2317, #2326)
+
+### Fixed
+- **Client**: signatures from `dirctl sign --key` with an Ed25519 key (Ed25519ph) now verify (#2243, #2231)
+- **Client**: client connections no longer perform gRPC service-config resolution (#2269, #2258)
+- **Dir**: `IsReady` counts only a real registry not-found or unsupported answer as reachable (#2252)
+- **Dir**: annotation search matches the key and the value on the same row (#2356)
+- **API**: a nil request in `MatchesFilters` matches everything (#2360)
+- **UI**: `vite.config.ts` (#2331)
+- **CI**: the `Success` gate fails explicitly and reports on merge groups (#2247)
+- **Docs**: link check skips `okta.com` (#2273)
+- **Tests**: event stream timeout test matches the timeout status code (#2255)
+
+### Security
+- **Deps**: updates for `golang.org/x/net` v0.60.0 (#2306), `containerd` v2.3.6 (#2185), `golang.org/x/crypto` v0.57.0 (#2201), `google.golang.org/grpc` v1.84.0 (#2203), `sigstore/rekor` v1.5.4, which drops `golang.org/x/crypto/openpgp` (GO-2026-5932) (#2225), `brace-expansion` (#2272), `urllib3` (#2254), and the PostgreSQL and zot images used by the test environments (#2236)
+- **Deps**: Go 1.27.2 and refreshed images clear the fixable Go standard library, `golang.org/x/net`, `litellm` and `zlib` findings from the `dir-apiserver`, `dir-ctl` and `dir-reconciler` images, and log injection in the HTTP gateway is fixed (#2362)
 
 ## [v1.7.1] - 2026-09-22
 

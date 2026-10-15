@@ -5,13 +5,13 @@ go 1.27.2
 require (
 	buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20260911081041-07202faeff63.1
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260911081041-07202faeff63.2
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260929072728-9967424cbd6a.2
-	github.com/agntcy/dir/api v1.7.1
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2
+	github.com/agntcy/dir/api v1.8.0
 	github.com/agntcy/oasf-sdk/pkg v1.1.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/rs/zerolog v1.35.1
 	github.com/spf13/viper v1.21.0
-	github.com/spiffe/go-spiffe/v2 v2.8.2
+	github.com/spiffe/go-spiffe/v2 v2.9.0
 	github.com/stretchr/testify v1.12.1
 	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12
