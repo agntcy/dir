@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"strings"
 	"testing"
 
 	runtimev1 "github.com/agntcy/dir/api/runtime/v1"
@@ -17,6 +18,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -112,14 +115,23 @@ func runRaw(t *testing.T, discovery *fakeDiscovery, args ...string) (string, err
 	return out.String(), err
 }
 
-func run(t *testing.T, discovery *fakeDiscovery, args ...string) []listedWorkload {
+func run(t *testing.T, discovery *fakeDiscovery, args ...string) []*runtimev1.Workload {
 	t.Helper()
 
 	out, err := runRaw(t, discovery, append([]string{"--output", "json"}, args...)...)
 	require.NoError(t, err)
 
-	var listed []listedWorkload
-	require.NoError(t, json.Unmarshal([]byte(out), &listed), out)
+	var docs []json.RawMessage
+	require.NoError(t, json.Unmarshal([]byte(out), &docs), out)
+
+	listed := make([]*runtimev1.Workload, 0, len(docs))
+
+	for _, doc := range docs {
+		w := &runtimev1.Workload{}
+		require.NoError(t, protojson.Unmarshal(doc, w), string(doc))
+
+		listed = append(listed, w)
+	}
 
 	return listed
 }
@@ -147,17 +159,66 @@ func TestRunList_SendsFiltersAndFiltersAgainOnTheClient(t *testing.T) {
 	require.Equal(t, map[string]string{"org.agntcy/agent-record": "bafy"}, discovery.got.GetLabels())
 
 	require.Len(t, listed, 1, "the client must drop what an older server didn't filter")
+	require.True(t, proto.Equal(discovery.workloads[0], listed[0]), "JSON output is the workload as returned")
+}
 
-	got := listed[0]
-	require.Equal(t, "debugger", got.ID)
-	require.Equal(t, "debugger", got.Agent.Name)
-	require.Equal(t, "1.0.0", got.Agent.Version)
-	require.Equal(t, "1.1.0", got.Agent.SchemaVersion)
-	require.Equal(t, []string{"did:key:zHuman"}, got.Agent.Authors)
-	require.Equal(t, "software_engineering/code_debugging/error_handling", got.Agent.Skills[0].Name)
-	require.Equal(t, "bafy-source", got.SourceRecord)
-	require.Equal(t, "slim://org/ns/debugger", got.Locators[0].URL)
-	require.NotEmpty(t, got.Workload)
+func TestRunList_JSONLIsOneWorkloadPerLine(t *testing.T) {
+	resetOpts(t)
+
+	discovery := &fakeDiscovery{workloads: []*runtimev1.Workload{{Id: "w1", Runtime: "docker"}, {Id: "w2"}}}
+
+	out, err := runRaw(t, discovery, "--output", "jsonl")
+	require.NoError(t, err)
+
+	lines := strings.Split(strings.TrimSuffix(out, "\n"), "\n")
+	require.Len(t, lines, 2, out)
+	require.JSONEq(t, `{"id":"w1","runtime":"docker"}`, lines[0])
+	require.JSONEq(t, `{"id":"w2"}`, lines[1])
+}
+
+func TestRunList_HumanOutputSummarizesTheAgent(t *testing.T) {
+	resetOpts(t)
+
+	discovery := &fakeDiscovery{workloads: []*runtimev1.Workload{{
+		Id: "debugger", Runtime: "process", Type: "process",
+		Labels:   map[string]string{"org.agntcy/agent-record": "bafy-source"},
+		Locators: []*runtimev1.WorkloadLocator{{Protocol: "slim", Url: "slim://org/ns/debugger"}},
+		Services: &runtimev1.WorkloadServices{A2A: card(t, "debugger", "software_engineering/code_debugging/error_handling")},
+	}}}
+
+	out, err := runRaw(t, discovery, "--output", "human")
+	require.NoError(t, err)
+
+	for _, want := range []string{
+		"debugger\n",
+		"  runtime:  process\n",
+		"  agent:    debugger 1.0.0\n",
+		"  locators: slim://org/ns/debugger\n",
+		"  skills:   software_engineering/code_debugging/error_handling\n",
+		"  authors:  did:key:zHuman\n",
+		"  record:   bafy-source\n",
+	} {
+		require.Contains(t, out, want)
+	}
+}
+
+func TestPrintTable_ListsRepeatedValuesUnderEachOther(t *testing.T) {
+	var out bytes.Buffer
+
+	listCmd.SetOut(&out)
+	printTable(listCmd, []summary{{
+		ID: "w1", Runtime: "docker",
+		Locators: []string{"tcp://0.0.0.0:18081", "tcp://0.0.0.0:18443"},
+		Agent:    agent{Skills: []string{"a/b", "c/d"}},
+	}})
+
+	require.Contains(t, out.String(), "w1\n"+
+		"  runtime:  docker\n"+
+		"  locators: tcp://0.0.0.0:18081\n"+
+		"            tcp://0.0.0.0:18443\n"+
+		"  skills:   a/b\n"+
+		"            c/d\n")
+	require.NotContains(t, out.String(), "domains:")
 }
 
 func TestBuildRequest_RejectsMalformedLabel(t *testing.T) {
@@ -241,5 +302,5 @@ func TestRunList_HumanOutputShowsTheHost(t *testing.T) {
 
 	out, err := runRaw(t, discovery, "--output", "human")
 	require.NoError(t, err)
-	require.Contains(t, out, "host:     agent-1")
+	require.Contains(t, out, "  host:     agent-1\n")
 }
