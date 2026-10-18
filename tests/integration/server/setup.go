@@ -195,7 +195,10 @@ func getCurrentSpecID() string {
 func deleteSpecRepository(ctx context.Context) error {
 	// Unfortunately, there's no ORAS operation or Zot endpoint to delete a repository.
 	// So, the only way to delete a repository is to delete its contents.
-	return t.repository.Tags(ctx, "", func(tags []string) error { //nolint:wrapcheck
+	callbackCalled := false
+	err := t.repository.Tags(ctx, "", func(tags []string) error {
+		callbackCalled = true
+
 		for _, tag := range tags {
 			desc, err := t.repository.Resolve(ctx, tag)
 			if err != nil {
@@ -210,4 +213,11 @@ func deleteSpecRepository(ctx context.Context) error {
 
 		return nil
 	})
+	// A read-only spec may never create its repository. Do not swallow a
+	// not-found error from resolving or deleting a tag inside the callback.
+	if !callbackCalled && oci.IsNotFound(err) {
+		return nil
+	}
+
+	return err //nolint:wrapcheck
 }

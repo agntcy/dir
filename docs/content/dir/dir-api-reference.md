@@ -13,7 +13,7 @@ canonical schema live on [buf.build/agntcy/dir](https://buf.build/agntcy/dir).
 |------|-------------|
 | **Storage** | Push, pull, and manage OASF records in the OCI-backed store; referrer artifacts (signatures, public keys) |
 | **Routing** | Publish and unpublish record label announcements (skills, domains, modules, locators), list local records, search the network |
-| **Search** | Structured queries over the local index |
+| **Search** | Structured queries over the local index, including paginated record summaries without content-store pulls |
 | **Security** | Signing and verification |
 | **Identity** | Identity and ownership claim verification; name resolution |
 | **Sync** | Peer synchronization between directory instances |
