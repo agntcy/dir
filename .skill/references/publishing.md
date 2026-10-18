@@ -10,7 +10,11 @@ dirctl validate record.json --url https://schema.oasf.outshift.com   # 1. valida
 CID=$(dirctl push record.json -o raw)                                # 2. store → CID
 dirctl sign "$CID"                                                   # 3. sign (optional, recommended)
 dirctl routing publish "$CID"                                        # 4. announce to the network (optional)
+dirctl identity claim --record "$CID" --role owner --key owner.key   # 5. prove ownership (optional; see identity.md)
 ```
+
+If the user wants ownership verified, set `agntcy.dir/owner` in the record
+**before** step 2 — adding it later changes the CID.
 
 PowerShell (Windows): capture with `$CID = dirctl push record.json -o raw`,
 then pass `$CID` unquoted to the subsequent commands.
@@ -32,11 +36,14 @@ every later operation.
 
 ```bash
 dirctl sign <cid>                      # keyless OIDC (Sigstore; opens browser)
-dirctl sign <cid> --key cosign.key     # private key
+dirctl sign <cid> --key cosign.key     # private key (EC, RSA or Ed25519 PEM)
+dirctl push record.json --sign [--key cosign.key] -o raw   # push and sign in one step
 ```
 
 - Signatures are stored as OCI **referrers** attached to the CID — the record
   itself is unchanged.
+- Private Sigstore deployments: put the Fulcio/Rekor/OIDC URLs in the
+  context's `sigstore:` block (setup reference) instead of repeating flags.
 - Signing enables the `--trusted` search filter and `dirctl verify` for
   consumers.
 - Import flows can sign in bulk: `dirctl import ... --sign [--key ...]`.
@@ -57,25 +64,20 @@ Clarify intent with the user: **push** = store on the connected server;
 **routing publish** = make discoverable across the peer-to-peer network. A
 record can be pushed but unpublished (private to that directory).
 
-## Ownership claim (optional)
+## 5. Claim ownership (optional, recommended)
 
-Proves who owns the record: a signed claim that the owner the record declares
-is its owner, checked against the key material that owner publishes. The record
-declares it in its `agntcy.dir/owner` annotation (`agntcy.dir/identity` for the
-record's own identity), which must be set before the push.
+Signing proves the bytes weren't changed; a **claim** proves who owns the
+record (e.g. `dns:example.com`), and shows it as **Verified** in search. It
+needs the `agntcy.dir/owner` annotation set before the push and a public key
+the owner publishes:
 
 ```bash
-# record.json: "annotations": {"agntcy.dir/owner": "dns:example.com"}
-CID=$(dirctl push record.json -o raw)
-dirctl identity claim --record "$CID" --role owner --key owner.key   # the owner's key is published (DNS TXT, JWKS, DID) or proven by a certificate passed with --cert (SPIFFE, ANS)
-dirctl identity status "$CID"                                         # check the verification result
+dirctl identity claim --record "$CID" --role owner --key owner.key
+dirctl identity status "$CID"
 ```
 
-The reconciler verifies claims in the background, so a fresh claim reads
-`no result` until its next run. Verified owners light up the `--verified` and
-`--owner-verified` search filters. If verification fails, `identity status`
-shows the reason; check that the subject publishes the public half of the key.
-Use `--role identity` for a claim about the record's own identity.
+Follow [identity.md](identity.md) for the full flow: choosing a subject,
+generating and publishing the key, and fixing failed claims.
 
 ## Maintenance
 
