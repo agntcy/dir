@@ -47,6 +47,7 @@ func TestLoadConfig_NoFile_ReturnsDefaults(t *testing.T) {
 	assert.False(t, cfg.Sync.Enabled)
 	assert.Equal(t, synctask.DefaultInterval, cfg.Sync.Interval)
 	assert.Equal(t, []string{synctask.DefaultDomain}, cfg.Sync.Criteria.Domains)
+	assert.Empty(t, cfg.Sync.Criteria.Skills)
 	assert.Equal(t, synctask.DefaultLimit, cfg.Sync.Limit)
 	assert.True(t, cfg.Sync.DryRun)
 
@@ -55,6 +56,7 @@ func TestLoadConfig_NoFile_ReturnsDefaults(t *testing.T) {
 	assert.False(t, cfg.Publish.Enabled)
 	assert.Equal(t, publish.DefaultInterval, cfg.Publish.Interval)
 	assert.Empty(t, cfg.Publish.Criteria.Domains)
+	assert.Empty(t, cfg.Publish.Criteria.Skills)
 	assert.Equal(t, publish.DefaultLimit, cfg.Publish.Limit)
 	assert.True(t, cfg.Publish.DryRun)
 
@@ -184,6 +186,7 @@ func TestLoadConfig_SyncFromEnv(t *testing.T) {
 	t.Setenv("RECONCILER_SYNC_ENABLED", "true")
 	t.Setenv("RECONCILER_SYNC_INTERVAL", "6h")
 	t.Setenv("RECONCILER_SYNC_CRITERIA_DOMAINS", "research,analytics")
+	t.Setenv("RECONCILER_SYNC_CRITERIA_SKILLS", "threat_detection,nlp")
 	t.Setenv("RECONCILER_SYNC_LIMIT", "25")
 	t.Setenv("RECONCILER_SYNC_DRY_RUN", "false")
 
@@ -193,6 +196,7 @@ func TestLoadConfig_SyncFromEnv(t *testing.T) {
 	assert.True(t, cfg.Sync.Enabled)
 	assert.Equal(t, 6*time.Hour, cfg.Sync.Interval)
 	assert.Equal(t, []string{"research", "analytics"}, cfg.Sync.Criteria.Domains)
+	assert.Equal(t, []string{"threat_detection", "nlp"}, cfg.Sync.Criteria.Skills)
 	assert.Equal(t, 25, cfg.Sync.Limit)
 	assert.False(t, cfg.Sync.DryRun)
 }
@@ -211,17 +215,19 @@ func TestLoadConfig_PruneSignatureStatusesFromEnv(t *testing.T) {
 
 func TestLoadConfig_PublishFromEnv(t *testing.T) {
 	t.Setenv("RECONCILER_PUBLISH_ENABLED", "true")
-	t.Setenv("RECONCILER_PUBLISH_INTERVAL", "6h")
-	t.Setenv("RECONCILER_PUBLISH_CRITERIA_DOMAINS", "research,analytics")
-	t.Setenv("RECONCILER_PUBLISH_LIMIT", "25")
+	t.Setenv("RECONCILER_PUBLISH_INTERVAL", "12h")
+	t.Setenv("RECONCILER_PUBLISH_CRITERIA_DOMAINS", "finance,operations")
+	t.Setenv("RECONCILER_PUBLISH_CRITERIA_SKILLS", "forecasting,risk,compliance")
+	t.Setenv("RECONCILER_PUBLISH_LIMIT", "10")
 	t.Setenv("RECONCILER_PUBLISH_DRY_RUN", "false")
 
 	cfg, err := LoadConfig()
 	require.NoError(t, err)
 
 	assert.True(t, cfg.Publish.Enabled)
-	assert.Equal(t, 6*time.Hour, cfg.Publish.Interval)
-	assert.Equal(t, []string{"research", "analytics"}, cfg.Publish.Criteria.Domains)
-	assert.Equal(t, 25, cfg.Publish.Limit)
+	assert.Equal(t, 12*time.Hour, cfg.Publish.Interval)
+	assert.Equal(t, []string{"finance", "operations"}, cfg.Publish.Criteria.Domains)
+	assert.Equal(t, []string{"forecasting", "risk", "compliance"}, cfg.Publish.Criteria.Skills)
+	assert.Equal(t, 10, cfg.Publish.Limit)
 	assert.False(t, cfg.Publish.DryRun)
 }

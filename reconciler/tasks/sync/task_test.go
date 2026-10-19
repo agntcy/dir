@@ -133,6 +133,59 @@ func TestTask_Run_MultipleDomains_AreORFilters(t *testing.T) {
 	assert.Equal(t, uint32(1), searcher.req.GetMinMatchScore())
 }
 
+func TestTask_Run_SkillsAreORFilters(t *testing.T) {
+	t.Parallel()
+
+	db := &fakeSyncs{}
+	searcher := &fakeSearcher{
+		hits: []*routingv1.SearchResponse{
+			searchHit("peer-a", "cid-domain", "/dir/a.example:8888"),
+			searchHit("peer-b", "cid-skill", "/dir/b.example:8888"),
+		},
+	}
+	task, err := NewTask(Config{
+		Enabled: true,
+		Criteria: Criteria{
+			Domains: []string{"network_security"},
+			Skills:  []string{"threat_detection", "nlp"},
+		},
+		Limit: 25,
+	}, searcher, db)
+	require.NoError(t, err)
+
+	require.NoError(t, task.Run(context.Background()))
+
+	require.Len(t, searcher.req.GetQueries(), 3)
+	assert.Equal(t, routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN, searcher.req.GetQueries()[0].GetType())
+	assert.Equal(t, "network_security", searcher.req.GetQueries()[0].GetValue())
+	assert.Equal(t, routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL, searcher.req.GetQueries()[1].GetType())
+	assert.Equal(t, "threat_detection", searcher.req.GetQueries()[1].GetValue())
+	assert.Equal(t, "nlp", searcher.req.GetQueries()[2].GetValue())
+	assert.Equal(t, uint32(1), searcher.req.GetMinMatchScore())
+	assert.Equal(t, uint32(25), searcher.req.GetLimit())
+
+	require.Len(t, db.created, 2)
+	assert.Equal(t, []string{"cid-domain"}, db.created[0].cids)
+	assert.Equal(t, []string{"cid-skill"}, db.created[1].cids)
+}
+
+func TestTask_Run_SkillsUseDefaultDomain(t *testing.T) {
+	t.Parallel()
+
+	searcher := &fakeSearcher{}
+	task, err := NewTask(Config{Enabled: true, Criteria: Criteria{Skills: []string{"threat_detection"}}}, searcher, &fakeSyncs{})
+	require.NoError(t, err)
+
+	require.NoError(t, task.Run(context.Background()))
+	require.Len(t, searcher.req.GetQueries(), 2)
+	assert.Equal(t, routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN, searcher.req.GetQueries()[0].GetType())
+	assert.Equal(t, DefaultDomain, searcher.req.GetQueries()[0].GetValue())
+	assert.Equal(t, routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL, searcher.req.GetQueries()[1].GetType())
+	assert.Equal(t, "threat_detection", searcher.req.GetQueries()[1].GetValue())
+	assert.Equal(t, uint32(1), searcher.req.GetMinMatchScore())
+	assert.Equal(t, uint32(DefaultLimit), searcher.req.GetLimit())
+}
+
 func TestTask_Run_SearchError_ReturnsError(t *testing.T) {
 	t.Parallel()
 

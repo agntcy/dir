@@ -22,6 +22,11 @@ type Criteria struct {
 	// Domains selects records that have any of these routing domains.
 	// Empty means every indexed record.
 	Domains []string `json:"domains,omitempty" mapstructure:"domains"`
+
+	// Skills selects records that have any of these skill names.
+	// Empty means no skill filter. When both are set, a record must match
+	// one domain and one skill.
+	Skills []string `json:"skills,omitempty" mapstructure:"skills"`
 }
 
 // Config holds configuration for the publish reconciler task.
@@ -68,21 +73,33 @@ func (c *Config) GetLimit() int {
 // GetDomains returns the configured domains, trimmed and without empties.
 // An empty list means no domain filter.
 func (c *Config) GetDomains() []string {
-	seen := make(map[string]struct{}, len(c.Criteria.Domains))
-	out := make([]string, 0, len(c.Criteria.Domains))
+	return cleanList(c.Criteria.Domains)
+}
 
-	for _, d := range c.Criteria.Domains {
-		d = strings.TrimSpace(d)
-		if d == "" {
+// GetSkills returns the configured skills, trimmed and without empties.
+// An empty list means no skill filter.
+func (c *Config) GetSkills() []string {
+	return cleanList(c.Criteria.Skills)
+}
+
+// cleanList returns values trimmed and without empties or duplicates,
+// preserving order.
+func cleanList(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+
+	for _, v := range values {
+		v = strings.TrimSpace(v)
+		if v == "" {
 			continue
 		}
 
-		if _, ok := seen[d]; ok {
+		if _, ok := seen[v]; ok {
 			continue
 		}
 
-		seen[d] = struct{}{}
-		out = append(out, d)
+		seen[v] = struct{}{}
+		out = append(out, v)
 	}
 
 	return out
