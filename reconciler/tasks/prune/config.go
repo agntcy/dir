@@ -14,18 +14,17 @@ import (
 )
 
 const (
-	// DefaultInterval matches the prune-untrusted CronJob schedule (every 30 minutes).
+	// DefaultInterval is how often a run deletes matching records.
 	DefaultInterval = 30 * time.Minute
 
 	// DefaultRecordTimeout is the per-record store delete timeout.
 	DefaultRecordTimeout = 30 * time.Second
 
-	// DefaultMinSeverity is the scan-severity threshold from the CronJob
-	// (MEDIUM or worse).
+	// DefaultMinSeverity is the scan-severity threshold (MEDIUM or worse).
 	DefaultMinSeverity = securityv1.ScanSeverityMedium
 
-	// DefaultLimit is how many matching records a run deletes. Same as the
-	// CronJob: a run does not paginate, it converges over later intervals.
+	// DefaultLimit is how many matching records a run deletes. A run does not
+	// paginate; it converges over later intervals.
 	DefaultLimit = 100
 
 	// DefaultOlderThan is how old a record must be before prune will delete it.
