@@ -32,10 +32,10 @@ func init() {
 	flags.StringVar(&opts.ConfigFile, "config", "", "Path to a YAML import config file. Values are overridden by command-line flags")
 
 	// File flags
-	flags.StringVar(&opts.FilePath, "file-path", "", "Path to source: JSON file for mcp/a2a, or skill directory for agent-skill")
+	flags.StringVar(&opts.FilePath, "file-path", "", "Path to source: JSON file, or directory of *.json files, for mcp/a2a/oasf; skill directory for agent-skill")
 
 	// Import source
-	flags.StringVar(&opts.TypeFlag, "type", "", "Import kind: mcp, mcp-registry, a2a, or agent-skill (local Agent Skills directory with SKILL.md)")
+	flags.StringVar(&opts.TypeFlag, "type", "", "Import kind: mcp, mcp-registry, a2a, agent-skill (local Agent Skills directory with SKILL.md), or oasf")
 	flags.StringVar(&opts.RegistryURL, "url", "", "Registry base URL (required when --type=mcp-registry)")
 	flags.StringToStringVar(&opts.Filters, "filter", nil, "Filters (key=value)")
 	flags.IntVar(&opts.Limit, "limit", 0, "Maximum number of records to import (0 = no limit)")
