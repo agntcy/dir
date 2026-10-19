@@ -1,9 +1,9 @@
 ---
 name: agntcy-dir
-description: Use when the user asks to discover, browse, search, suggest, recommend, or install agents and agentic resources. Author, validate, or import OASF records; push, sign, and publish records; discover, search, browse, suggest, or recommend agents like MCP servers, A2A agents, or agent skills; verify signatures, ownership claims, or security scans; synchronize data between servers; or install/uninstall agents and agentic resources into coding agents like VS Code Copilot, Claude Code, or Cursor.
+description: Use when the user asks to discover, browse, search, suggest, recommend, or install agents and agentic resources. Author, validate, or import OASF records; push, sign, and publish records; discover, search, browse, suggest, or recommend agents like MCP servers, A2A agents, or agent skills; claim and prove record ownership or identity (DNS, HTTPS, DID, SPIFFE, ANS); verify signatures, ownership claims, or security scans; list running agent workloads; configure node content policies and prune jobs; synchronize data between servers; or install/uninstall agents and agentic resources into coding agents like VS Code Copilot, Claude Code, or Cursor.
 metadata:
   author: AGNTCY Contributors
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # AGNTCY Directory (dirctl)
@@ -25,11 +25,14 @@ and publish" → authoring + publishing).
 | "install dirctl", "set up a local directory", "start the daemon", "configure contexts", "connection issues" | [references/setup.md](references/setup.md)               |
 | "log in", "am I authenticated?", "switch to another directory node", "permission denied / forbidden"        | [references/setup.md](references/setup.md)               |
 | "create a record", "validate my record", "import MCP servers / A2A cards / skills into DIR"                 | [references/authoring.md](references/authoring.md)       |
-| "push", "publish to the network", "sign my record", "prove ownership"                                  | [references/publishing.md](references/publishing.md)     |
+| "push", "publish to the network", "sign my record"                                                          | [references/publishing.md](references/publishing.md)     |
+| "prove I own this", "claim ownership", "publish my key", "why is my claim failed/not verified"              | [references/identity.md](references/identity.md)         |
 | "find/search/suggest agents, MCP servers, skills", "browse the directory", "pull a record"                  | [references/discovery.md](references/discovery.md)       |
+| "what agents are running", "find a running workload", "agents reachable over SLIM"                          | [references/discovery.md](references/discovery.md)       |
 | "is this record signed/safe/verified?", "check scan reports", "verify signature"                            | [references/verification.md](references/verification.md) |
 | "sync with another directory", "mirror records", "sync from a public registry/GHCR"                         | [references/sync.md](references/sync.md)                 |
 | "install <record> into my editor/agent", "uninstall", "export as mcp.json / SKILL.md / A2A card"            | [references/install.md](references/install.md)           |
+| "content policy", "hide/block records on my node", "shadow/enforce", "prune untrusted records", "upgrade my node to v1.8" | [references/policy.md](references/policy.md) |
 
 ## Vocabulary
 
@@ -38,8 +41,10 @@ and publish" → authoring + publishing).
 - **Reference** — how commands address records: `<cid>`, `<name>`, `<name>:<version>`, `<name>@<cid>`, `<name>:<version>@<cid>` (the `@<cid>` forms are hash-verified and fail on mismatch).
 - **Skill / Domain** — OASF taxonomy nodes describing what an agent does and where.
 - **Module** — typed payload on a record: `integration/mcp` (MCP server), `integration/a2a` (A2A card), `core/language_model/agentskills` (Agent Skill).
-- **Locator** — pointer to a runnable artifact (`docker-image`, `source_code`, `helm_chart`, …).
-- **Referrer** — Artifact attached to a record: signature, public key, security scan report.
+- **Locator** — pointer to a runnable artifact (`container_image`, `source_code`, `helm_chart`, `binary`, …; each with a `urls` list).
+- **Referrer** — Artifact attached to a record: signature, public key, security scan report, identity claim.
+- **Subject / Claim** — a subject is who a record says it belongs to (`dns:example.com`, `did:web:…`, `spiffe://…`, `ans://…`), declared in the `agntcy.dir/owner` / `agntcy.dir/identity` annotations. A claim is a signature by that subject's key; the reconciler re-verifies it against the subject's published keys on every run. Record names are not verified — claims are.
+- **Content policy** — a node operator's CEL/OPA rule; records failing an enforced policy are withheld by that node only.
 
 ## Prerequisites
 
@@ -77,8 +82,9 @@ daemon). Server selection order: `--context <name>` flag →
   again cannot fix it. Name the denied method, say it needs elevated rights on
   that deployment, and stop; only `Unauthenticated` and expired-token errors
   are login problems.
-- **Destructive ops** (`delete`, `uninstall`, `sync delete`, `--force`):
-  always confirm with the user first.
+- **Destructive ops** (`delete`, `uninstall`, `sync delete`, `--force`, a
+  reconciler `prune` job with `dry_run: false`, switching a content policy to
+  `enforce`): always confirm with the user first.
 - **Never fabricate** CIDs, names, versions, scores, or scan results — every
   value shown must come from real command output.
 

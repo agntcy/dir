@@ -16,9 +16,6 @@ const (
 	// DefaultLimit is how many routing hits a run considers. Same as the
 	// CronJob: a run does not paginate, it converges over later intervals.
 	DefaultLimit = 100
-
-	// DefaultDomain is the routing domain used when none are configured.
-	DefaultDomain = "network_security"
 )
 
 // Criteria is the routing search filter the sync applies.
@@ -27,6 +24,13 @@ type Criteria struct {
 	// A record matching any of them is included. A YAML scalar or a
 	// comma-separated env value is accepted as a one-element list.
 	Domains []string `json:"domains,omitempty" mapstructure:"domains"`
+
+	// Skills is the routing skill queries (e.g. "threat_detection").
+	// Passed through like `dirctl routing search --skill`: a record matching
+	// any listed domain or any listed skill is included. Empty adds no skill
+	// query. A YAML scalar or a comma-separated env value is accepted as a
+	// one-element list.
+	Skills []string `json:"skills,omitempty" mapstructure:"skills"`
 }
 
 // Config holds configuration for the sync reconciler task.
@@ -61,27 +65,36 @@ func (c *Config) GetInterval() time.Duration {
 }
 
 // GetDomains returns the routing domains, trimmed and without empties.
-// An empty list falls back to DefaultDomain.
+// An empty list stays empty. The shipped config files choose a domain;
+// this package does not.
 func (c *Config) GetDomains() []string {
-	seen := make(map[string]struct{}, len(c.Criteria.Domains))
-	out := make([]string, 0, len(c.Criteria.Domains))
+	return cleanList(c.Criteria.Domains)
+}
 
-	for _, d := range c.Criteria.Domains {
-		d = strings.TrimSpace(d)
-		if d == "" {
+// GetSkills returns the routing skills, trimmed and without empties.
+// An empty list means no skill filter.
+func (c *Config) GetSkills() []string {
+	return cleanList(c.Criteria.Skills)
+}
+
+// cleanList returns values trimmed and without empties or duplicates,
+// preserving order.
+func cleanList(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+
+	for _, v := range values {
+		v = strings.TrimSpace(v)
+		if v == "" {
 			continue
 		}
 
-		if _, ok := seen[d]; ok {
+		if _, ok := seen[v]; ok {
 			continue
 		}
 
-		seen[d] = struct{}{}
-		out = append(out, d)
-	}
-
-	if len(out) == 0 {
-		return []string{DefaultDomain}
+		seen[v] = struct{}{}
+		out = append(out, v)
 	}
 
 	return out
@@ -96,10 +109,11 @@ func (c *Config) GetLimit() int {
 	return c.Limit
 }
 
-// Validate reports an empty domain list after defaults are applied.
+// Validate reports criteria that match nothing. A blank or whitespace-only
+// list is empty. Either domains or skills satisfy the requirement.
 func (c *Config) Validate() error {
-	if len(c.GetDomains()) == 0 {
-		return errors.New("at least one domain is required")
+	if len(c.GetDomains()) == 0 && len(c.GetSkills()) == 0 {
+		return errors.New("at least one criterion is required")
 	}
 
 	return nil

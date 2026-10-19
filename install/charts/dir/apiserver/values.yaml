@@ -797,7 +797,7 @@ postgresql:
     repository: bitnami/postgresql
     # renovate: datasource=docker depName=docker.io/bitnami/postgresql versioning=docker
     tag: latest
-    digest: "sha256:e2815ea79b38b77696bb189605a1f2e95a0bd3f70d419385500fc03d20d23c37"
+    digest: "sha256:889db6427034525f50071945ddf808fbb77f8a52c2c8d3a7a75d39a167373566"
   auth:
     username: "dir"
     password: "dirpassword"
@@ -906,13 +906,16 @@ reconciler:
     # does not paginate; later intervals pick up more. Dry-run logs peers
     # and skips CreateSync. Config loading defaults dry_run to true.
     # Requires server_address in standalone mode.
-    # criteria.domains is a list; a record matching any listed domain is included.
+    # criteria.domains and criteria.skills are lists passed to routing search
+    # as --domain and --skill. A record matching any listed value is included.
+    # Empty skills adds no skill query.
     sync:
       enabled: false
       interval: "24h"
       criteria:
         domains:
           - "network_security"
+        skills: []
       limit: 100
       dry_run: true
 
@@ -1025,12 +1028,14 @@ reconciler:
     # Publish task. Announces matching local records to the routing network.
     # Off: this publishes to peers. A run pages through the match set, same
     # as the dirctl publish CronJob. Empty criteria.domains means every
-    # indexed record. Config loading defaults dry_run to true.
+    # indexed record. criteria.skills works the same way. When both are set,
+    # a record must match one of each. Config loading defaults dry_run to true.
     publish:
       enabled: false
       interval: "24h"
       criteria:
         domains: []
+        skills: []
       limit: 100
       dry_run: true
 

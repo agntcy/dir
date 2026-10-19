@@ -93,6 +93,29 @@ dirctl info <cid-or-name>                           # metadata only
 - Referrer flags extend output: `--signature`, `--public-key`,
   `--scan-report` (see verification reference).
 
+## Running workloads
+
+`search` finds published records; `runtime list` finds agents that are
+**running right now** (Docker, Kubernetes, local processes) on a node with
+runtime discovery on (`runtime.enabled` in the daemon config). Use it for
+"what agents are running", "which agent can I call over SLIM".
+
+```bash
+dirctl runtime list -o json
+dirctl runtime list --skill "software_engineering/code_debugging/*" --locator-protocol slim
+dirctl runtime list --runtime docker --name "example.com/*"
+dirctl runtime list --reachable-from <workload-id>
+```
+
+Filters: `--name`, `--skill`, `--domain`, `--author`, `--schema-version`,
+`--locator-protocol` (`slim`, `grpc`, `http`, `tcp`), `--runtime`
+(`docker`, `kubernetes`, `process`), `--label key=regex`,
+`--reachable-from`. Different filters AND; a repeated flag ORs. Read endpoints
+from each workload's `locators` — `addresses` and `ports` are deprecated.
+Workloads are listed as announced and nothing is verified: say so, and offer
+the trust checks of the verification reference on the record a workload
+references.
+
 ## After discovery
 
 Offer next steps based on the artifacts column: install into the user's agent
