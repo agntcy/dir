@@ -100,8 +100,8 @@ with `dry_run: true`.
 | Job | Does | Key settings |
 | --- | --- | --- |
 | `prune` | **Deletes** records matching every criterion set | `criteria.signature_statuses` (`verified`, `failed`, `unsigned`) **or** `criteria.trusted` (not both), `min_severity`, `older_than` (time since first seen), `limit` |
-| `sync` | Finds records on the network and creates a sync per announcing peer | `criteria.domains`, `limit` |
-| `publish` | Announces matching local records to the network | `criteria.domains` (empty = every record), `limit` |
+| `sync` | Finds records on the network and creates a sync per announcing peer | `criteria.domains` and `criteria.skills` (at least one required; a record matching any listed value is included), `limit` |
+| `publish` | Announces matching local records to the network | `criteria.domains` and `criteria.skills` (a filter applies only when that list is non-empty; both empty means every record; both set means a record must match one of each), `limit` |
 
 ```yaml
 reconciler:
@@ -117,8 +117,8 @@ reconciler:
   unsigned]`. A signed record with no verification result yet is never pruned.
 - `prune` with `dry_run: false` deletes records — confirm with the user and
   show what the dry-run logged first.
-- These run inside the reconciler; before v1.8 the same work needed `dirctl`
-  CronJobs.
+- These run inside the reconciler. There is no scheduled unpublish; withdraw
+  records with `dirctl routing unpublish`.
 
 ## Identity verification settings
 

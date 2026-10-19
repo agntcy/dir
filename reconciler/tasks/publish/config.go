@@ -12,8 +12,7 @@ const (
 	// DefaultInterval is how often a run republishes matching local records.
 	DefaultInterval = 24 * time.Hour
 
-	// DefaultLimit is the search page size. A run pages through --offset
-	// until a short page, same as the dirctl publish CronJob.
+	// DefaultLimit is the search page size. A run pages until a short page.
 	DefaultLimit = 100
 )
 
@@ -31,8 +30,8 @@ type Criteria struct {
 
 // Config holds configuration for the publish reconciler task.
 // The task searches the local index for records matching Criteria and
-// submits one publication request per page, the same pipeline as the
-// dirctl publish CronJob: search, then routing publish.
+// submits one publication request per page: search the local index, then
+// routing publish.
 type Config struct {
 	// Enabled determines if the publish task should run.
 	// Defaults to false: this task announces records to the network.

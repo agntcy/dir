@@ -3,7 +3,7 @@
 
 // Package sync implements the sync reconciler task.
 // It searches the routing network for records matching Criteria and creates
-// one sync per announcing peer. Defaults match the dirctl sync-netsec CronJob.
+// one sync per announcing peer.
 package sync
 
 import (
