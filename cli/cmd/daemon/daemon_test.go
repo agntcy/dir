@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/agntcy/dir/reconciler/recordevents"
-	publishtask "github.com/agntcy/dir/reconciler/tasks/publish"
 	synctask "github.com/agntcy/dir/reconciler/tasks/sync"
 	storeconfig "github.com/agntcy/dir/server/store/oci/config"
 	validatorsconfig "github.com/agntcy/dir/server/validators/config"
@@ -115,7 +114,7 @@ func TestLoadConfigKeepsSyncInDryRunByDefault(t *testing.T) {
 		require.True(t, cfg.Reconciler.Sync.DryRun)
 		require.Equal(t, synctask.DefaultInterval, cfg.Reconciler.Sync.Interval)
 		require.Equal(t, synctask.DefaultLimit, cfg.Reconciler.Sync.Limit)
-		require.Equal(t, []string{synctask.DefaultDomain}, cfg.Reconciler.Sync.Criteria.Domains)
+		require.Empty(t, cfg.Reconciler.Sync.Criteria.Domains)
 		require.Empty(t, cfg.Reconciler.Sync.Criteria.Skills)
 	})
 
@@ -177,8 +176,8 @@ func TestLoadConfigKeepsPublishInDryRunByDefault(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, cfg.Reconciler.Publish.Enabled)
 		require.True(t, cfg.Reconciler.Publish.DryRun)
-		require.Equal(t, publishtask.DefaultInterval, cfg.Reconciler.Publish.Interval)
-		require.Equal(t, publishtask.DefaultLimit, cfg.Reconciler.Publish.Limit)
+		require.Equal(t, 24*time.Hour, cfg.Reconciler.Publish.Interval)
+		require.Equal(t, 100, cfg.Reconciler.Publish.Limit)
 		require.Empty(t, cfg.Reconciler.Publish.Criteria.Domains)
 		require.Empty(t, cfg.Reconciler.Publish.Criteria.Skills)
 	})

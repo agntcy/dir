@@ -16,9 +16,6 @@ const (
 	// DefaultLimit is how many routing hits a run considers. Same as the
 	// CronJob: a run does not paginate, it converges over later intervals.
 	DefaultLimit = 100
-
-	// DefaultDomain is the routing domain used when none are configured.
-	DefaultDomain = "network_security"
 )
 
 // Criteria is the routing search filter the sync applies.
@@ -68,14 +65,10 @@ func (c *Config) GetInterval() time.Duration {
 }
 
 // GetDomains returns the routing domains, trimmed and without empties.
-// An empty list falls back to DefaultDomain.
+// An empty list stays empty. The shipped config files choose a domain;
+// this package does not.
 func (c *Config) GetDomains() []string {
-	out := cleanList(c.Criteria.Domains)
-	if len(out) == 0 {
-		return []string{DefaultDomain}
-	}
-
-	return out
+	return cleanList(c.Criteria.Domains)
 }
 
 // GetSkills returns the routing skills, trimmed and without empties.
@@ -116,10 +109,11 @@ func (c *Config) GetLimit() int {
 	return c.Limit
 }
 
-// Validate reports an empty domain list after defaults are applied.
+// Validate reports criteria that match nothing. A blank or whitespace-only
+// list is empty. Either domains or skills satisfy the requirement.
 func (c *Config) Validate() error {
-	if len(c.GetDomains()) == 0 {
-		return errors.New("at least one domain is required")
+	if len(c.GetDomains()) == 0 && len(c.GetSkills()) == 0 {
+		return errors.New("at least one criterion is required")
 	}
 
 	return nil

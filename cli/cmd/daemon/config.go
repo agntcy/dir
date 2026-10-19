@@ -183,7 +183,7 @@ func registerReconcilerDefaults(v *viper.Viper) {
 	// through to the zero value. Mirrors reconciler/config.
 	v.SetDefault("reconciler.sync.enabled", false)
 	v.SetDefault("reconciler.sync.interval", synctask.DefaultInterval)
-	v.SetDefault("reconciler.sync.criteria.domains", []string{synctask.DefaultDomain})
+	v.SetDefault("reconciler.sync.criteria.domains", []string{})
 	v.SetDefault("reconciler.sync.criteria.skills", []string{})
 	v.SetDefault("reconciler.sync.limit", synctask.DefaultLimit)
 	v.SetDefault("reconciler.sync.dry_run", true)
