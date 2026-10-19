@@ -75,7 +75,7 @@ func searchHit(peerID, cid string, addrs ...string) *routingv1.SearchResponse {
 func TestTask_Name_Interval_IsEnabled(t *testing.T) {
 	t.Parallel()
 
-	task, err := NewTask(Config{Enabled: true, Interval: 2 * time.Hour}, nil, nil)
+	task, err := NewTask(Config{Enabled: true, Interval: 2 * time.Hour, Criteria: Criteria{Domains: []string{"research"}}}, nil, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, "sync", task.Name())
@@ -86,7 +86,7 @@ func TestTask_Name_Interval_IsEnabled(t *testing.T) {
 func TestTask_IsEnabled_False(t *testing.T) {
 	t.Parallel()
 
-	task, err := NewTask(Config{Enabled: false}, nil, nil)
+	task, err := NewTask(Config{Enabled: false, Criteria: Criteria{Domains: []string{"research"}}}, nil, nil)
 	require.NoError(t, err)
 	assert.False(t, task.IsEnabled())
 }
@@ -94,7 +94,7 @@ func TestTask_IsEnabled_False(t *testing.T) {
 func TestTask_Interval_Zero_UsesDefault(t *testing.T) {
 	t.Parallel()
 
-	task, err := NewTask(Config{Enabled: true}, nil, nil)
+	task, err := NewTask(Config{Enabled: true, Criteria: Criteria{Domains: []string{"research"}}}, nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, DefaultInterval, task.Interval())
 }
@@ -104,7 +104,7 @@ func TestTask_Run_NoHits_ReturnsNil(t *testing.T) {
 
 	searcher := &fakeSearcher{}
 	db := &fakeSyncs{}
-	task, err := NewTask(Config{Enabled: true}, searcher, db)
+	task, err := NewTask(Config{Enabled: true, Criteria: Criteria{Domains: []string{"research"}}}, searcher, db)
 	require.NoError(t, err)
 
 	assert.NoError(t, task.Run(context.Background()))
@@ -112,7 +112,7 @@ func TestTask_Run_NoHits_ReturnsNil(t *testing.T) {
 	require.NotNil(t, searcher.req)
 	require.Len(t, searcher.req.GetQueries(), 1)
 	assert.Equal(t, routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN, searcher.req.GetQueries()[0].GetType())
-	assert.Equal(t, DefaultDomain, searcher.req.GetQueries()[0].GetValue())
+	assert.Equal(t, "research", searcher.req.GetQueries()[0].GetValue())
 	assert.Equal(t, uint32(DefaultLimit), searcher.req.GetLimit())
 	assert.Equal(t, uint32(1), searcher.req.GetMinMatchScore())
 }
@@ -169,7 +169,7 @@ func TestTask_Run_SkillsAreORFilters(t *testing.T) {
 	assert.Equal(t, []string{"cid-skill"}, db.created[1].cids)
 }
 
-func TestTask_Run_SkillsUseDefaultDomain(t *testing.T) {
+func TestTask_Run_SkillsOnly(t *testing.T) {
 	t.Parallel()
 
 	searcher := &fakeSearcher{}
@@ -177,11 +177,9 @@ func TestTask_Run_SkillsUseDefaultDomain(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, task.Run(context.Background()))
-	require.Len(t, searcher.req.GetQueries(), 2)
-	assert.Equal(t, routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN, searcher.req.GetQueries()[0].GetType())
-	assert.Equal(t, DefaultDomain, searcher.req.GetQueries()[0].GetValue())
-	assert.Equal(t, routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL, searcher.req.GetQueries()[1].GetType())
-	assert.Equal(t, "threat_detection", searcher.req.GetQueries()[1].GetValue())
+	require.Len(t, searcher.req.GetQueries(), 1)
+	assert.Equal(t, routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL, searcher.req.GetQueries()[0].GetType())
+	assert.Equal(t, "threat_detection", searcher.req.GetQueries()[0].GetValue())
 	assert.Equal(t, uint32(1), searcher.req.GetMinMatchScore())
 	assert.Equal(t, uint32(DefaultLimit), searcher.req.GetLimit())
 }
@@ -190,7 +188,7 @@ func TestTask_Run_SearchError_ReturnsError(t *testing.T) {
 	t.Parallel()
 
 	wantErr := errors.New("routing unavailable")
-	task, err := NewTask(Config{Enabled: true}, &fakeSearcher{err: wantErr}, &fakeSyncs{})
+	task, err := NewTask(Config{Enabled: true, Criteria: Criteria{Domains: []string{"research"}}}, &fakeSearcher{err: wantErr}, &fakeSyncs{})
 	require.NoError(t, err)
 
 	err = task.Run(context.Background())
@@ -203,7 +201,7 @@ func TestTask_Run_DryRun_DoesNotCreateSync(t *testing.T) {
 	t.Parallel()
 
 	db := &fakeSyncs{}
-	task, err := NewTask(Config{Enabled: true, DryRun: true}, &fakeSearcher{
+	task, err := NewTask(Config{Enabled: true, DryRun: true, Criteria: Criteria{Domains: []string{"research"}}}, &fakeSearcher{
 		hits: []*routingv1.SearchResponse{
 			searchHit("peer-a", "cid-1", "/dir/example.com:8888"),
 		},
@@ -244,7 +242,7 @@ func TestTask_Run_CreateError_Continues(t *testing.T) {
 	t.Parallel()
 
 	db := &fakeSyncs{err: errors.New("db down")}
-	task, err := NewTask(Config{Enabled: true}, &fakeSearcher{
+	task, err := NewTask(Config{Enabled: true, Criteria: Criteria{Domains: []string{"research"}}}, &fakeSearcher{
 		hits: []*routingv1.SearchResponse{
 			searchHit("peer-a", "cid-1", "/dir/a.example:8888"),
 		},
@@ -259,7 +257,7 @@ func TestTask_Run_SkipsPeerWithoutAddress(t *testing.T) {
 	t.Parallel()
 
 	db := &fakeSyncs{}
-	task, err := NewTask(Config{Enabled: true}, &fakeSearcher{
+	task, err := NewTask(Config{Enabled: true, Criteria: Criteria{Domains: []string{"research"}}}, &fakeSearcher{
 		hits: []*routingv1.SearchResponse{
 			searchHit("peer-a", "cid-1", "/ip4/1.2.3.4/tcp/4001"),
 		},

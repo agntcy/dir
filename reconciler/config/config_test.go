@@ -46,7 +46,7 @@ func TestLoadConfig_NoFile_ReturnsDefaults(t *testing.T) {
 	// Sync is off unless asked for; dry-run defaults on.
 	assert.False(t, cfg.Sync.Enabled)
 	assert.Equal(t, synctask.DefaultInterval, cfg.Sync.Interval)
-	assert.Equal(t, []string{synctask.DefaultDomain}, cfg.Sync.Criteria.Domains)
+	assert.Empty(t, cfg.Sync.Criteria.Domains)
 	assert.Empty(t, cfg.Sync.Criteria.Skills)
 	assert.Equal(t, synctask.DefaultLimit, cfg.Sync.Limit)
 	assert.True(t, cfg.Sync.DryRun)

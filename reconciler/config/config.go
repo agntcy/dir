@@ -302,7 +302,7 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("sync.interval", synctask.DefaultInterval)
 
 	_ = v.BindEnv("sync.criteria.domains")
-	v.SetDefault("sync.criteria.domains", []string{synctask.DefaultDomain})
+	v.SetDefault("sync.criteria.domains", []string{})
 
 	_ = v.BindEnv("sync.criteria.skills")
 	v.SetDefault("sync.criteria.skills", []string{})
