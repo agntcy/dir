@@ -10,7 +10,7 @@ services:
       restart_policy:
         condition: on-failure
   postgres:
-    image: docker.io/bitnami/postgresql:latest@sha256:e2815ea79b38b77696bb189605a1f2e95a0bd3f70d419385500fc03d20d23c37
+    image: docker.io/bitnami/postgresql:latest@sha256:889db6427034525f50071945ddf808fbb77f8a52c2c8d3a7a75d39a167373566
     environment:
       POSTGRES_USER: ditfs_user
       POSTGRES_PASSWORD: ditfs_pass
