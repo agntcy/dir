@@ -3,8 +3,8 @@
 
 // Package publish implements the publish reconciler task.
 // It searches the local index for records matching Criteria and submits
-// publication requests for the publication worker. Defaults match the
-// dirctl publish CronJob: page through the match set, then publish.
+// publication requests for the publication worker. A run pages through the
+// match set, then publishes.
 package publish
 
 import (

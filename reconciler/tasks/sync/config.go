@@ -10,11 +10,11 @@ import (
 )
 
 const (
-	// DefaultInterval matches the nightly sync-netsec CronJob (0 3 * * *).
+	// DefaultInterval is how often a run searches the routing network.
 	DefaultInterval = 24 * time.Hour
 
-	// DefaultLimit is how many routing hits a run considers. Same as the
-	// CronJob: a run does not paginate, it converges over later intervals.
+	// DefaultLimit is how many routing hits a run considers. A run does not
+	// paginate; it converges over later intervals.
 	DefaultLimit = 100
 )
 

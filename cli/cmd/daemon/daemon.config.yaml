@@ -213,7 +213,7 @@ reconciler:
   # does not paginate; later intervals pick up more. criteria.domains and
   # criteria.skills are lists passed to routing search as --domain and --skill.
   # A record matching any listed value is included. Empty skills adds no skill
-  # query.
+  # query. At least one domain or skill is required; an empty list stays empty.
   sync:
     enabled: false
     interval: 24h
@@ -255,10 +255,9 @@ reconciler:
     limit: 100
     dry_run: true
   # Announces matching local records to the routing network. Off: this
-  # publishes to peers. A run pages through the match set, same as the
-  # dirctl publish CronJob. Empty criteria.domains means every indexed record.
-  # criteria.skills works the same way. When both are set, a record must match
-  # one of each.
+  # publishes to peers. A run pages through the match set. A domain or skill
+  # filter applies only when that list is non-empty. Both empty means every
+  # indexed record. Both set means a record must match one of each.
   publish:
     enabled: false
     interval: 24h
