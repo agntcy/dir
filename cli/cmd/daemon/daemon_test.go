@@ -163,6 +163,7 @@ func TestLoadConfigKeepsPublishInDryRunByDefault(t *testing.T) {
 		require.True(t, cfg.Reconciler.Publish.DryRun)
 		require.Empty(t, cfg.Reconciler.Publish.Criteria.Domains)
 		require.Empty(t, cfg.Reconciler.Publish.Criteria.Skills)
+		require.Nil(t, cfg.Reconciler.Publish.Criteria.Trusted)
 	})
 
 	t.Run("a file that enables it and says nothing else", func(t *testing.T) {
@@ -180,6 +181,7 @@ func TestLoadConfigKeepsPublishInDryRunByDefault(t *testing.T) {
 		require.Equal(t, 100, cfg.Reconciler.Publish.Limit)
 		require.Empty(t, cfg.Reconciler.Publish.Criteria.Domains)
 		require.Empty(t, cfg.Reconciler.Publish.Criteria.Skills)
+		require.Nil(t, cfg.Reconciler.Publish.Criteria.Trusted)
 	})
 
 	t.Run("a file that asks for live publishes", func(t *testing.T) {
@@ -203,6 +205,31 @@ func TestLoadConfigKeepsPublishInDryRunByDefault(t *testing.T) {
 
 		require.NoError(t, err)
 		require.False(t, cfg.Reconciler.Publish.DryRun)
+	})
+
+	t.Run("a file that publishes only untrusted records", func(t *testing.T) {
+		file := filepath.Join(t.TempDir(), "daemon.yaml")
+		require.NoError(t, os.WriteFile(file, []byte("reconciler:\n  publish:\n    criteria:\n      trusted: false\n"), 0o600))
+
+		opts = &Options{DataDir: t.TempDir(), ConfigFile: file}
+
+		cfg, err := loadConfig()
+
+		require.NoError(t, err)
+		require.NotNil(t, cfg.Reconciler.Publish.Criteria.Trusted)
+		require.False(t, *cfg.Reconciler.Publish.Criteria.Trusted)
+	})
+
+	t.Run("an env override selecting trusted records", func(t *testing.T) {
+		t.Setenv("DIRECTORY_DAEMON_RECONCILER_PUBLISH_CRITERIA_TRUSTED", "true")
+
+		opts = &Options{DataDir: t.TempDir()}
+
+		cfg, err := loadConfig()
+
+		require.NoError(t, err)
+		require.NotNil(t, cfg.Reconciler.Publish.Criteria.Trusted)
+		require.True(t, *cfg.Reconciler.Publish.Criteria.Trusted)
 	})
 }
 

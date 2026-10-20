@@ -365,7 +365,7 @@ apiserver:
 | --- | --- |
 | `sync` | Pulls matching records from peers. `criteria.domains` and `criteria.skills` are routing-search filters; a record matching any listed value is included. At least one domain or skill is required. A run does not paginate. |
 | `prune` | Deletes local records matching the signature and scan criteria. Set `trusted` or `signature_statuses`, not both. |
-| `publish` | Announces matching local records. A domain or skill filter applies only when that list is non-empty. Both empty means every indexed record. Both set means a record must match one of each. A run pages through the match set. |
+| `publish` | Announces matching local records. A domain or skill filter applies only when that list is non-empty. Both empty means every indexed record. Both set means a record must match one of each. `criteria.trusted` follows `dirctl search --trusted`: unset applies no signature filter, `true` keeps records with a verified signature, and `false` keeps records with none. Unlike prune, unset does not mean false. A run pages through the match set. |
 
 There is no scheduled unpublish. Withdraw records with `dirctl routing unpublish`.
 

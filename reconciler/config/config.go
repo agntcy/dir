@@ -328,6 +328,10 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("publish.criteria.skills")
 	v.SetDefault("publish.criteria.skills", []string{})
 
+	// No default: unset applies no signature filter. false would publish
+	// only records with no verified signature.
+	_ = v.BindEnv("publish.criteria.trusted")
+
 	_ = v.BindEnv("publish.limit")
 	v.SetDefault("publish.limit", publish.DefaultLimit)
 
