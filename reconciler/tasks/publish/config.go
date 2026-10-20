@@ -27,6 +27,12 @@ type Criteria struct {
 	// Empty means no skill filter. When both are set, a record must match
 	// one domain and one skill.
 	Skills []string `json:"skills,omitempty" mapstructure:"skills"`
+
+	// Trusted selects records by signature verification, the same way as
+	// `dirctl search --trusted`. Unset applies no signature filter.
+	// True keeps records with a verified signature. False keeps records
+	// with none. Unlike prune, unset does not mean false.
+	Trusted *bool `json:"trusted,omitempty" mapstructure:"trusted"`
 }
 
 // Config holds configuration for the publish reconciler task.
@@ -80,6 +86,19 @@ func (c *Config) GetDomains() []string {
 // An empty list means no skill filter.
 func (c *Config) GetSkills() []string {
 	return cleanList(c.Criteria.Skills)
+}
+
+// trustedLabel is how the trusted filter is logged: "unset", "true", or "false".
+func (c *Config) trustedLabel() string {
+	if c.Criteria.Trusted == nil {
+		return "unset"
+	}
+
+	if *c.Criteria.Trusted {
+		return "true"
+	}
+
+	return "false"
 }
 
 // cleanList returns values trimmed and without empties or duplicates,

@@ -195,6 +195,9 @@ func registerReconcilerDefaults(v *viper.Viper) {
 	v.SetDefault("reconciler.publish.interval", publishtask.DefaultInterval)
 	v.SetDefault("reconciler.publish.criteria.domains", []string{})
 	v.SetDefault("reconciler.publish.criteria.skills", []string{})
+	// No default: unset applies no signature filter. false would publish
+	// only records with no verified signature.
+	_ = v.BindEnv("reconciler.publish.criteria.trusted")
 	v.SetDefault("reconciler.publish.limit", publishtask.DefaultLimit)
 	v.SetDefault("reconciler.publish.dry_run", true)
 }

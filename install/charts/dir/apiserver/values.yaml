@@ -1030,13 +1030,17 @@ reconciler:
     # Off: this publishes to peers. A run pages through the match set. A
     # domain or skill filter applies only when that list is non-empty. Both
     # empty means every indexed record. Both set means a record must match
-    # one of each. Config loading defaults dry_run to true.
+    # one of each. trusted follows `dirctl search --trusted`. Unset applies
+    # no signature filter. true keeps records with a verified signature;
+    # false keeps records with none. Unlike prune, unset does not mean false.
+    # Config loading defaults dry_run to true.
     publish:
       enabled: false
       interval: "24h"
       criteria:
         domains: []
         skills: []
+        # trusted: true
       limit: 100
       dry_run: true
 
