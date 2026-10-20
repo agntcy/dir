@@ -2839,7 +2839,7 @@ Package reference: <a href="https://pkg.go.dev/github.com/agntcy/dir/client">pkg
 </tr>
 <tr>
 <td><strong>Search</strong></td>
-<td><code>SearchRecords</code>, <code>SearchCIDs</code> (streaming via <code>StreamResult</code>)</td>
+<td><code>ListRecordSummaries</code> (paginated metadata), <code>SearchRecords</code>, <code>SearchCIDs</code> (streaming via <code>StreamResult</code>)</td>
 </tr>
 <tr>
 <td><strong>Routing</strong></td>
@@ -3090,11 +3090,41 @@ JWT-SVID as a per-RPC credential.</p>
 <span class="nx">err</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">Unpublish</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">routingv1</span><span class="p">.</span><span class="nx">UnpublishRequest</span><span class="p">{</span><span class="nx">Cid</span><span class="p">:</span><span class="w"> </span><span class="nx">ref</span><span class="p">.</span><span class="nx">Cid</span><span class="p">})</span>
 </code></pre></div>
 <h3 id="search">Search</h3>
-<p><code>SearchCIDs</code> and <code>SearchRecords</code> return a <code>StreamResult</code> that uses channels for non-blocking
-consumption:</p>
+<p>Use <code>ListRecordSummaries</code> to display a page of indexed metadata without pulling
+each full record from the content store. The response includes the total number
+of matches and whether another page exists. The default page size is 50; requests
+above 100 are capped at 100. To fetch the next page, pass the previous offset
+plus the number of returned records.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nx">searchv1</span><span class="w"> </span><span class="s">&quot;github.com/agntcy/dir/api/search/v1&quot;</span>
 
-<span class="nx">result</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">SearchRecords</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">searchv1</span><span class="p">.</span><span class="nx">SearchRecordsRequest</span><span class="p">{</span><span class="nx">Query</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;my-agent&quot;</span><span class="p">})</span>
+<span class="nx">limit</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">uint32</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
+<span class="nx">page</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">ListRecordSummaries</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">searchv1</span><span class="p">.</span><span class="nx">ListRecordSummariesRequest</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Queries</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="o">*</span><span class="nx">searchv1</span><span class="p">.</span><span class="nx">RecordQuery</span><span class="p">{{</span>
+<span class="w">        </span><span class="nx">Type</span><span class="p">:</span><span class="w">  </span><span class="nx">searchv1</span><span class="p">.</span><span class="nx">RecordQueryType_RECORD_QUERY_TYPE_NAME</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">Value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;my-agent*&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="p">}},</span>
+<span class="w">    </span><span class="nx">Limit</span><span class="p">:</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">limit</span><span class="p">,</span>
+<span class="p">})</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">log</span><span class="p">.</span><span class="nx">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="k">for</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">record</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">page</span><span class="p">.</span><span class="nx">GetRecords</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%s (%s)\n&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">record</span><span class="p">.</span><span class="nx">GetName</span><span class="p">(),</span><span class="w"> </span><span class="nx">record</span><span class="p">.</span><span class="nx">GetCid</span><span class="p">())</span>
+<span class="p">}</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%d matches; more pages: %t\n&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">page</span><span class="p">.</span><span class="nx">GetTotalCount</span><span class="p">(),</span><span class="w"> </span><span class="nx">page</span><span class="p">.</span><span class="nx">GetHasMore</span><span class="p">())</span>
+</code></pre></div>
+<p>Use <code>SearchRecords</code> when you need the complete OASF documents. <code>SearchCIDs</code>
+returns only matching CIDs for piping or later lookup. Both return a
+<code>StreamResult</code> that uses channels for non-blocking consumption:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nx">searchv1</span><span class="w"> </span><span class="s">&quot;github.com/agntcy/dir/api/search/v1&quot;</span>
+
+<span class="nx">result</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">SearchRecords</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">searchv1</span><span class="p">.</span><span class="nx">SearchRecordsRequest</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Queries</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="o">*</span><span class="nx">searchv1</span><span class="p">.</span><span class="nx">RecordQuery</span><span class="p">{{</span>
+<span class="w">        </span><span class="nx">Type</span><span class="p">:</span><span class="w">  </span><span class="nx">searchv1</span><span class="p">.</span><span class="nx">RecordQueryType_RECORD_QUERY_TYPE_NAME</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">Value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;my-agent*&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="p">}},</span>
+<span class="p">})</span>
 <span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nx">log</span><span class="p">.</span><span class="nx">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
 <span class="p">}</span>
