@@ -4,6 +4,7 @@
 package publish
 
 import (
+	"fmt"
 	"strings"
 	"time"
 )
@@ -104,8 +105,17 @@ func cleanList(values []string) []string {
 	return out
 }
 
-// Validate is reserved for criteria that can be wrong. Empty domains are
-// valid: the task then publishes every indexed record.
+// Validate rejects a negative interval or limit. Zero means unset and falls
+// back to the default. Empty domains and skills are valid: the task then
+// publishes every indexed record.
 func (c *Config) Validate() error {
+	if c.Interval < 0 {
+		return fmt.Errorf("invalid interval %s, must be >= 0", c.Interval)
+	}
+
+	if c.Limit < 0 {
+		return fmt.Errorf("invalid limit %d, must be >= 0", c.Limit)
+	}
+
 	return nil
 }
