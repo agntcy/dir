@@ -65,9 +65,10 @@ func (t *Task) IsEnabled() bool {
 func (t *Task) Run(ctx context.Context) error {
 	domains := t.config.GetDomains()
 	skills := t.config.GetSkills()
+	trusted := t.config.trustedLabel()
 	limit := t.config.GetLimit()
 
-	logger.Debug("Running publish", "domains", domains, "skills", skills, "limit", limit)
+	logger.Debug("Running publish", "domains", domains, "skills", skills, "trusted", trusted, "limit", limit)
 
 	var total, pages int
 
@@ -94,6 +95,7 @@ func (t *Task) Run(ctx context.Context) error {
 				"count", len(cids),
 				"domains", domains,
 				"skills", skills,
+				"trusted", trusted,
 			)
 			logger.Debug("Dry run: matching CIDs", "offset", offset, "cids", cids)
 		} else if err := t.publishPage(cids); err != nil {
@@ -106,18 +108,18 @@ func (t *Task) Run(ctx context.Context) error {
 	}
 
 	if total == 0 {
-		logger.Info("No records to publish", "domains", domains, "skills", skills)
+		logger.Info("No records to publish", "domains", domains, "skills", skills, "trusted", trusted)
 
 		return nil
 	}
 
 	if t.config.DryRun {
-		logger.Info("Dry run: publish complete", "records", total, "pages", pages, "domains", domains, "skills", skills)
+		logger.Info("Dry run: publish complete", "records", total, "pages", pages, "domains", domains, "skills", skills, "trusted", trusted)
 
 		return nil
 	}
 
-	logger.Info("Publish complete", "records", total, "pages", pages, "domains", domains, "skills", skills)
+	logger.Info("Publish complete", "records", total, "pages", pages, "domains", domains, "skills", skills, "trusted", trusted)
 
 	return nil
 }
@@ -133,6 +135,10 @@ func (t *Task) page(offset, limit int, domains, skills []string) ([]string, erro
 
 	if len(skills) > 0 {
 		opts = append(opts, types.WithSkillNames(skills...))
+	}
+
+	if t.config.Criteria.Trusted != nil {
+		opts = append(opts, types.WithTrusted(*t.config.Criteria.Trusted))
 	}
 
 	cids, err := t.db.GetRecordCIDs(opts...)

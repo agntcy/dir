@@ -101,7 +101,7 @@ with `dry_run: true`.
 | --- | --- | --- |
 | `prune` | **Deletes** records matching every criterion set | `criteria.signature_statuses` (`verified`, `failed`, `unsigned`) **or** `criteria.trusted` (not both), `min_severity`, `older_than` (time since first seen), `limit` |
 | `sync` | Finds records on the network and creates a sync per announcing peer | `criteria.domains` and `criteria.skills` (at least one required; a record matching any listed value is included), `limit` |
-| `publish` | Announces matching local records to the network | `criteria.domains` and `criteria.skills` (a filter applies only when that list is non-empty; both empty means every record; both set means a record must match one of each), `limit` |
+| `publish` | Announces matching local records to the network | `criteria.domains` and `criteria.skills` (a filter applies only when that list is non-empty; both empty means every record; both set means a record must match one of each), `criteria.trusted` (unset applies no signature filter; `true` keeps records with a verified signature, `false` keeps records with none — unlike prune, unset does not mean false), `limit` |
 
 ```yaml
 reconciler:

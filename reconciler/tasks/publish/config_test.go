@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfig_GetInterval(t *testing.T) {
@@ -43,9 +44,26 @@ func TestConfig_GetSkills(t *testing.T) {
 	assert.Equal(t, []string{"threat_detection", "nlp"}, (&Config{Criteria: Criteria{Skills: []string{"threat_detection", " nlp ", "threat_detection", ""}}}).GetSkills())
 }
 
+func TestConfig_TrustedLabel(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "unset", (&Config{}).trustedLabel())
+
+	untrusted := false
+	assert.Equal(t, "false", (&Config{Criteria: Criteria{Trusted: &untrusted}}).trustedLabel())
+
+	trusted := true
+	assert.Equal(t, "true", (&Config{Criteria: Criteria{Trusted: &trusted}}).trustedLabel())
+}
+
 func TestConfig_Validate(t *testing.T) {
 	t.Parallel()
 
 	assert.NoError(t, (&Config{}).Validate())
+	assert.NoError(t, (&Config{Interval: 0, Limit: 0}).Validate())
 	assert.NoError(t, (&Config{Criteria: Criteria{Domains: []string{"research"}}}).Validate())
+	assert.NoError(t, (&Config{Interval: time.Hour, Limit: 25}).Validate())
+
+	require.EqualError(t, (&Config{Interval: -time.Second}).Validate(), "invalid interval -1s, must be >= 0")
+	require.EqualError(t, (&Config{Limit: -1}).Validate(), "invalid limit -1, must be >= 0")
 }

@@ -120,6 +120,36 @@ func TestTask_Run_EmptyDomains_DoesNotFilter(t *testing.T) {
 	require.NoError(t, task.Run(context.Background()))
 	assert.Empty(t, got.DomainNames)
 	assert.Empty(t, got.SkillNames)
+	assert.Nil(t, got.Trusted)
+}
+
+func TestTask_Run_TrustedFilter(t *testing.T) {
+	t.Parallel()
+
+	for _, want := range []bool{true, false} {
+		t.Run(map[bool]string{true: "true", false: "false"}[want], func(t *testing.T) {
+			t.Parallel()
+
+			var got types.RecordFilters
+
+			db := &fakeStore{
+				getRecordCIDs: func(opts ...types.FilterOption) ([]string, error) {
+					for _, opt := range opts {
+						opt(&got)
+					}
+
+					return nil, nil
+				},
+			}
+			trusted := want
+			task, err := NewTask(Config{Enabled: true, Criteria: Criteria{Trusted: &trusted}}, db)
+			require.NoError(t, err)
+
+			require.NoError(t, task.Run(context.Background()))
+			require.NotNil(t, got.Trusted)
+			assert.Equal(t, want, *got.Trusted)
+		})
+	}
 }
 
 func TestTask_Run_DryRun_DoesNotCreatePublication(t *testing.T) {

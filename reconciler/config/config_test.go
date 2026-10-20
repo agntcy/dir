@@ -57,6 +57,7 @@ func TestLoadConfig_NoFile_ReturnsDefaults(t *testing.T) {
 	assert.Equal(t, publish.DefaultInterval, cfg.Publish.Interval)
 	assert.Empty(t, cfg.Publish.Criteria.Domains)
 	assert.Empty(t, cfg.Publish.Criteria.Skills)
+	assert.Nil(t, cfg.Publish.Criteria.Trusted)
 	assert.Equal(t, publish.DefaultLimit, cfg.Publish.Limit)
 	assert.True(t, cfg.Publish.DryRun)
 
@@ -218,6 +219,7 @@ func TestLoadConfig_PublishFromEnv(t *testing.T) {
 	t.Setenv("RECONCILER_PUBLISH_INTERVAL", "12h")
 	t.Setenv("RECONCILER_PUBLISH_CRITERIA_DOMAINS", "finance,operations")
 	t.Setenv("RECONCILER_PUBLISH_CRITERIA_SKILLS", "forecasting,risk,compliance")
+	t.Setenv("RECONCILER_PUBLISH_CRITERIA_TRUSTED", "true")
 	t.Setenv("RECONCILER_PUBLISH_LIMIT", "10")
 	t.Setenv("RECONCILER_PUBLISH_DRY_RUN", "false")
 
@@ -228,6 +230,18 @@ func TestLoadConfig_PublishFromEnv(t *testing.T) {
 	assert.Equal(t, 12*time.Hour, cfg.Publish.Interval)
 	assert.Equal(t, []string{"finance", "operations"}, cfg.Publish.Criteria.Domains)
 	assert.Equal(t, []string{"forecasting", "risk", "compliance"}, cfg.Publish.Criteria.Skills)
+	require.NotNil(t, cfg.Publish.Criteria.Trusted)
+	assert.True(t, *cfg.Publish.Criteria.Trusted)
 	assert.Equal(t, 10, cfg.Publish.Limit)
 	assert.False(t, cfg.Publish.DryRun)
+}
+
+func TestLoadConfig_PublishTrustedFalseFromEnv(t *testing.T) {
+	t.Setenv("RECONCILER_PUBLISH_CRITERIA_TRUSTED", "false")
+
+	cfg, err := LoadConfig()
+	require.NoError(t, err)
+
+	require.NotNil(t, cfg.Publish.Criteria.Trusted)
+	assert.False(t, *cfg.Publish.Criteria.Trusted)
 }
