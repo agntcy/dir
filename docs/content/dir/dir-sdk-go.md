@@ -16,7 +16,7 @@ Package reference: [pkg.go.dev/github.com/agntcy/dir/client](https://pkg.go.dev/
 | API | Methods |
 |-----|---------|
 | **Store** | `Push`, `PushBatch`, `PushStream`, `Pull`, `PullBatch`, `PullStream`, `Lookup`, `LookupBatch`, `LookupStream`, `Delete`, `DeleteBatch`, `DeleteStream`, `PushReferrer`, `PullReferrer`, `DeleteReferrer` |
-| **Search** | `SearchRecords`, `SearchCIDs` (streaming via `StreamResult`) |
+| **Search** | `ListRecordSummaries` (paginated metadata), `SearchRecords`, `SearchCIDs` (streaming via `StreamResult`) |
 | **Routing** | `Publish`, `Unpublish`, `List`, `SearchRouting` |
 | **Identity** | `Resolve`, `GetIdentityStatus`, `ClaimIdentity`, `ClaimOwnership` |
 | **Sync** | `CreateSync`, `GetSync`, `ListSyncs`, `DeleteSync` |
@@ -254,13 +254,46 @@ err = c.Unpublish(ctx, &routingv1.UnpublishRequest{Cid: ref.Cid})
 
 ### Search
 
-`SearchCIDs` and `SearchRecords` return a `StreamResult` that uses channels for non-blocking
-consumption:
+Use `ListRecordSummaries` to display a page of indexed metadata without pulling
+each full record from the content store. The response includes the total number
+of matches and whether another page exists. The default page size is 50; requests
+above 100 are capped at 100. To fetch the next page, pass the previous offset
+plus the number of returned records.
 
 ```go
 import searchv1 "github.com/agntcy/dir/api/search/v1"
 
-result, err := c.SearchRecords(ctx, &searchv1.SearchRecordsRequest{Query: "my-agent"})
+limit := uint32(50)
+page, err := c.ListRecordSummaries(ctx, &searchv1.ListRecordSummariesRequest{
+    Queries: []*searchv1.RecordQuery{{
+        Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_NAME,
+        Value: "my-agent*",
+    }},
+    Limit: &limit,
+})
+if err != nil {
+    log.Fatal(err)
+}
+
+for _, record := range page.GetRecords() {
+    fmt.Printf("%s (%s)\n", record.GetName(), record.GetCid())
+}
+fmt.Printf("%d matches; more pages: %t\n", page.GetTotalCount(), page.GetHasMore())
+```
+
+Use `SearchRecords` when you need the complete OASF documents. `SearchCIDs`
+returns only matching CIDs for piping or later lookup. Both return a
+`StreamResult` that uses channels for non-blocking consumption:
+
+```go
+import searchv1 "github.com/agntcy/dir/api/search/v1"
+
+result, err := c.SearchRecords(ctx, &searchv1.SearchRecordsRequest{
+    Queries: []*searchv1.RecordQuery{{
+        Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_NAME,
+        Value: "my-agent*",
+    }},
+})
 if err != nil {
     log.Fatal(err)
 }
