@@ -21,14 +21,14 @@ replace (
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2
 	github.com/agntcy/dir-importer v1.5.5
-	github.com/agntcy/dir-runtime/discovery v1.4.1-0.20261015174947-ffdeec2c0f41
-	github.com/agntcy/dir-runtime/server v1.4.0
-	github.com/agntcy/dir-runtime/store v1.4.0
-	github.com/agntcy/dir/api v1.7.2-0.20261013134305-9252429b1042
-	github.com/agntcy/dir/client v1.7.2-0.20261013134305-9252429b1042
+	github.com/agntcy/dir-runtime/discovery v1.5.0
+	github.com/agntcy/dir-runtime/server v1.5.0
+	github.com/agntcy/dir-runtime/store v1.5.0
+	github.com/agntcy/dir/api v1.8.0
+	github.com/agntcy/dir/client v1.8.0
 	github.com/agntcy/dir/reconciler v1.7.1
 	github.com/agntcy/dir/server v1.7.1
-	github.com/agntcy/dir/utils v1.7.1
+	github.com/agntcy/dir/utils v1.8.0
 	github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260910081500-f0c6172a010a
 	github.com/briandowns/spinner v1.23.2
 	github.com/ipfs/go-cid v0.6.2
@@ -115,7 +115,7 @@ require (
 	github.com/agentnameservice/ans-sdk-go v0.1.19 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
-	github.com/agntcy/dir-runtime/utils v1.4.0 // indirect
+	github.com/agntcy/dir-runtime/utils v1.5.0 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/anchore/go-struct-converter v0.1.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
