@@ -2777,7 +2777,7 @@ kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </sp
 </tr>
 <tr>
 <td><code>publish</code></td>
-<td>Announces matching local records. A domain or skill filter applies only when that list is non-empty. Both empty means every indexed record. Both set means a record must match one of each. A run pages through the match set.</td>
+<td>Announces matching local records. A domain or skill filter applies only when that list is non-empty. Both empty means every indexed record. Both set means a record must match one of each. <code>criteria.trusted</code> follows <code>dirctl search --trusted</code>: unset applies no signature filter, <code>true</code> keeps records with a verified signature, and <code>false</code> keeps records with none. Unlike prune, unset does not mean false. A run pages through the match set.</td>
 </tr>
 </tbody>
 </table>
