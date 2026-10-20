@@ -32,12 +32,12 @@ import (
 	grpclogging "github.com/agntcy/dir/server/middleware/logging"
 	grpcratelimit "github.com/agntcy/dir/server/middleware/ratelimit"
 	grpcrecovery "github.com/agntcy/dir/server/middleware/recovery"
+	"github.com/agntcy/dir/server/policy"
 	"github.com/agntcy/dir/server/publication"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/skill"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/validators"
 	"github.com/agntcy/dir/utils/extractor"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc"
@@ -60,7 +60,7 @@ type Server struct {
 	store              types.StoreAPI
 	routing            types.RoutingAPI
 	database           types.DatabaseAPI
-	validatorRegistry  *validators.Registry
+	policyRegistry     *policy.Registry
 	eventService       *events.Service
 	authnService       *authn.Service
 	authzService       *authz.Service
@@ -199,9 +199,9 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		opt(&o)
 	}
 
-	validatorRegistry, err := validators.NewRegistry(ctx, cfg.Policy.Evaluations, cfg.Policy.Operations, cfg.Policy.Dir)
+	policyRegistry, err := policy.NewRegistry(ctx, cfg.Policy.Evaluations, cfg.Policy.Operations, cfg.Policy.Dir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create validator registry: %w", err)
+		return nil, fmt.Errorf("failed to create policy registry: %w", err)
 	}
 
 	// Load options
@@ -281,7 +281,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	// records/referrers (content store + search index + referrer DB state).
 	ingestor := ingest.New(storeAPI, databaseAPI)
 
-	routingAPI, err := routing.New(ctx, storeAPI, ingestor, validatorRegistry, servedDB, options)
+	routingAPI, err := routing.New(ctx, storeAPI, ingestor, policyRegistry, servedDB, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create routing: %w", err)
 	}
@@ -324,7 +324,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 
 	// Register APIs
 	eventsv1.RegisterEventServiceServer(grpcServer, controller.NewEventsController(eventService))
-	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, servedDB, ingestor, options.EventBus(), validatorRegistry))
+	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, servedDB, ingestor, options.EventBus(), policyRegistry))
 	routingv1.RegisterRoutingServiceServer(grpcServer, controller.NewRoutingController(routingAPI, storeAPI, publicationService))
 	routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(servedDB, options))
 	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(servedDB, storeAPI))
@@ -388,7 +388,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		store:              storeAPI,
 		routing:            routingAPI,
 		database:           databaseAPI,
-		validatorRegistry:  validatorRegistry,
+		policyRegistry:     policyRegistry,
 		eventService:       eventService,
 		authnService:       authnService,
 		authzService:       authzService,
@@ -403,10 +403,10 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 
 func (s Server) GRPCServer() *grpc.Server { return s.grpcServer }
 
-// ValidatorRegistry returns the record-validator registry built at server setup.
+// PolicyRegistry returns the policy registry built at server setup.
 // Embedding processes (e.g. the daemon) share it with the reconciler.
-func (s Server) ValidatorRegistry() *validators.Registry {
-	return s.validatorRegistry
+func (s Server) PolicyRegistry() *policy.Registry {
+	return s.policyRegistry
 }
 
 func (s Server) Options() types.APIOptions { return s.options }
@@ -561,7 +561,7 @@ func (s Server) Start(ctx context.Context) error {
 
 	// Best-effort, non-blocking: a failure here must not block startup.
 	go func() {
-		if err := skill.Publish(ctx, s.store, s.database, s.validatorRegistry); err != nil {
+		if err := skill.Publish(ctx, s.store, s.database, s.policyRegistry); err != nil {
 			logger.Warn("Failed to publish DIR skill record", "error", err)
 		}
 	}()

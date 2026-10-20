@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package validators
+package policy
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	validatorsconfig "github.com/agntcy/dir/server/validators/config"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -152,17 +152,17 @@ func TestCELValidator_CanceledContext(t *testing.T) {
 func TestNewRegistry_CEL(t *testing.T) {
 	t.Parallel()
 
-	reg, err := NewRegistry(context.Background(), nil, validatorsconfig.Operations{{
-		Provider:    validatorsconfig.ProviderCEL,
-		Ops:         []string{validatorsconfig.OpPush},
+	reg, err := NewRegistry(context.Background(), nil, policyconfig.Operations{{
+		Provider:    policyconfig.ProviderCEL,
+		Ops:         []string{policyconfig.OpPush},
 		Name:        "require-name",
 		Expressions: []string{`record.name != ""`},
 	}}, "")
 	require.NoError(t, err)
-	require.Len(t, reg.For(validatorsconfig.OpPush), 1)
+	require.Len(t, reg.For(policyconfig.OpPush), 1)
 
 	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
-	ok, msgs, err := reg.Run(context.Background(), validatorsconfig.OpPush, record)
+	ok, msgs, err := reg.Decide(context.Background(), policyconfig.OpPush, record)
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Empty(t, msgs)

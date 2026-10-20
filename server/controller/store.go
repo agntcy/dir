@@ -14,9 +14,9 @@ import (
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/ingest"
+	"github.com/agntcy/dir/server/policy"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/validators"
-	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -27,21 +27,21 @@ var storeLogger = logging.Logger("controller/store")
 
 type storeCtrl struct {
 	storev1.UnimplementedStoreServiceServer
-	store             types.StoreAPI
-	db                types.DatabaseAPI
-	ingestor          ingest.Ingestor
-	eventBus          *events.SafeEventBus
-	validatorRegistry *validators.Registry
+	store          types.StoreAPI
+	db             types.DatabaseAPI
+	ingestor       ingest.Ingestor
+	eventBus       *events.SafeEventBus
+	policyRegistry *policy.Registry
 }
 
-func NewStoreController(store types.StoreAPI, db types.DatabaseAPI, ingestor ingest.Ingestor, eventBus *events.SafeEventBus, validatorRegistry *validators.Registry) storev1.StoreServiceServer {
+func NewStoreController(store types.StoreAPI, db types.DatabaseAPI, ingestor ingest.Ingestor, eventBus *events.SafeEventBus, policyRegistry *policy.Registry) storev1.StoreServiceServer {
 	return &storeCtrl{
 		UnimplementedStoreServiceServer: storev1.UnimplementedStoreServiceServer{},
 		store:                           store,
 		db:                              db,
 		ingestor:                        ingestor,
 		eventBus:                        eventBus,
-		validatorRegistry:               validatorRegistry,
+		policyRegistry:                  policyRegistry,
 	}
 }
 
@@ -63,7 +63,7 @@ func (s storeCtrl) Push(stream storev1.StoreService_PushServer) error {
 			return status.Errorf(codes.Internal, "failed to receive record: %v", err)
 		}
 
-		isValid, validationErrors, err := s.validatorRegistry.Run(ctx, validatorsconfig.OpPush, record)
+		isValid, validationErrors, err := s.policyRegistry.Decide(ctx, policyconfig.OpPush, record)
 		if err != nil {
 			return status.Errorf(codes.Internal, "failed to validate record: %v", err)
 		}

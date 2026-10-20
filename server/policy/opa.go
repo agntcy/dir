@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package validators
+package policy
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	validatorsconfig "github.com/agntcy/dir/server/validators/config"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/open-policy-agent/opa/v1/ast"
 	"github.com/open-policy-agent/opa/v1/rego"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -27,12 +27,12 @@ type opaValidator struct {
 }
 
 func newOPAValidator(ctx context.Context, policyDir, filename string) (*opaValidator, error) {
-	if err := validatorsconfig.ValidatePolicyFile(filename); err != nil {
+	if err := policyconfig.ValidatePolicyFile(filename); err != nil {
 		return nil, fmt.Errorf("invalid policy file: %w", err)
 	}
 
 	if strings.TrimSpace(policyDir) == "" {
-		return nil, fmt.Errorf("policy directory is required for provider %q", validatorsconfig.ProviderOPA)
+		return nil, fmt.Errorf("policy directory is required for provider %q", policyconfig.ProviderOPA)
 	}
 
 	path := filepath.Join(policyDir, filename)

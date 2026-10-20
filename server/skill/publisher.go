@@ -10,9 +10,9 @@ import (
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	"github.com/agntcy/dir/server/policy"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/validators"
-	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 	"github.com/agntcy/dir/utils/logging"
 )
 
@@ -21,7 +21,7 @@ var logger = logging.Logger("server/skill")
 // Publish pushes the embedded SKILL.md as an OASF record. Idempotent on
 // name+version. Callers must treat errors as non-fatal — DIR has to start
 // even if publishing fails.
-func Publish(ctx context.Context, store types.StoreAPI, db types.DatabaseAPI, validatorRegistry *validators.Registry) error {
+func Publish(ctx context.Context, store types.StoreAPI, db types.DatabaseAPI, policyRegistry *policy.Registry) error {
 	if store == nil || db == nil {
 		return errors.New("store and db must be provided")
 	}
@@ -41,7 +41,7 @@ func Publish(ctx context.Context, store types.StoreAPI, db types.DatabaseAPI, va
 		return fmt.Errorf("build skill record: %w", err)
 	}
 
-	if err := validateRecord(ctx, record, validatorRegistry); err != nil {
+	if err := validateRecord(ctx, record, policyRegistry); err != nil {
 		return err
 	}
 
@@ -75,8 +75,8 @@ func Publish(ctx context.Context, store types.StoreAPI, db types.DatabaseAPI, va
 	return nil
 }
 
-func validateRecord(ctx context.Context, record *corev1.Record, validatorRegistry *validators.Registry) error {
-	ok, msgs, err := validatorRegistry.Run(ctx, validatorsconfig.OpPush, record)
+func validateRecord(ctx context.Context, record *corev1.Record, policyRegistry *policy.Registry) error {
+	ok, msgs, err := policyRegistry.Decide(ctx, policyconfig.OpPush, record)
 	if err != nil {
 		return fmt.Errorf("validate skill record: %w", err)
 	}

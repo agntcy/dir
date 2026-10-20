@@ -12,8 +12,8 @@ import (
 
 	"github.com/agntcy/dir/reconciler/recordevents"
 	synctask "github.com/agntcy/dir/reconciler/tasks/sync"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 	storeconfig "github.com/agntcy/dir/server/store/oci/config"
-	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -252,11 +252,11 @@ func TestLoadConfigPolicyBlocks(t *testing.T) {
 
 	operations := cfg.Server.Policy.Operations
 	require.Len(t, operations, 1, "the default validates pushed records against the OASF schema")
-	require.Equal(t, validatorsconfig.ProviderOASF, operations[0].Provider)
+	require.Equal(t, policyconfig.ProviderOASF, operations[0].Provider)
 	require.Equal(t, "https://schema.oasf.outshift.com", operations[0].SchemaURL)
 	require.Equal(t, "oasf:schema", operations[0].PolicyID())
 	require.Equal(t,
-		[]string{validatorsconfig.OpPush, validatorsconfig.OpAutosync, validatorsconfig.OpIndex},
+		[]string{policyconfig.OpPush, policyconfig.OpAutosync, policyconfig.OpIndex},
 		operations[0].Ops)
 
 	require.Empty(t, cfg.Server.Policy.Evaluations, "no policy is evaluated by default")

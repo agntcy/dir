@@ -3,33 +3,13 @@
 
 package policy
 
-import (
-	"context"
+import serverpolicy "github.com/agntcy/dir/server/policy"
 
-	coretypes "github.com/agntcy/dir/api/core/types"
-)
+// Evaluator checks records against one evaluation policy. The policy registry
+// builds them. This task schedules them and stores the verdicts.
+type Evaluator = serverpolicy.Evaluator
 
-// Evaluator checks records against one policy.
-//
-// This task owns scheduling, record selection and persistence; it has no
-// opinion on how a policy is expressed. Concrete evaluators (OPA, OASF
-// schema validation, ...) come from #2135 and #2157.
-type Evaluator interface {
-	// PolicyID is a stable identifier of the policy, unchanged across
-	// versions, e.g. "opa:require-annotation".
-	PolicyID() string
-
-	// PolicyVersion is the content version of the policy currently loaded.
-	// Bumping it makes every record evaluated under the previous version
-	// due for re-evaluation.
-	PolicyVersion() string
-
-	// Evaluate reports whether record complies with the policy, with a
-	// human-readable reason when it does not.
-	//
-	// A non-nil error means the evaluator could not reach a verdict — the
-	// policy engine failed, not the record. The task stores that as a failed
-	// evaluation, which reads as non-compliant (see
-	// types.EvaluatedPolicyStatuses), never as a pass.
-	Evaluate(ctx context.Context, record coretypes.Record) (compliant bool, reason string, err error)
-}
+// RecordSource reads a record's content from the store. The task selects
+// records from the index, which holds only the fields searches use, and the
+// policy decides on the record as published.
+type RecordSource = serverpolicy.RecordSource

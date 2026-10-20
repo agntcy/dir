@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/agntcy/dir/reconciler/tasks/policy"
-	"github.com/agntcy/dir/server/validators"
+	serverpolicy "github.com/agntcy/dir/server/policy"
 )
 
 // Output formats.
@@ -57,7 +57,8 @@ type Source struct {
 // waits for the node's records.
 type Prepared struct {
 	opts     Options
-	policies []validators.Policy
+	registry *serverpolicy.Registry
+	ids      []string
 }
 
 // Prepare checks the options and loads the candidate policies. It needs no
@@ -72,30 +73,37 @@ func Prepare(ctx context.Context, opts Options) (*Prepared, error) {
 		return nil, err
 	}
 
-	registry, err := validators.NewRegistry(ctx, candidate, nil, opts.PolicyDir)
+	registry, err := serverpolicy.NewRegistry(ctx, candidate, nil, opts.PolicyDir)
 	if err != nil {
 		return nil, fmt.Errorf("load the candidate policies: %w", err)
 	}
 
-	policies, err := choose(registry.Policies(), opts.Policy)
+	ids, err := choose(registry.EvaluationIDs(), opts.Policy)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Prepared{opts: opts, policies: policies}, nil
+	return &Prepared{opts: opts, registry: registry, ids: ids}, nil
 }
 
 // Run evaluates each candidate policy against the records src holds and writes
 // the report to out. It stores nothing.
 func (p *Prepared) Run(ctx context.Context, src Source, out io.Writer) error {
-	reports := make([]*policy.DryRunReport, 0, len(p.policies))
+	selected := make(map[string]struct{}, len(p.ids))
+	for _, id := range p.ids {
+		selected[id] = struct{}{}
+	}
 
-	for _, candidate := range p.policies {
-		ev := policy.NewValidatorEvaluator(candidate.ID, candidate.Version, candidate.Validator, src.Records)
+	reports := make([]*policy.DryRunReport, 0, len(p.ids))
+
+	for _, ev := range p.registry.Evaluators(src.Records) {
+		if _, ok := selected[ev.PolicyID()]; !ok {
+			continue
+		}
 
 		report, err := policy.DryRun(ctx, src.DB, ev, src.Limits, p.opts.Samples)
 		if err != nil {
-			return fmt.Errorf("dry run of %s: %w", candidate.ID, err)
+			return fmt.Errorf("dry run of %s: %w", ev.PolicyID(), err)
 		}
 
 		reports = append(reports, report)
@@ -130,23 +138,19 @@ func (o Options) validate() error {
 	return nil
 }
 
-// choose returns the policies to try: all of them, or the one named.
-func choose(all []validators.Policy, id string) ([]validators.Policy, error) {
+// choose returns the policy IDs to try: all of them, or the one named.
+func choose(all []string, id string) ([]string, error) {
 	if id == "" {
 		return all, nil
 	}
 
-	for _, p := range all {
-		if p.ID == id {
-			return []validators.Policy{p}, nil
+	for _, candidate := range all {
+		if candidate == id {
+			return []string{candidate}, nil
 		}
 	}
 
-	ids := make([]string, 0, len(all))
-	for _, p := range all {
-		ids = append(ids, p.ID)
-	}
-
+	ids := slices.Clone(all)
 	slices.Sort(ids)
 
 	return nil, fmt.Errorf("%w: %q (the file defines %s)", errNoPolicyNamed, id, strings.Join(ids, ", "))

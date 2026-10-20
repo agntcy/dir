@@ -20,11 +20,11 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/ingest"
+	"github.com/agntcy/dir/server/policy"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/routing/rpc"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/validators"
-	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
@@ -110,12 +110,12 @@ func (s serverPeerRouter) FindPeer(ctx context.Context, peerID peer.ID) (peer.Ad
 // Manager pulls records (and their referrers) announced by trusted peers over
 // libp2p and ingests them locally with full parity to a normal push.
 type Manager struct {
-	allowSet          map[peer.ID]struct{}
-	transport         recordFetcher
-	router            peerRouter
-	ingestor          ingest.Ingestor
-	store             types.StoreAPI
-	validatorRegistry *validators.Registry
+	allowSet       map[peer.ID]struct{}
+	transport      recordFetcher
+	router         peerRouter
+	ingestor       ingest.Ingestor
+	store          types.StoreAPI
+	policyRegistry *policy.Registry
 
 	queue    chan job
 	inFlight map[string]struct{}
@@ -130,9 +130,9 @@ func NewManager(
 	server *p2p.Server,
 	ingestor ingest.Ingestor,
 	store types.StoreAPI,
-	validatorRegistry *validators.Registry,
+	policyRegistry *policy.Registry,
 ) *Manager {
-	return newManager(allowSet, service, serverPeerRouter{server: server}, ingestor, store, validatorRegistry)
+	return newManager(allowSet, service, serverPeerRouter{server: server}, ingestor, store, policyRegistry)
 }
 
 // newManager is the interface-based constructor used by NewManager and tests.
@@ -142,17 +142,17 @@ func newManager(
 	router peerRouter,
 	ingestor ingest.Ingestor,
 	store types.StoreAPI,
-	validatorRegistry *validators.Registry,
+	policyRegistry *policy.Registry,
 ) *Manager {
 	return &Manager{
-		allowSet:          allowSet,
-		transport:         transport,
-		router:            router,
-		ingestor:          ingestor,
-		store:             store,
-		validatorRegistry: validatorRegistry,
-		queue:             make(chan job, queueSize),
-		inFlight:          make(map[string]struct{}),
+		allowSet:       allowSet,
+		transport:      transport,
+		router:         router,
+		ingestor:       ingestor,
+		store:          store,
+		policyRegistry: policyRegistry,
+		queue:          make(chan job, queueSize),
+		inFlight:       make(map[string]struct{}),
 	}
 }
 
@@ -266,8 +266,8 @@ func (m *Manager) process(parentCtx context.Context, j job) {
 		return
 	}
 
-	// Validity: run the configured record validators (if any) before ingest.
-	valid, validationErrors, err := m.validatorRegistry.Run(ctx, validatorsconfig.OpAutosync, record)
+	// Validity: run the operation policies configured for autosync before ingest.
+	valid, validationErrors, err := m.policyRegistry.Decide(ctx, policyconfig.OpAutosync, record)
 	if err != nil {
 		logger.Error("Autosync record validation error", "cid", cid, "peer", peerID, "error", err)
 

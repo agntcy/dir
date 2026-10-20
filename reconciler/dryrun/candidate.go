@@ -11,7 +11,7 @@ import (
 	"errors"
 	"fmt"
 
-	validatorsconfig "github.com/agntcy/dir/server/validators/config"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/spf13/viper"
 )
 
@@ -20,7 +20,7 @@ import (
 // policy that is good can be pasted into their configuration as it is.
 // Only evaluation policies produce a verdict, so an operations block in the
 // file is ignored.
-func LoadCandidate(path string) (validatorsconfig.Evaluations, error) {
+func LoadCandidate(path string) (policyconfig.Evaluations, error) {
 	v := viper.New()
 	v.SetConfigFile(path)
 
@@ -32,7 +32,7 @@ func LoadCandidate(path string) (validatorsconfig.Evaluations, error) {
 		return nil, fmt.Errorf("read candidate file %s: %w", path, err)
 	}
 
-	var policies validatorsconfig.Evaluations
+	var policies policyconfig.Evaluations
 	if err := v.UnmarshalKey("policy.evaluations", &policies); err != nil {
 		return nil, fmt.Errorf("read the evaluations in %s: %w", path, err)
 	}

@@ -138,8 +138,9 @@ type Config struct {
 	// Authz configuration
 	Authz authz.Config `json:"authz" mapstructure:"authz"`
 
-	// Policy holds the record validators, the directory named OPA files
-	// are loaded from, and how reads enforce content policies.
+	// Policy holds the policies that produce a verdict per record, the
+	// policies that decide at an operation, the directory named OPA files
+	// are loaded from, and how reads enforce the verdicts.
 	Policy policy.Config `json:"policy" mapstructure:"policy"`
 
 	// Store configuration

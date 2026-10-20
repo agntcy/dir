@@ -23,9 +23,9 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/policy"
 	publishtask "github.com/agntcy/dir/reconciler/tasks/publish"
 	synctask "github.com/agntcy/dir/reconciler/tasks/sync"
+	serverpolicy "github.com/agntcy/dir/server/policy"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 	servertypes "github.com/agntcy/dir/server/types"
-	recordvalidators "github.com/agntcy/dir/server/validators"
-	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -108,12 +108,12 @@ func TestAddTask_Multiple(t *testing.T) {
 	assert.Same(t, t2, s.tasks[1])
 }
 
-// policyRegistry builds a validator registry with one CEL policy, named name.
-func policyRegistry(t *testing.T, name string) *recordvalidators.Registry {
+// policyRegistry builds a policy registry with one CEL evaluation, named name.
+func policyRegistry(t *testing.T, name string) *serverpolicy.Registry {
 	t.Helper()
 
-	registry, err := recordvalidators.NewRegistry(t.Context(), validatorsconfig.Evaluations{{
-		Provider:    validatorsconfig.ProviderCEL,
+	registry, err := serverpolicy.NewRegistry(t.Context(), policyconfig.Evaluations{{
+		Provider:    policyconfig.ProviderCEL,
 		Name:        name,
 		Expressions: []string{`record.name != ""`},
 	}}, nil, "")
