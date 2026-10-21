@@ -30,15 +30,6 @@ message Workload {
   // Annotations are additional metadata.
   map<string, string> annotations = 7;
 
-  // Addresses are the network addresses of the workload.
-  // Deprecated: use locators, which embed the address in each endpoint URL.
-  repeated string addresses = 8 [deprecated = true];
-
-  // Ports are the exposed ports.
-  // Specified as strings to accommodate various formats (e.g., "80/tcp", "443").
-  // Deprecated: use locators, which embed the port in each endpoint URL.
-  repeated string ports = 9 [deprecated = true];
-
   // IsolationGroups are the network/namespace isolation groups.
   repeated string isolation_groups = 10;
 

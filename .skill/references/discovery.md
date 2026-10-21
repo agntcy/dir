@@ -111,7 +111,7 @@ Filters: `--name`, `--skill`, `--domain`, `--author`, `--schema-version`,
 `--locator-protocol` (`slim`, `grpc`, `http`, `tcp`), `--runtime`
 (`docker`, `kubernetes`, `process`), `--label key=regex`,
 `--reachable-from`. Different filters AND; a repeated flag ORs. Read endpoints
-from each workload's `locators` — `addresses` and `ports` are deprecated.
+from each workload's `locators`.
 Workloads are listed as announced and nothing is verified: say so, and offer
 the trust checks of the verification reference on the record a workload
 references.
