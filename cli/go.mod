@@ -21,9 +21,9 @@ replace (
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2
 	github.com/agntcy/dir-importer v1.5.5
-	github.com/agntcy/dir-runtime/discovery v1.4.0
-	github.com/agntcy/dir-runtime/server v1.4.0
-	github.com/agntcy/dir-runtime/store v1.4.0
+	github.com/agntcy/dir-runtime/discovery v1.5.0
+	github.com/agntcy/dir-runtime/server v1.5.0
+	github.com/agntcy/dir-runtime/store v1.5.0
 	github.com/agntcy/dir/api v1.8.0
 	github.com/agntcy/dir/client v1.8.0
 	github.com/agntcy/dir/reconciler v1.8.0
@@ -115,7 +115,7 @@ require (
 	github.com/agentnameservice/ans-sdk-go v0.1.19 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
-	github.com/agntcy/dir-runtime/utils v1.4.0 // indirect
+	github.com/agntcy/dir-runtime/utils v1.5.0 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/anchore/go-struct-converter v0.1.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect

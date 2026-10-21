@@ -297,6 +297,9 @@ runtime:
       kubeconfig: "~/.kube/config"
     process:
       dir: "~/.agntcy/dir-runtime/workloads.d"
+      ## Descriptors of processes that are gone (or whose PID was reused) are removed.
+      ## Set to true to leave them in place, e.g. for a directory the daemon may only read.
+      # keep_stale: false
 
   ## OASF schema servers whose A2A card extensions are read when listing workloads by
   ## agent (skills, domains, author). https, or plain http on a loopback host.

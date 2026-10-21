@@ -229,6 +229,7 @@ func registerRuntimeDefaults(v *viper.Viper) {
 	v.SetDefault("runtime.adapter.process.poll_interval", adapterprocess.DefaultPollInterval)
 	v.SetDefault("runtime.adapter.process.label_key", adapterprocess.DefaultLabelKey)
 	v.SetDefault("runtime.adapter.process.label_value", adapterprocess.DefaultLabelValue)
+	v.SetDefault("runtime.adapter.process.keep_stale", false)
 
 	// Schema servers whose card extensions are read when listing workloads by agent
 	v.SetDefault("runtime.oasf_schema_urls", []string{runtimev1.DefaultOASFSchemaURL})
