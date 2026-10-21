@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package validators
+package policy
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	validatorsconfig "github.com/agntcy/dir/server/validators/config"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -70,15 +70,15 @@ func TestNewRegistry_OPA(t *testing.T) {
 	t.Parallel()
 
 	dir := writePolicy(t, "policy.rego", allowIfNamed)
-	reg, err := NewRegistry(context.Background(), nil, validatorsconfig.Operations{{
-		Provider: validatorsconfig.ProviderOPA,
-		Ops:      []string{validatorsconfig.OpPush},
+	reg, err := NewRegistry(context.Background(), nil, policyconfig.Operations{{
+		Provider: policyconfig.ProviderOPA,
+		Ops:      []string{policyconfig.OpPush},
 		File:     "policy.rego",
 	}}, dir)
 	require.NoError(t, err)
 
 	record := corev1.New(&typesv1alpha1.Record{Name: "test"})
-	ok, msgs, err := reg.Run(context.Background(), validatorsconfig.OpPush, record)
+	ok, msgs, err := reg.Decide(context.Background(), policyconfig.OpPush, record)
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Empty(t, msgs)

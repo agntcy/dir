@@ -20,8 +20,8 @@ import (
 	"github.com/agntcy/dir/reconciler/routing"
 	"github.com/agntcy/dir/reconciler/service"
 	"github.com/agntcy/dir/server/database"
+	"github.com/agntcy/dir/server/policy"
 	"github.com/agntcy/dir/server/store/oci"
-	"github.com/agntcy/dir/server/validators"
 	"github.com/agntcy/dir/utils/logging"
 )
 
@@ -63,7 +63,7 @@ func run() error {
 		return err
 	}
 
-	validatorRegistry, err := validators.NewRegistry(context.Background(), cfg.Policy.Evaluations, cfg.Policy.Operations, cfg.Policy.Dir)
+	policyRegistry, err := policy.NewRegistry(context.Background(), cfg.Policy.Evaluations, cfg.Policy.Operations, cfg.Policy.Dir)
 	if err != nil {
 		return err
 	}
@@ -129,7 +129,7 @@ func run() error {
 		logger.Warn("server_address not configured; metrics and sync tasks will be skipped")
 	}
 
-	svc, err := service.New(cfg, db, store, repo, validatorRegistry, routingAPI)
+	svc, err := service.New(cfg, db, store, repo, policyRegistry, routingAPI)
 	if err != nil {
 		return err
 	}

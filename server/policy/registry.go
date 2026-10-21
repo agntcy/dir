@@ -1,17 +1,16 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package validators
+package policy
 
 import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"slices"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	validatorsconfig "github.com/agntcy/dir/server/validators/config"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/agntcy/oasf-sdk/pkg/validator"
 )
 
@@ -23,24 +22,16 @@ const versionLength = 16
 // Registry maps operations to the operation policies that decide at them, and
 // holds the evaluation policies.
 type Registry struct {
-	byOp     map[string][]corev1.Validator
-	policies []Policy
+	byOp        map[string][]corev1.Validator
+	evaluations []evaluation
 }
 
-// Policy is an evaluation policy. The reconciler evaluates every record
-// against it and stores the verdict, and the server enforces the verdicts of
-// the policies it is told to.
-type Policy struct {
-	// ID names the policy, such as "opa:require-license". It stays the same
-	// when the policy's content changes.
-	ID string
-
-	// Version identifies the policy's content: an edit gives a new one, and
-	// nothing else does. Records are evaluated again when it changes.
-	Version string
-
-	// Validator reaches a verdict on a record.
-	Validator corev1.Validator
+// evaluation is one loaded evaluation policy. Evaluators turns it into an
+// Evaluator once it has a source of record content.
+type evaluation struct {
+	id      string
+	version string
+	engine  corev1.Validator
 }
 
 // built is a validator made from its config, with the version of its content
@@ -65,12 +56,12 @@ func contentVersion(parts ...string) string {
 
 // NewRegistry constructs the policies of both blocks. policyDir is the
 // directory named .rego files are loaded from (server/reconciler policy.dir).
-// Two empty lists yield a registry with no policies and no validators for
-// every op.
+// Two empty lists yield a registry with no evaluation policies and no
+// operation policy for any op.
 func NewRegistry(
 	ctx context.Context,
-	evaluations validatorsconfig.Evaluations,
-	operations validatorsconfig.Operations,
+	evaluations policyconfig.Evaluations,
+	operations policyconfig.Operations,
 	policyDir string,
 ) (*Registry, error) {
 	if err := evaluations.Validate(); err != nil {
@@ -81,11 +72,11 @@ func NewRegistry(
 		return nil, fmt.Errorf("invalid policy config: %w", err)
 	}
 
-	if err := validatorsconfig.ValidateNames(evaluations, operations); err != nil {
+	if err := policyconfig.ValidateNames(evaluations, operations); err != nil {
 		return nil, fmt.Errorf("invalid policy config: %w", err)
 	}
 
-	var policies []Policy
+	var loaded []evaluation
 
 	for i, e := range evaluations {
 		b, err := buildProvider(ctx, e.Provider, provider{file: e.File, expressions: e.Expressions}, policyDir)
@@ -93,7 +84,7 @@ func NewRegistry(
 			return nil, fmt.Errorf("evaluations[%d]: %w", i, err)
 		}
 
-		policies = append(policies, Policy{ID: e.PolicyID(), Version: b.version, Validator: b.validator})
+		loaded = append(loaded, evaluation{id: e.PolicyID(), version: b.version, engine: b.validator})
 	}
 
 	byOp := make(map[string][]corev1.Validator)
@@ -110,7 +101,7 @@ func NewRegistry(
 		}
 	}
 
-	return &Registry{byOp: byOp, policies: policies}, nil
+	return &Registry{byOp: byOp, evaluations: loaded}, nil
 }
 
 // provider is the settings of whichever backend is configured. Config
@@ -123,21 +114,21 @@ type provider struct {
 
 func buildProvider(ctx context.Context, name string, p provider, policyDir string) (built, error) {
 	switch name {
-	case validatorsconfig.ProviderOASF:
+	case policyconfig.ProviderOASF:
 		v, err := validator.New(p.schemaURL)
 		if err != nil {
 			return built{}, fmt.Errorf("failed to initialize OASF validator: %w", err)
 		}
 
 		return built{validator: v}, nil
-	case validatorsconfig.ProviderCEL:
+	case policyconfig.ProviderCEL:
 		v, err := newCELValidator(p.expressions)
 		if err != nil {
 			return built{}, fmt.Errorf("failed to initialize CEL validator: %w", err)
 		}
 
 		return built{validator: v, version: v.version}, nil
-	case validatorsconfig.ProviderOPA:
+	case policyconfig.ProviderOPA:
 		v, err := newOPAValidator(ctx, policyDir, p.file)
 		if err != nil {
 			return built{}, fmt.Errorf("failed to initialize OPA validator: %w", err)
@@ -149,7 +140,7 @@ func buildProvider(ctx context.Context, name string, p provider, policyDir strin
 	}
 }
 
-// For returns the validators configured for op, in config order.
+// For returns the operation policies configured for op, in config order.
 // The slice is empty if none are configured.
 func (r *Registry) For(op string) []corev1.Validator {
 	if r == nil {
@@ -159,20 +150,45 @@ func (r *Registry) For(op string) []corev1.Validator {
 	return r.byOp[op]
 }
 
-// Policies returns the content policies, in config order. The slice is empty if
-// none are configured.
-func (r *Registry) Policies() []Policy {
+// EvaluationIDs returns the evaluation policy IDs, in config order.
+func (r *Registry) EvaluationIDs() []string {
 	if r == nil {
 		return nil
 	}
 
-	return slices.Clone(r.policies)
+	ids := make([]string, len(r.evaluations))
+	for i, e := range r.evaluations {
+		ids[i] = e.id
+	}
+
+	return ids
 }
 
-// Run applies every validator configured for op, in config order.
-// A nil registry or an op with no validators is a no-op and reports valid.
-// Messages from every failing validator are collected.
-func (r *Registry) Run(ctx context.Context, op string, record *corev1.Record) (bool, []string, error) {
+// Evaluators returns one evaluator per evaluation policy, in config order.
+// records supplies the record content a verdict is decided on. A nil registry
+// returns no evaluators.
+func (r *Registry) Evaluators(records RecordSource) []Evaluator {
+	if r == nil {
+		return nil
+	}
+
+	out := make([]Evaluator, len(r.evaluations))
+	for i, e := range r.evaluations {
+		out[i] = &evaluator{
+			id:      e.id,
+			version: e.version,
+			engine:  e.engine,
+			records: records,
+		}
+	}
+
+	return out
+}
+
+// Decide applies every operation policy configured for op, in config order.
+// A nil registry or an op with no policies is a no-op and reports that the
+// record passes. Messages from every failing policy are collected.
+func (r *Registry) Decide(ctx context.Context, op string, record *corev1.Record) (bool, []string, error) {
 	var all []string
 
 	for _, v := range r.For(op) {
@@ -182,7 +198,7 @@ func (r *Registry) Run(ctx context.Context, op string, record *corev1.Record) (b
 
 		ok, msgs, err := record.ValidateWith(ctx, v)
 		if err != nil {
-			return false, nil, fmt.Errorf("validate record: %w", err)
+			return false, nil, fmt.Errorf("decide record: %w", err)
 		}
 
 		if !ok {

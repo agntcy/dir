@@ -7,8 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"time"
-
-	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 )
 
 // DefaultRefreshInterval is how often the server rechecks which version of
@@ -20,18 +18,18 @@ const DefaultRefreshInterval = 30 * time.Second
 // files are loaded from, and how reads enforce the verdicts.
 type Config struct {
 	// Dir is the directory that holds policy files (one file per policy).
-	// An opa validator's config.file is resolved against it.
+	// An OPA policy's file is resolved against it.
 	Dir string `json:"dir,omitempty" mapstructure:"dir"`
 
 	// Evaluations are the policies that produce a verdict per record. They
 	// have no operation and no mode, because they never act.
 	// YAML only — a list of objects cannot be bound to a single env var.
-	Evaluations validatorsconfig.Evaluations `json:"evaluations,omitempty" mapstructure:"evaluations"`
+	Evaluations Evaluations `json:"evaluations,omitempty" mapstructure:"evaluations"`
 
 	// Operations are the policies that decide at one operation. They have an
 	// operation and a mode, and no scheduling.
 	// YAML only — a list of objects cannot be bound to a single env var.
-	Operations validatorsconfig.Operations `json:"operations,omitempty" mapstructure:"operations"`
+	Operations Operations `json:"operations,omitempty" mapstructure:"operations"`
 
 	// Enforcement decides which policies the records this server returns
 	// must comply with, and how each kind of read applies them.
@@ -48,31 +46,12 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("policy: %w", err)
 	}
 
-	if err := validatorsconfig.ValidateNames(c.Evaluations, c.Operations); err != nil {
+	if err := ValidateNames(c.Evaluations, c.Operations); err != nil {
 		return fmt.Errorf("policy: %w", err)
 	}
 
 	return c.Enforcement.Validate()
 }
-
-// Mode is how a policy's decision applies. Declared with the policies it
-// applies to, so that a read gate and an operation policy cannot drift into
-// meaning different things by the same word.
-type Mode = validatorsconfig.Mode
-
-const (
-	// ModeOff applies no policy. The empty mode means the same.
-	ModeOff = validatorsconfig.ModeOff
-
-	// ModeShadow checks each read and reports what it would exclude, but
-	// excludes nothing.
-	ModeShadow = validatorsconfig.ModeShadow
-
-	// ModeEnforce excludes every record that does not comply with all the
-	// enforced policies: searches leave it out and a read of it by CID is
-	// refused.
-	ModeEnforce = validatorsconfig.ModeEnforce
-)
 
 // EnforcementConfig is the enforced policies and one mode per kind of read,
 // so enforcement can be rolled out one kind at a time.

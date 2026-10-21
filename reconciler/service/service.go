@@ -23,8 +23,8 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
 	synctask "github.com/agntcy/dir/reconciler/tasks/sync"
+	serverpolicy "github.com/agntcy/dir/server/policy"
 	servertypes "github.com/agntcy/dir/server/types"
-	recordvalidators "github.com/agntcy/dir/server/validators"
 	"github.com/agntcy/dir/utils/logging"
 	"oras.land/oras-go/v2/registry"
 )
@@ -70,11 +70,11 @@ type Service struct {
 }
 
 // New creates a reconciler service with tasks registered according to cfg.
-// The caller supplies the database, store, routing, and record validators so
+// The caller supplies the database, store, routing, and policy registry so
 // that an embedding process (e.g. the daemon) can share them with the
 // apiserver. routing may be nil; if so, the metrics and sync tasks are skipped
 // even when enabled.
-func New(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.StoreAPI, repo registry.TagLister, validatorRegistry *recordvalidators.Registry, routing RoutingAPI) (*Service, error) {
+func New(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.StoreAPI, repo registry.TagLister, policies *serverpolicy.Registry, routing RoutingAPI) (*Service, error) {
 	svc := &Service{
 		tasks:        []tasks.Task{},
 		wake:         make(map[string]chan struct{}),
@@ -83,7 +83,7 @@ func New(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.Store
 		stopCh:       make(chan struct{}),
 	}
 
-	if err := svc.registerTasks(cfg, db, store, repo, validatorRegistry, routing); err != nil {
+	if err := svc.registerTasks(cfg, db, store, repo, policies, routing); err != nil {
 		return nil, err
 	}
 
@@ -91,7 +91,7 @@ func New(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.Store
 }
 
 //nolint:cyclop
-func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.StoreAPI, repo registry.TagLister, validatorRegistry *recordvalidators.Registry, routing RoutingAPI) error {
+func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.StoreAPI, repo registry.TagLister, policies *serverpolicy.Registry, routing RoutingAPI) error {
 	if cfg.Regsync.Enabled {
 		t, err := regsync.NewTask(cfg.Regsync, cfg.LocalRegistry, db)
 		if err != nil {
@@ -102,7 +102,7 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 	}
 
 	if cfg.Indexer.Enabled {
-		t, err := indexer.NewTask(cfg.Indexer, cfg.LocalRegistry, store, repo, db, validatorRegistry)
+		t, err := indexer.NewTask(cfg.Indexer, cfg.LocalRegistry, store, repo, db, policies)
 		if err != nil {
 			return fmt.Errorf("failed to create indexer task: %w", err)
 		}
@@ -176,7 +176,7 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 		}
 	}
 
-	return s.registerPolicyTask(cfg.PolicyEvaluation, db, store, validatorRegistry)
+	return s.registerPolicyTask(cfg.PolicyEvaluation, db, store, policies)
 }
 
 // registerPublishTask adds the publish task when it is enabled.
@@ -219,26 +219,21 @@ func (s *Service) registerSyncTask(cfg *config.Config, db servertypes.DatabaseAP
 }
 
 // registerPolicyTask adds the policy evaluation task when it is enabled. It
-// evaluates one policy for each validator configured with op evaluate. With
-// none the task is registered disabled and the reason logged, rather than
+// evaluates one policy for each evaluation in the registry. With none the
+// task is registered disabled and the reason logged, rather than
 // policy_evaluation.enabled being silently ignored; and policies configured
 // while the task is disabled are reported too, since nothing then produces
 // their verdicts.
-func (s *Service) registerPolicyTask(cfg policy.Config, db servertypes.DatabaseAPI, store policy.RecordSource, validatorRegistry *recordvalidators.Registry) error {
-	policies := validatorRegistry.Policies()
+func (s *Service) registerPolicyTask(cfg policy.Config, db servertypes.DatabaseAPI, store policy.RecordSource, policies *serverpolicy.Registry) error {
+	evaluators := policies.Evaluators(store)
 
 	if !cfg.Enabled {
-		if len(policies) > 0 {
+		if len(evaluators) > 0 {
 			logger.Warn("Policies are configured but the policy evaluation task is disabled; no verdicts will be produced",
-				"policies", len(policies), "setting", "policy_evaluation.enabled")
+				"policies", len(evaluators), "setting", "policy_evaluation.enabled")
 		}
 
 		return nil
-	}
-
-	evaluators := make([]policy.Evaluator, 0, len(policies))
-	for _, p := range policies {
-		evaluators = append(evaluators, policy.NewValidatorEvaluator(p.ID, p.Version, p.Validator, store))
 	}
 
 	t, err := policy.NewTask(cfg, db, evaluators...)
@@ -247,7 +242,7 @@ func (s *Service) registerPolicyTask(cfg policy.Config, db servertypes.DatabaseA
 	}
 
 	if !t.IsEnabled() {
-		logger.Warn("Policy task is enabled but no policy is configured; it will not run: add a validator with op \"evaluate\"")
+		logger.Warn("Policy task is enabled but no evaluation policy is configured; it will not run: add one under policy.evaluations")
 	}
 
 	s.addTask(t)

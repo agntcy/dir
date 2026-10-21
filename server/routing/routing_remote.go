@@ -14,13 +14,13 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/ingest"
+	"github.com/agntcy/dir/server/policy"
 	"github.com/agntcy/dir/server/routing/autosync"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/routing/pubsub"
 	"github.com/agntcy/dir/server/routing/rpc"
 	validators "github.com/agntcy/dir/server/routing/validators"
 	"github.com/agntcy/dir/server/types"
-	recordvalidators "github.com/agntcy/dir/server/validators"
 	"github.com/agntcy/dir/utils/conv"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-cid"
@@ -124,7 +124,7 @@ type routeRemote struct {
 func newRemote(parentCtx context.Context,
 	storeAPI types.StoreAPI,
 	ingestor ingest.Ingestor,
-	validatorRegistry *recordvalidators.Registry,
+	policyRegistry *policy.Registry,
 	servability types.RecordServabilityAPI,
 	dstore types.Datastore,
 	opts types.APIOptions,
@@ -263,7 +263,7 @@ func newRemote(parentCtx context.Context,
 	// ingests records/referrers announced by trusted peers, off the notification
 	// handler goroutine.
 	if autosyncCfg.Enabled {
-		routeAPI.autosyncMgr = autosync.NewManager(autosyncPeers, rpcService, server, ingestor, storeAPI, validatorRegistry)
+		routeAPI.autosyncMgr = autosync.NewManager(autosyncPeers, rpcService, server, ingestor, storeAPI, policyRegistry)
 		//nolint:contextcheck // Intentionally passing routing context to worker goroutines for lifecycle management
 		routeAPI.autosyncMgr.Start(routeAPI.ctx, &routeAPI.wg)
 
