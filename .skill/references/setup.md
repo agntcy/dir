@@ -17,7 +17,17 @@ Supported channels — offer the user the choice where more than one applies
   brew install agntcy/dir/dirctl
   ```
 
-- **GitHub Releases** (all platforms; the only channel on Windows): download
+- **WinGet** (Windows): probe first with `winget search AGNTCY.dirctl`; if
+  it is listed, install with:
+
+  ```powershell
+  winget install AGNTCY.dirctl
+  ```
+
+  If the search finds nothing (the package is new to the community
+  repository), use GitHub Releases.
+
+- **GitHub Releases** (all platforms): download
   the binary for the user's OS/arch from
   <https://github.com/agntcy/dir/releases>.
 
@@ -124,10 +134,12 @@ dirctl daemon start --config ./daemon.config.yaml
 ```
 
 `config init` emits a fully commented file covering `server` (listen address,
-OASF validation URL, OCI store, routing/DHT, database, publication, HTTP
-gateway), `reconciler` (regsync, metrics, indexer, signature, identity,
-scan — including scanner CLI paths and endpoint-scan safety toggles), and
-`runtime`.
+OCI store, routing/DHT, database, publication, HTTP gateway, and `policy` —
+OASF schema validation plus content policies), `reconciler` (regsync, metrics,
+indexer, signature, identity, scan — including scanner CLI paths and
+endpoint-scan safety toggles — plus policy evaluation and the prune / sync /
+publish jobs), and `runtime`. Content policies and reconciler jobs are covered
+in [policy.md](policy.md).
 
 Three behaviours to get right, none of which produce an error when you get
 them wrong:
@@ -223,6 +235,14 @@ silently ignored field — so use exact names from this list:
 | `tls_skip_verify`, `tls_cert_file`, `tls_key_file`, `tls_ca_file` | Custom PKI / mTLS         |
 | `spiffe_socket_path`, `spiffe_token` | SPIFFE workload identity                                |
 | `doctor.bootstrap_peers`           | List of peer multiaddrs `doctor` checks for this context  |
+| `sigstore.fulcio_url`, `sigstore.rekor_url`, `sigstore.timestamp_url`, `sigstore.oidc_provider_url`, `sigstore.oidc_client_id`, `sigstore.skip_tlog` | Signing defaults for `sign`, `push --sign`, `import --sign` |
+| `sigstore.tuf_mirror_url`, `sigstore.trusted_root_path`, `sigstore.ignore_tlog`, `sigstore.ignore_tsa`, `sigstore.ignore_sct` | Verification defaults for `verify` |
+
+`sigstore.*` lets a private Sigstore deployment be set once per context; a
+flag passed on the command line still wins. `sigstore.oidc_client_id` is the
+client used to get a Fulcio certificate, not the one `auth login` uses.
+Secrets (OIDC client secret, ID token) are flags only — never put them in the
+config file.
 
 Pinning bootstrap peers to the context beats passing `--bootstrap-peer` every
 time:

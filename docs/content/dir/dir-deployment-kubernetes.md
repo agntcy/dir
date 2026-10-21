@@ -337,104 +337,37 @@ A few things worth knowing:
           remote_addr: "oasf-sdk.shared.svc.cluster.local:31234"
     ```
 
-## Content Policies
+## Scheduled jobs
 
-A content policy runs a scheduled "search, then act on the matches" pipeline against your node. Policies are declared in the `dirctl` chart's values — no forked chart and no hand-written manifests. Each enabled policy renders a CronJob named `<release>-dirctl-policy-<key>`.
-
-```yaml
-policies:
-  sync-netsec:
-    enabled: true
-    schedule: "0 3 * * *"
-    action: sync
-    match:
-      domain: [network_security]
-
-  prune-untrusted:
-    enabled: true
-    schedule: "*/30 * * * *"
-    action: prune
-    match:
-      trusted: false
-      scan-severity: MEDIUM
-```
-
-`sync-netsec` pulls every record peers advertise in the `network_security` domain into this node, nightly. `prune-untrusted` deletes local records whose signature is not trusted and that scan at MEDIUM severity or worse, every 30 minutes.
-
-### Actions
-
-| Action | What it does | Underlying pipeline |
-| --- | --- | --- |
-| `sync` | Pull matching records from network peers into this node | `dirctl routing search` → `dirctl sync create --stdin` |
-| `prune` | Delete matching records from this node's store | `dirctl search` → `dirctl delete --stdin` |
-| `publish` | Announce matching local records to the routing network | `dirctl search` → `dirctl routing publish --stdin` |
-| `unpublish` | Withdraw matching local records from the routing network | `dirctl search` → `dirctl routing unpublish --stdin` |
-
-### Predicates
-
-`match` keys are `dirctl` flag names with the leading `--` removed, so every filter the CLI supports is available without a chart change:
-
-| Value kind | Example | Rendered flag |
-| --- | --- | --- |
-| List | `domain: [a, b]` | `--domain 'a' --domain 'b'` |
-| Boolean | `trusted: false` | `--trusted=false` |
-| Scalar | `scan-severity: MEDIUM` | `--scan-severity 'MEDIUM'` |
-
-Boolean filters are tri-state. Omitting `trusted` does not filter on trust at all; `trusted: true` matches records with a trusted signature; `trusted: false` matches records without one. `verified` behaves the same way.
-
-!!! warning "`safe: false` is not the complement of `safe: true`"
-    `safe: true` matches records where every scanner reported `is_safe=true`, and `safe: false` matches records where at least one scanner reported unsafe. A record that was **never scanned** matches neither. A `prune` policy keyed on `safe: false` therefore deletes only records with a failing scan report, and silently leaves unscanned records untouched — which is likely the opposite of the intent. To act on "not known to be safe", combine `safe: false` with a separate policy for unscanned records, or gate on `scan-severity` instead.
-
-Because keys are passed through mechanically, the `exclude-` filters work too — carving an exception out of a policy needs no chart change:
+Sync, prune, and publish run inside the reconciler. Configure them on the `dir` chart under `apiserver.reconciler.config`. Each task ships disabled, and `dry_run` defaults to true, so enabling a task only logs matches until you set `dry_run: false`.
 
 ```yaml
-policies:
-  prune-untrusted-except-cisco:
-    enabled: true
-    schedule: "@daily"
-    action: prune
-    match:
-      trusted: false
-      exclude-name: ["cisco.com/*"]
+apiserver:
+  reconciler:
+    config:
+      sync:
+        enabled: true
+        dry_run: false
+        criteria:
+          domains: [network_security]
+      prune:
+        enabled: true
+        dry_run: false
+        criteria:
+          trusted: false
+          min_severity: MEDIUM
+      publish:
+        enabled: true
+        dry_run: false
 ```
 
-`limit`, `format` and `output` are set by the chart and are rejected inside `match`. An unknown `action` and a value containing a single quote also fail at `helm template` time rather than at run time.
-
-!!! note "`sync` searches the network, not your store"
-    `sync` queries the routing index to find records held by other peers, so its `match` keys are limited to those `dirctl routing search` accepts: `skill`, `domain`, `locator`, `module` and `min-score`. The other three actions search the local store and accept the full `dirctl search` filter set.
-
-### Other Fields
-
-| Field | Default | Meaning |
-| --- | --- | --- |
-| `enabled` | `false` | Render the CronJob. |
-| `schedule` | required | Cron expression. |
-| `limit` | `100` | Maximum records processed per run. |
-| `dryRun` | `false` | Log the matches and exit without applying the action. |
-
-`limit` is a page size, and how a run covers matches beyond it depends on the action:
-
-| Action | Coverage |
+| Task | What it does |
 | --- | --- |
-| `prune` | Deleting a record stops it matching, so the set shrinks and successive runs converge on the whole backlog. |
-| `publish`, `unpublish` | The run pages through `--offset` until it sees a short page, so a single run covers every match. |
-| `sync` | Processes only the first `limit` matches. `dirctl routing search` has no `--offset`, and syncing does not stop a peer advertising the record, so later matches are never reached — set `limit` above your expected match count. |
+| `sync` | Pulls matching records from peers. `criteria.domains` and `criteria.skills` are routing-search filters; a record matching any listed value is included. At least one domain or skill is required. A run does not paginate. |
+| `prune` | Deletes local records matching the signature and scan criteria. Set `trusted` or `signature_statuses`, not both. |
+| `publish` | Announces matching local records. A domain or skill filter applies only when that list is non-empty. Both empty means every indexed record. Both set means a record must match one of each. `criteria.trusted` follows `dirctl search --trusted`: unset applies no signature filter, `true` keeps records with a verified signature, and `false` keeps records with none. Unlike prune, unset does not mean false. A run pages through the match set. |
 
-`env`, `resources`, `volumes`, `volumeMounts`, `concurrencyPolicy`, `successfulJobsHistoryLimit` and `failedJobsHistoryLimit` may be set per policy and behave exactly as they do for a `cronjobs` entry.
-
-!!! important "Preview a destructive policy before enabling it"
-    `prune` deletes records and `unpublish` withdraws them from the network. Set `dryRun: true` for the first few runs and read the CronJob logs — every run logs the match count and dumps the matched records before acting:
-
-    ```text
-    [prune-untrusted] matched 12 record(s)
-    [
-      "baeareib...",
-      ...
-    ]
-    [prune-untrusted] dry run: not applying action 'prune'
-    ```
-
-Both example policies ship disabled in `values.yaml`. Adding a policy of your own is a values change only.
+There is no scheduled unpublish. Withdraw records with `dirctl routing unpublish`.
 
 ## Security Scanning
 

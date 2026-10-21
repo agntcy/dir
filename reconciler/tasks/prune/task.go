@@ -3,9 +3,9 @@
 
 // Package prune implements the prune reconciler task.
 // It deletes records that match configured criteria (signature status, given
-// directly or through trusted, minimum scan severity, and age). Defaults follow
-// the dirctl prune-untrusted CronJob plus an age floor of 168h, except that a
-// signed record without a verification result is never deleted.
+// directly or through trusted, minimum scan severity, and age). The age floor
+// defaults to 168h, and a signed record without a verification result is never
+// deleted.
 package prune
 
 import (
