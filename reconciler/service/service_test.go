@@ -315,11 +315,21 @@ func (fakeRouting) Search(context.Context, *routingv1.SearchRequest) (<-chan *ro
 }
 
 func TestRegisterSyncTask(t *testing.T) {
-	enabled := &config.Config{Sync: synctask.Config{Enabled: true}}
+	enabled := &config.Config{Sync: synctask.Config{
+		Enabled:  true,
+		Criteria: synctask.Criteria{Domains: []string{"research"}},
+	}}
 
 	t.Run("disabled registers nothing", func(t *testing.T) {
 		s := newTestService()
 		require.NoError(t, s.registerSyncTask(&config.Config{}, nil, fakeRouting{}))
+		assert.Empty(t, s.tasks)
+	})
+
+	t.Run("enabled without criteria is rejected", func(t *testing.T) {
+		s := newTestService()
+		err := s.registerSyncTask(&config.Config{Sync: synctask.Config{Enabled: true}}, nil, fakeRouting{})
+		require.ErrorContains(t, err, "at least one criterion is required")
 		assert.Empty(t, s.tasks)
 	})
 

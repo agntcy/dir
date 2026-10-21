@@ -4,6 +4,7 @@
 package publish
 
 import (
+	"fmt"
 	"strings"
 	"time"
 )
@@ -12,8 +13,7 @@ const (
 	// DefaultInterval is how often a run republishes matching local records.
 	DefaultInterval = 24 * time.Hour
 
-	// DefaultLimit is the search page size. A run pages through --offset
-	// until a short page, same as the dirctl publish CronJob.
+	// DefaultLimit is the search page size. A run pages until a short page.
 	DefaultLimit = 100
 )
 
@@ -22,12 +22,23 @@ type Criteria struct {
 	// Domains selects records that have any of these routing domains.
 	// Empty means every indexed record.
 	Domains []string `json:"domains,omitempty" mapstructure:"domains"`
+
+	// Skills selects records that have any of these skill names.
+	// Empty means no skill filter. When both are set, a record must match
+	// one domain and one skill.
+	Skills []string `json:"skills,omitempty" mapstructure:"skills"`
+
+	// Trusted selects records by signature verification, the same way as
+	// `dirctl search --trusted`. Unset applies no signature filter.
+	// True keeps records with a verified signature. False keeps records
+	// with none. Unlike prune, unset does not mean false.
+	Trusted *bool `json:"trusted,omitempty" mapstructure:"trusted"`
 }
 
 // Config holds configuration for the publish reconciler task.
 // The task searches the local index for records matching Criteria and
-// submits one publication request per page, the same pipeline as the
-// dirctl publish CronJob: search, then routing publish.
+// submits one publication request per page: search the local index, then
+// routing publish.
 type Config struct {
 	// Enabled determines if the publish task should run.
 	// Defaults to false: this task announces records to the network.
@@ -68,28 +79,62 @@ func (c *Config) GetLimit() int {
 // GetDomains returns the configured domains, trimmed and without empties.
 // An empty list means no domain filter.
 func (c *Config) GetDomains() []string {
-	seen := make(map[string]struct{}, len(c.Criteria.Domains))
-	out := make([]string, 0, len(c.Criteria.Domains))
+	return cleanList(c.Criteria.Domains)
+}
 
-	for _, d := range c.Criteria.Domains {
-		d = strings.TrimSpace(d)
-		if d == "" {
+// GetSkills returns the configured skills, trimmed and without empties.
+// An empty list means no skill filter.
+func (c *Config) GetSkills() []string {
+	return cleanList(c.Criteria.Skills)
+}
+
+// trustedLabel is how the trusted filter is logged: "unset", "true", or "false".
+func (c *Config) trustedLabel() string {
+	if c.Criteria.Trusted == nil {
+		return "unset"
+	}
+
+	if *c.Criteria.Trusted {
+		return "true"
+	}
+
+	return "false"
+}
+
+// cleanList returns values trimmed and without empties or duplicates,
+// preserving order.
+func cleanList(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+
+	for _, v := range values {
+		v = strings.TrimSpace(v)
+		if v == "" {
 			continue
 		}
 
-		if _, ok := seen[d]; ok {
+		if _, ok := seen[v]; ok {
 			continue
 		}
 
-		seen[d] = struct{}{}
-		out = append(out, d)
+		seen[v] = struct{}{}
+		out = append(out, v)
 	}
 
 	return out
 }
 
-// Validate is reserved for criteria that can be wrong. Empty domains are
-// valid: the task then publishes every indexed record.
+// Validate rejects a negative interval or limit. Zero means unset and falls
+// back to the default. Empty domains and skills are valid: the task then
+// publishes every indexed record.
 func (c *Config) Validate() error {
+	if c.Interval < 0 {
+		return fmt.Errorf("invalid interval %s, must be >= 0", c.Interval)
+	}
+
+	if c.Limit < 0 {
+		return fmt.Errorf("invalid limit %d, must be >= 0", c.Limit)
+	}
+
 	return nil
 }

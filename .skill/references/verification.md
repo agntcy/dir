@@ -8,7 +8,7 @@ never a synthesized score.
 | Signal | Meaning | Command / filter |
 | --- | --- | --- |
 | **Trusted** | Signature verification passed | `dirctl verify <cid>`; search `--trusted` |
-| **Verified** | Ownership claim verified against the key material its subject publishes | `dirctl identity status <ref>`; search `--verified` |
+| **Verified** | Ownership claim verified against the key material its subject publishes | `dirctl identity status <ref>`; search `--verified` / `--owner-verified` (identity role: `--identity-verified`) |
 | **Safe** | All security scanners reported `is_safe=true` | `dirctl pull <cid> --scan-report`; search `--safe`, `--scan-severity` |
 
 Report them separately; they answer different questions (integrity, identity,
@@ -36,6 +36,12 @@ dirctl identity status "example.com/agent:v1.0.0"
 Reports the last verification result of the record's identity and ownership
 claims: `verified`, `failed` (with the reason), or `no result`. A record without
 claims is reported as having none, not as a failure.
+
+"Verified" names a subject (`dns:example.com`, `did:web:…`) — always show the
+subject next to the status, since that is *who* was verified. The result is
+re-checked against the subject's current keys on every reconciler run, so a
+rotated or withdrawn key turns it to `failed`. For the publisher side (making
+a claim, fixing a failed one) see [identity.md](identity.md).
 
 ## Security scan reports
 
@@ -66,6 +72,7 @@ reports is *unscanned* — say so explicitly rather than implying safety.
 dirctl search --safe                          # all scanners is_safe=true (unscanned records excluded)
 dirctl search --scan-severity HIGH            # highest finding ≥ HIGH
 dirctl search --trusted --verified            # signed + owner-verified
+dirctl search --owner 'dns:example.com' --verified   # owned by a given subject, verified
 dirctl search "code review agent" --safe      # combine with NL query
 ```
 

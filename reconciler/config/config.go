@@ -302,7 +302,10 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("sync.interval", synctask.DefaultInterval)
 
 	_ = v.BindEnv("sync.criteria.domains")
-	v.SetDefault("sync.criteria.domains", []string{synctask.DefaultDomain})
+	v.SetDefault("sync.criteria.domains", []string{})
+
+	_ = v.BindEnv("sync.criteria.skills")
+	v.SetDefault("sync.criteria.skills", []string{})
 
 	_ = v.BindEnv("sync.limit")
 	v.SetDefault("sync.limit", synctask.DefaultLimit)
@@ -321,6 +324,13 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("publish.criteria.domains")
 	v.SetDefault("publish.criteria.domains", []string{})
+
+	_ = v.BindEnv("publish.criteria.skills")
+	v.SetDefault("publish.criteria.skills", []string{})
+
+	// No default: unset applies no signature filter. false would publish
+	// only records with no verified signature.
+	_ = v.BindEnv("publish.criteria.trusted")
 
 	_ = v.BindEnv("publish.limit")
 	v.SetDefault("publish.limit", publish.DefaultLimit)
@@ -388,7 +398,8 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("policy.dir", "/etc/agntcy/dir/policies")
 
 	// Unmarshal into config struct. StringToSlice lets a YAML scalar or a
-	// comma-separated env value fill []string fields such as sync.criteria.domains.
+	// comma-separated env value fill []string fields such as sync.criteria.domains
+	// and sync.criteria.skills.
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(
 		mapstructure.TextUnmarshallerHookFunc(),
 		mapstructure.StringToTimeDurationHookFunc(),

@@ -14,7 +14,7 @@ then follow its instructions.
 
 The complete skill lives in the repository's
 [`.skill/` folder](https://github.com/agntcy/dir/tree/main/.skill): a router
-`SKILL.md` plus seven reference files.
+`SKILL.md` plus nine reference files.
 
 ## Install
 
@@ -35,7 +35,7 @@ BASE=https://raw.githubusercontent.com/agntcy/dir/main/.skill
 DEST=~/.copilot/skills/agntcy-dir        # adjust to the host (table above)
 mkdir -p "$DEST/references"
 curl -fsSL "$BASE/SKILL.md" -o "$DEST/SKILL.md"
-for f in authoring discovery install publishing setup sync verification; do
+for f in authoring discovery identity install policy publishing setup sync verification; do
   curl -fsSL "$BASE/references/$f.md" -o "$DEST/references/$f.md"
 done
 ```
@@ -47,7 +47,7 @@ $BASE = 'https://raw.githubusercontent.com/agntcy/dir/main/.skill'
 $DEST = "$HOME\.copilot\skills\agntcy-dir"   # adjust to the host (table above)
 New-Item -ItemType Directory -Force -Path "$DEST\references" | Out-Null
 Invoke-WebRequest "$BASE/SKILL.md" -OutFile "$DEST\SKILL.md"
-foreach ($f in 'authoring','discovery','install','publishing','setup','sync','verification') {
+foreach ($f in 'authoring','discovery','identity','install','policy','publishing','setup','sync','verification') {
   Invoke-WebRequest "$BASE/references/$f.md" -OutFile "$DEST\references\$f.md"
 }
 ```
@@ -57,7 +57,7 @@ Rules:
 - Ask the user for the install scope (workspace vs user profile) when the
   host supports both.
 - If `agntcy-dir` is already installed, confirm before overwriting it.
-- Verify the install: the destination must contain `SKILL.md` and all seven
+- Verify the install: the destination must contain `SKILL.md` and all nine
   `references/*.md` files; report the written paths.
 
 ## After installing

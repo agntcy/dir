@@ -3,7 +3,7 @@
 
 // Package sync implements the sync reconciler task.
 // It searches the routing network for records matching Criteria and creates
-// one sync per announcing peer. Defaults match the dirctl sync-netsec CronJob.
+// one sync per announcing peer.
 package sync
 
 import (
@@ -71,29 +71,16 @@ func (t *Task) IsEnabled() bool {
 // Run searches routing for Criteria and creates one sync per peer.
 func (t *Task) Run(ctx context.Context) error {
 	domains := t.config.GetDomains()
+	skills := t.config.GetSkills()
 
-	limit, err := conv.Uint32(t.config.GetLimit())
+	logger.Debug("Running sync", "domains", domains, "skills", skills, "limit", t.config.GetLimit())
+
+	req, err := t.searchRequest(domains, skills)
 	if err != nil {
-		return fmt.Errorf("search limit: %w", err)
+		return err
 	}
 
-	minScore := uint32(1)
-
-	logger.Debug("Running sync", "domains", domains, "limit", limit)
-
-	queries := make([]*routingv1.RecordQuery, 0, len(domains))
-	for _, domain := range domains {
-		queries = append(queries, &routingv1.RecordQuery{
-			Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN,
-			Value: domain,
-		})
-	}
-
-	results, err := t.searcher.Search(ctx, &routingv1.SearchRequest{
-		Queries:       queries,
-		MinMatchScore: &minScore,
-		Limit:         &limit,
-	})
+	results, err := t.searcher.Search(ctx, req)
 	if err != nil {
 		return fmt.Errorf("search routing: %w", err)
 	}
@@ -105,7 +92,7 @@ func (t *Task) Run(ctx context.Context) error {
 
 	peers := groupByPeer(hits)
 	if len(peers) == 0 {
-		logger.Info("No remote records to sync", "domains", domains)
+		logger.Info("No remote records to sync", "domains", domains, "skills", skills)
 
 		return nil
 	}
@@ -121,7 +108,7 @@ func (t *Task) Run(ctx context.Context) error {
 			)
 		}
 
-		logger.Info("Dry run: sync complete", "peers", len(peers), "domains", domains)
+		logger.Info("Dry run: sync complete", "peers", len(peers), "domains", domains, "skills", skills)
 
 		return nil
 	}
@@ -144,9 +131,42 @@ func (t *Task) Run(ctx context.Context) error {
 		succeeded++
 	}
 
-	logger.Info("Sync complete", "succeeded", succeeded, "failed", failed, "domains", domains)
+	logger.Info("Sync complete", "succeeded", succeeded, "failed", failed, "domains", domains, "skills", skills)
 
 	return nil
+}
+
+// searchRequest builds the routing query the same way as
+// `dirctl routing search --domain ... --skill ...`: every value is one query,
+// a record matching any of them is included, and the server applies Limit.
+func (t *Task) searchRequest(domains, skills []string) (*routingv1.SearchRequest, error) {
+	queries := make([]*routingv1.RecordQuery, 0, len(domains)+len(skills))
+	for _, domain := range domains {
+		queries = append(queries, &routingv1.RecordQuery{
+			Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN,
+			Value: domain,
+		})
+	}
+
+	for _, skill := range skills {
+		queries = append(queries, &routingv1.RecordQuery{
+			Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
+			Value: skill,
+		})
+	}
+
+	limit, err := conv.Uint32(t.config.GetLimit())
+	if err != nil {
+		return nil, fmt.Errorf("search limit: %w", err)
+	}
+
+	minScore := uint32(1)
+
+	return &routingv1.SearchRequest{
+		Queries:       queries,
+		MinMatchScore: &minScore,
+		Limit:         &limit,
+	}, nil
 }
 
 func (t *Task) createPeerSync(peer *peerGroup) error {

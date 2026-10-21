@@ -210,14 +210,17 @@ reconciler:
     batch_size: 500
   # Searches the routing network for records matching criteria and creates
   # one sync per announcing peer. Off: this creates remote syncs. A run
-  # does not paginate; later intervals pick up more. criteria.domains is a
-  # list; a record matching any listed domain is included.
+  # does not paginate; later intervals pick up more. criteria.domains and
+  # criteria.skills are lists passed to routing search as --domain and --skill.
+  # A record matching any listed value is included. Empty skills adds no skill
+  # query. At least one domain or skill is required; an empty list stays empty.
   sync:
     enabled: false
     interval: 24h
     criteria:
       domains:
         - network_security
+      skills: []
     limit: 100
     dry_run: true
   # How the reconciler hears of a record being pushed, so that the indexer, and
@@ -252,13 +255,19 @@ reconciler:
     limit: 100
     dry_run: true
   # Announces matching local records to the routing network. Off: this
-  # publishes to peers. A run pages through the match set, same as the
-  # dirctl publish CronJob. Empty criteria.domains means every indexed record.
+  # publishes to peers. A run pages through the match set. A domain or skill
+  # filter applies only when that list is non-empty. Both empty means every
+  # indexed record. Both set means a record must match one of each.
+  # trusted follows `dirctl search --trusted`. Unset applies no signature
+  # filter. true keeps records with a verified signature; false keeps records
+  # with none. Unlike prune, unset does not mean false.
   publish:
     enabled: false
     interval: 24h
     criteria:
       domains: []
+      skills: []
+      # trusted: true
     limit: 100
     dry_run: true
   local_registry:

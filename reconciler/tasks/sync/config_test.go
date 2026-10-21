@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfig_GetInterval(t *testing.T) {
@@ -28,15 +29,26 @@ func TestConfig_GetLimit(t *testing.T) {
 func TestConfig_GetDomains(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, []string{DefaultDomain}, (&Config{}).GetDomains())
-	assert.Equal(t, []string{DefaultDomain}, (&Config{Criteria: Criteria{Domains: []string{"  "}}}).GetDomains())
+	assert.Empty(t, (&Config{}).GetDomains())
+	assert.Empty(t, (&Config{Criteria: Criteria{Domains: []string{"  "}}}).GetDomains())
 	assert.Equal(t, []string{"research"}, (&Config{Criteria: Criteria{Domains: []string{" research "}}}).GetDomains())
 	assert.Equal(t, []string{"research", "analytics"}, (&Config{Criteria: Criteria{Domains: []string{"research", " analytics ", "research", ""}}}).GetDomains())
+}
+
+func TestConfig_GetSkills(t *testing.T) {
+	t.Parallel()
+
+	assert.Empty(t, (&Config{}).GetSkills())
+	assert.Empty(t, (&Config{Criteria: Criteria{Skills: []string{"  "}}}).GetSkills())
+	assert.Equal(t, []string{"threat_detection"}, (&Config{Criteria: Criteria{Skills: []string{" threat_detection "}}}).GetSkills())
+	assert.Equal(t, []string{"threat_detection", "nlp"}, (&Config{Criteria: Criteria{Skills: []string{"threat_detection", " nlp ", "threat_detection", ""}}}).GetSkills())
 }
 
 func TestConfig_Validate(t *testing.T) {
 	t.Parallel()
 
-	assert.NoError(t, (&Config{}).Validate())
-	assert.NoError(t, (&Config{Criteria: Criteria{Domains: []string{"research"}}}).Validate())
+	require.EqualError(t, (&Config{}).Validate(), "at least one criterion is required")
+	require.EqualError(t, (&Config{Criteria: Criteria{Domains: []string{"  ", ""}, Skills: []string{" "}}}).Validate(), "at least one criterion is required")
+	require.NoError(t, (&Config{Criteria: Criteria{Domains: []string{"research"}}}).Validate())
+	require.NoError(t, (&Config{Criteria: Criteria{Skills: []string{"threat_detection"}}}).Validate())
 }

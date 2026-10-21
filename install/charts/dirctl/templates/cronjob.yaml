@@ -1,21 +1,7 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 
-{{/*
-Policies are rendered as ordinary cronjobs whose command is a generated script,
-so they inherit the SPIRE, env, volume, resource and security wiring below
-without duplicating the pod spec. The "policy-" key prefix keeps a policy and a
-cronjobs entry of the same name from colliding.
-*/}}
-{{- $jobs := deepCopy (.Values.cronjobs | default dict) }}
-{{- range $policyName, $policy := (.Values.policies | default dict) }}
-{{- if $policy.enabled }}
-{{-   $job := omit $policy "action" "match" "limit" "dryRun" }}
-{{-   $_ := set $job "command" (list "/bin/sh" "-c" (include "chart.policy.script" (dict "name" $policyName "policy" $policy))) }}
-{{-   $_ := set $jobs (printf "policy-%s" $policyName) $job }}
-{{- end }}
-{{- end }}
-{{- range $name, $cronjob := $jobs }}
+{{- range $name, $cronjob := (.Values.cronjobs | default dict) }}
 {{- if $cronjob.enabled }}
 ---
 apiVersion: batch/v1

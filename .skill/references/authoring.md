@@ -17,10 +17,11 @@ Minimal top-level fields: `name`, `schema_version`, `version`, `description`,
   "description": "Answers research questions with cited sources.",
   "authors": ["Example Corp"],
   "created_at": "2026-07-14T00:00:00Z",
-  "skills": [{ "id": 10201, "name": "natural_language_processing/text_completion" }],
-  "domains": [{ "name": "technology" }],
-  "locators": [{ "type": "docker-image", "url": "ghcr.io/example/research-agent:v1.0.0" }],
-  "modules": []
+  "skills": [{ "id": 10201, "name": "natural_language_processing/natural_language_generation/text_completion" }],
+  "domains": [{ "id": 106, "name": "technology/information_technology" }],
+  "locators": [{ "type": "container_image", "urls": ["ghcr.io/example/research-agent:v1.0.0"] }],
+  "modules": [],
+  "annotations": { "agntcy.dir/owner": "dns:example.com" }
 }
 ```
 
@@ -30,8 +31,11 @@ Rules:
   the OASF schema (`https://schema.oasf.outshift.com/<version>/skills`) or the
   `agntcy_oasf_get_schema_skills` / `..._domains` MCP tools. Do not invent
   taxonomy entries; ID and name must refer to the same class.
-- Names starting with `https://` / `http://` opt into domain-based name
-  ownership verification (see publishing reference). Plain names skip it.
+- Names are labels the publisher picks and are not verified, whatever their
+  prefix. To prove who owns the record, set `agntcy.dir/owner` (and optionally
+  `agntcy.dir/identity`) in `annotations` **before** the first push — they are
+  covered by the CID (see [identity.md](identity.md)). Ask the user whether
+  they want to claim ownership while authoring, not after the push.
 - Modules determine installability later: `integration/mcp` → MCP server,
   `core/language_model/agentskills` → Agent Skill, `integration/a2a` → A2A
   card.
@@ -107,7 +111,7 @@ API key, not as a config error.
 | -------------------- | ------------------------------------------- | -------------------------------------------- |
 | `enricher.extractor` | `dirctl init` (local assets); no credentials | **Default choice** — per-record, LLM-free     |
 | `enricher.static`    | nothing                                      | Stamp one fixed skill/domain set on every record |
-| `enricher.llm`       | LLM credentials (e.g. `AZURE_OPENAI_API_KEY`) | An LLM is available and per-record quality matters |
+| `enricher.llm`       | LLM credentials (e.g. `AZURE_OPENAI_API_KEY`) and `dir-mcp` on `PATH` ([releases](https://github.com/agntcy/dir-mcp/releases)) | An LLM is available and per-record quality matters |
 
 ```yaml
 # Local OASF taxonomy model — no LLM, no credentials. Requires `dirctl init`.
@@ -122,11 +126,11 @@ enricher:
 enricher:
   static:
     skills:
-      - name: natural_language_processing/text_completion
+      - name: natural_language_processing/natural_language_generation/text_completion
         id: 10201
     domains:
-      - name: technology
-        id: 1
+      - name: technology/information_technology
+        id: 106
 ```
 
 Two traps, both of which surface as the LLM credential error rather than as a
