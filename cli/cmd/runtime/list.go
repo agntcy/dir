@@ -46,6 +46,10 @@ dirctl search: exactly (case-insensitive), or with * and ? wildcards. Labels are
 regular expressions. Different filters combine with AND; a repeated flag matches any
 of its values.
 
+The default output summarizes each workload. --output json and jsonl print the
+workloads exactly as runtime discovery returns them, A2A card included; --output raw
+prints their IDs.
+
 Workloads are listed as announced: nothing here is verified.
 
 Usage examples:
@@ -124,31 +128,58 @@ func runList(cmd *cobra.Command) error {
 		filterOpts.ReachableFrom = from
 	}
 
-	listed := make([]listedWorkload, 0, len(workloads))
+	matched := make([]*runtimev1.Workload, 0, len(workloads))
 
 	for _, w := range workloads {
 		if w.MatchesFilters(req, filterOpts) {
-			listed = append(listed, summarize(w, listOpts.SchemaURLs))
+			matched = append(matched, w)
 		}
 	}
 
 	switch presenter.GetOutputOptions(cmd).Format {
 	case presenter.FormatRaw:
 		// Raw output is one workload ID per line, for piping into other commands.
-		ids := make([]string, 0, len(listed))
-		for _, w := range listed {
-			ids = append(ids, w.ID)
+		ids := make([]string, 0, len(matched))
+		for _, w := range matched {
+			ids = append(ids, w.GetId())
 		}
 
 		return presenter.PrintMessage(cmd, "workloads", "Workloads", ids)
 	case presenter.FormatJSON, presenter.FormatJSONL:
-		return presenter.PrintMessage(cmd, "workloads", "Workloads", listed)
+		docs, err := workloadsJSON(matched)
+		if err != nil {
+			return err
+		}
+
+		return presenter.PrintMessage(cmd, "workloads", "Workloads", docs)
 	case presenter.FormatHuman:
 	}
 
-	printTable(cmd, listed)
+	summaries := make([]summary, 0, len(matched))
+	for _, w := range matched {
+		summaries = append(summaries, summarize(w, listOpts.SchemaURLs))
+	}
+
+	printTable(cmd, summaries)
 
 	return nil
+}
+
+// workloadsJSON renders each workload with protojson, so the output uses the API's
+// field names and carries every field once.
+func workloadsJSON(workloads []*runtimev1.Workload) ([]json.RawMessage, error) {
+	docs := make([]json.RawMessage, 0, len(workloads))
+
+	for _, w := range workloads {
+		raw, err := protojson.Marshal(w)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode workload %q: %w", w.GetId(), err)
+		}
+
+		docs = append(docs, raw)
+	}
+
+	return docs, nil
 }
 
 func buildRequest() (*runtimev1.ListWorkloadsRequest, error) {
@@ -207,55 +238,38 @@ func buildRequest() (*runtimev1.ListWorkloadsRequest, error) {
 	return req, nil
 }
 
-// listedWorkload is one workload as printed: a summary for people and tools, and the
-// full workload (including its A2A card) for anything the summary leaves out.
-type listedWorkload struct {
-	ID           string          `json:"id"`
-	Name         string          `json:"name"`
-	Runtime      string          `json:"runtime"`
-	Type         string          `json:"type"`
-	Hostname     string          `json:"hostname,omitempty"`
-	Locators     []locator       `json:"locators,omitempty"`
-	Agent        agent           `json:"agent"`
-	SourceRecord string          `json:"source_record,omitempty"`
-	Workload     json.RawMessage `json:"workload"`
-}
-
-type locator struct {
-	Protocol string `json:"protocol"`
-	URL      string `json:"url"`
+// summary is what the default output shows of a workload: what it is, where to reach
+// it, and what its agent says about itself.
+type summary struct {
+	ID           string
+	Runtime      string
+	Hostname     string
+	Locators     []string
+	Agent        agent
+	SourceRecord string
 }
 
 type agent struct {
-	Name          string      `json:"name,omitempty"`
-	Version       string      `json:"version,omitempty"`
-	SchemaVersion string      `json:"schema_version,omitempty"`
-	Skills        []oasfClass `json:"skills,omitempty"`
-	Domains       []oasfClass `json:"domains,omitempty"`
-	Authors       []string    `json:"authors,omitempty"`
+	Name    string
+	Version string
+	Skills  []string
+	Domains []string
+	Authors []string
 }
 
-type oasfClass struct {
-	Name string `json:"name"`
-	ID   uint32 `json:"id,omitempty"`
-}
-
-func summarize(w *runtimev1.Workload, schemaURLs []string) listedWorkload {
+func summarize(w *runtimev1.Workload, schemaURLs []string) summary {
 	info := w.AgentInfo(schemaURLs)
 
-	out := listedWorkload{
+	out := summary{
 		ID:       w.GetId(),
-		Name:     w.GetName(),
 		Runtime:  w.GetRuntime(),
-		Type:     w.GetType(),
 		Hostname: w.GetHostname(),
 		Agent: agent{
-			Name:          info.Name,
-			Version:       agentVersion(w),
-			SchemaVersion: info.SchemaVersion,
-			Skills:        toClasses(info.Skills),
-			Domains:       toClasses(info.Domains),
-			Authors:       info.Authors,
+			Name:    info.Name,
+			Version: agentVersion(w),
+			Skills:  classNames(info.Skills),
+			Domains: classNames(info.Domains),
+			Authors: info.Authors,
 		},
 		SourceRecord: w.GetLabels()[agentRecordLabel],
 	}
@@ -265,11 +279,7 @@ func summarize(w *runtimev1.Workload, schemaURLs []string) listedWorkload {
 	}
 
 	for _, l := range w.GetLocators() {
-		out.Locators = append(out.Locators, locator{Protocol: l.GetProtocol(), URL: l.GetUrl()})
-	}
-
-	if raw, err := protojson.Marshal(w); err == nil {
-		out.Workload = raw
+		out.Locators = append(out.Locators, l.GetUrl())
 	}
 
 	return out
@@ -285,16 +295,16 @@ func agentVersion(w *runtimev1.Workload) string {
 	return w.GetServices().GetOasf().GetFields()["record"].GetStructValue().GetFields()["version"].GetStringValue()
 }
 
-func toClasses(classes []runtimev1.OASFClass) []oasfClass {
-	out := make([]oasfClass, 0, len(classes))
+func classNames(classes []runtimev1.OASFClass) []string {
+	out := make([]string, 0, len(classes))
 	for _, c := range classes {
-		out = append(out, oasfClass{Name: c.Name, ID: c.ID})
+		out = append(out, c.Name)
 	}
 
 	return out
 }
 
-func printTable(cmd *cobra.Command, listed []listedWorkload) {
+func printTable(cmd *cobra.Command, listed []summary) {
 	if len(listed) == 0 {
 		presenter.Println(cmd, "No workloads found")
 
@@ -306,42 +316,42 @@ func printTable(cmd *cobra.Command, listed []listedWorkload) {
 			presenter.Println(cmd, "")
 		}
 
-		presenter.Printf(cmd, "%s (%s %s)\n", w.ID, w.Runtime, w.Type)
+		presenter.Println(cmd, w.ID)
 
-		if w.Hostname != "" {
-			presenter.Printf(cmd, "  host:     %s\n", w.Hostname)
+		printField(cmd, "runtime", w.Runtime)
+		printField(cmd, "host", w.Hostname)
+
+		name := w.Agent.Name
+		if name != "" && w.Agent.Version != "" {
+			name += " " + w.Agent.Version
 		}
 
-		if w.Agent.Name != "" {
-			name := w.Agent.Name
-			if w.Agent.Version != "" {
-				name += " " + w.Agent.Version
-			}
-
-			presenter.Printf(cmd, "  agent:    %s\n", name)
-		}
-
-		for _, l := range w.Locators {
-			presenter.Printf(cmd, "  locator:  %s\n", l.URL)
-		}
-
-		for _, s := range w.Agent.Skills {
-			presenter.Printf(cmd, "  skill:    %s\n", s.Name)
-		}
-
-		for _, d := range w.Agent.Domains {
-			presenter.Printf(cmd, "  domain:   %s\n", d.Name)
-		}
-
-		for _, a := range w.Agent.Authors {
-			presenter.Printf(cmd, "  author:   %s\n", a)
-		}
-
-		if w.SourceRecord != "" {
-			presenter.Printf(cmd, "  record:   %s\n", w.SourceRecord)
-		}
+		printField(cmd, "agent", name)
+		printField(cmd, "locators", w.Locators...)
+		printField(cmd, "skills", w.Agent.Skills...)
+		printField(cmd, "domains", w.Agent.Domains...)
+		printField(cmd, "authors", w.Agent.Authors...)
+		printField(cmd, "record", w.SourceRecord)
 	}
 
 	presenter.Println(cmd, "")
 	presenter.Println(cmd, "Workloads are listed as announced; nothing here is verified.")
+}
+
+// printField prints one labelled field, its values one per line under each other.
+// Empty values are skipped, and so is a field without any.
+func printField(cmd *cobra.Command, label string, values ...string) {
+	const width = len("locators: ")
+
+	prefix := fmt.Sprintf("  %-*s", width, label+":")
+
+	for _, v := range values {
+		if v == "" {
+			continue
+		}
+
+		presenter.Println(cmd, prefix+v)
+
+		prefix = strings.Repeat(" ", len(prefix))
+	}
 }
