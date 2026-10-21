@@ -354,7 +354,8 @@ func TestQueryToFilters_IdentityQueries(t *testing.T) {
 			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY_VERIFIED, Value: "true"},
 			check: func(t *testing.T, cfg types.RecordFilters) {
 				t.Helper()
-				assert.True(t, cfg.IdentityVerified)
+				require.NotNil(t, cfg.IdentityVerified)
+				assert.True(t, *cfg.IdentityVerified)
 				assert.False(t, cfg.OwnerVerified)
 			},
 		},
@@ -364,7 +365,7 @@ func TestQueryToFilters_IdentityQueries(t *testing.T) {
 			check: func(t *testing.T, cfg types.RecordFilters) {
 				t.Helper()
 				assert.True(t, cfg.OwnerVerified)
-				assert.False(t, cfg.IdentityVerified)
+				assert.Nil(t, cfg.IdentityVerified)
 			},
 		},
 	}

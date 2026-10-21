@@ -1,7 +1,27 @@
+export type StatusFilter = 'trusted' | 'identityVerified';
+
+export interface StatusFilterOption {
+	value: StatusFilter;
+	label: string;
+	/** AI Finder clause the checkbox adds to the query. */
+	clause: string;
+	/**
+	 * Shown only once a probe finds a record the clause matches, or while the
+	 * filter is already active. For filters an open catalog rarely satisfies.
+	 */
+	hiddenUntilMatch?: boolean;
+}
+
+/** Status checkboxes in the sidebar, in display order. */
+export const STATUS_FILTERS: readonly StatusFilterOption[] = [
+	{ value: 'trusted', label: 'Trusted', clause: 'trusted=true' },
+	{ value: 'identityVerified', label: 'Identity verified', clause: 'identityVerified=true', hiddenUntilMatch: true }
+];
+
 export interface AICardFilterCriteria {
 	searchQuery: string;
 	mediaTypes: Set<string>;
-	statusFilters: Set<string>; // 'trusted'
+	statusFilters: Set<StatusFilter>;
 	activeTags: Set<string>;
 	scanSafe: boolean; // true = show only records where all scanners report safe
 }
@@ -25,9 +45,23 @@ export interface UsageMetrics {
 	providerCount: number;
 }
 
+/**
+ * One identity claim result as the catalog publishes it: `role` is `identity`
+ * or `owner`, `status` is `verified` or `failed`. Kept as strings so a value
+ * added later renders as unknown instead of breaking the page.
+ */
+export interface ClaimSummary {
+	role: string;
+	subject: string;
+	status: string;
+	verifiedAt?: string;
+}
+
 export interface TrustStatus {
 	trusted: boolean;
 	verified: boolean;
+	identityVerified?: boolean;
+	claims?: ClaimSummary[];
 }
 
 export const TRUST_STATUS_METADATA_KEY = 'agntcy.dir.trust.v1.Status';

@@ -1,13 +1,16 @@
 <script lang="ts">
-	import type { AICardFilterCriteria, CatalogEntry, CatalogTag } from '$lib/types';
+	import type { AICardFilterCriteria, CatalogEntry, CatalogTag, StatusFilter } from '$lib/types';
+	import { STATUS_FILTERS } from '$lib/types';
 	import {
 		buildAICardFilterQuery,
 		CATALOG_PAGE_SIZE,
 		fetchAICardsPage,
 		fetchCatalogTags,
+		hasMatchingRecords,
 		pageTokenForPage,
 		type AICardsPage
 	} from '$lib/api';
+	import { isStatusFilter } from '$lib/utils';
 	import AICard from '$lib/components/AICard.svelte';
 	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
 	import DetailModal from '$lib/components/DetailModal.svelte';
@@ -20,6 +23,7 @@
 	let aicards = $state<CatalogEntry[]>([]);
 	let catalogTags = $state<CatalogTag[]>([]);
 	let tagsLoading = $state(true);
+	let availableStatusFilters = $state(new Set<StatusFilter>());
 	let loading = $state(true);
 	let error = $state('');
 	let selectedAicard = $state<CatalogEntry | null>(null);
@@ -44,7 +48,7 @@
 		return {
 			searchQuery: params.get('q') || '',
 			mediaTypes: params.has('media') ? new Set(params.getAll('media')) : new Set(['all']),
-			statusFilters: new Set(params.getAll('status')),
+			statusFilters: new Set(params.getAll('status').filter(isStatusFilter)),
 			activeTags: new Set(params.getAll('tag')),
 			scanSafe: params.get('safe') === 'true'
 		};
@@ -199,11 +203,19 @@
 		}
 	}
 
+	async function loadAvailableStatusFilters(signal: AbortSignal) {
+		const probed = STATUS_FILTERS.filter((opt) => opt.hiddenUntilMatch);
+		const matched = await Promise.all(probed.map((opt) => hasMatchingRecords(opt.clause, signal)));
+		if (signal.aborted) return;
+		availableStatusFilters = new Set(probed.filter((_, i) => matched[i]).map((opt) => opt.value));
+	}
+
 	onMount(() => {
 		const tagsAbort = new AbortController();
 		const statsAbort = new AbortController();
 		loadCatalogTags(tagsAbort.signal);
 		loadCatalogTotalCount(statsAbort.signal);
+		loadAvailableStatusFilters(statsAbort.signal);
 
 		return () => {
 			tagsAbort.abort();
@@ -225,7 +237,7 @@
 
 	<div class="flex flex-col lg:flex-row gap-6">
 		<aside class="lg:w-64 flex-shrink-0">
-			<FilterSidebar {catalogTags} {tagsLoading} criteria={latestCriteria} onCriteriaChange={handleCriteriaChange} />
+			<FilterSidebar {catalogTags} {tagsLoading} {availableStatusFilters} criteria={latestCriteria} onCriteriaChange={handleCriteriaChange} />
 		</aside>
 
 		<section class="flex-1 min-w-0">

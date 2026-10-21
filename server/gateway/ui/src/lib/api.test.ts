@@ -7,21 +7,75 @@ import {
 	ExtractorUnavailableError,
 	buildAICardFilterQuery,
 	extractTaxonomy,
+	hasMatchingRecords,
 	suggestTagsFromExtraction
 } from './api';
-import type { CatalogTag, ExtractTaxonomyResponse } from './types';
+import { STATUS_FILTERS } from './types';
+import type {
+	AICardFilterCriteria,
+	CatalogTag,
+	ExtractTaxonomyResponse,
+	StatusFilter,
+	StatusFilterOption
+} from './types';
+
+function stubFetch(impl: (url: string, init?: RequestInit) => Response) {
+	const fetchMock = vi.fn((url: string, init?: RequestInit) =>
+		Promise.resolve(impl(url, init))
+	);
+	vi.stubGlobal('fetch', fetchMock);
+	return fetchMock;
+}
+
+function jsonResponse(body: unknown, status = 200): Response {
+	return new Response(JSON.stringify(body), {
+		status,
+		headers: { 'content-type': 'application/json' }
+	});
+}
+
+function statusFilter(value: StatusFilter): StatusFilterOption {
+	const option = STATUS_FILTERS.find((candidate) => candidate.value === value);
+	if (!option) throw new Error(`${value} is not a status filter`);
+	return option;
+}
 
 describe('buildAICardFilterQuery', () => {
-	it('keeps trusted and safe filters when given a legacy verified selection', () => {
+	const noFilters: AICardFilterCriteria = {
+		searchQuery: '',
+		mediaTypes: new Set(['all']),
+		statusFilters: new Set(),
+		activeTags: new Set(),
+		scanSafe: false
+	};
+
+	it('joins the trusted and safe clauses', () => {
 		expect(
 			buildAICardFilterQuery({
-				searchQuery: '',
-				mediaTypes: new Set(['all']),
-				statusFilters: new Set(['trusted', 'verified']),
-				activeTags: new Set(),
+				...noFilters,
+				statusFilters: new Set<StatusFilter>(['trusted']),
 				scanSafe: true
 			})
 		).toBe('trusted=true AND safe=true');
+	});
+
+	it('emits the identityVerified clause on its own', () => {
+		expect(
+			buildAICardFilterQuery({
+				...noFilters,
+				statusFilters: new Set<StatusFilter>(['identityVerified'])
+			})
+		).toBe('identityVerified=true');
+	});
+
+	it('orders status clauses as the table does, ahead of safe', () => {
+		expect(
+			buildAICardFilterQuery({
+				...noFilters,
+				statusFilters: new Set<StatusFilter>(['identityVerified', 'trusted']),
+				scanSafe: true
+			})
+		).toBe('trusted=true AND identityVerified=true AND safe=true');
 	});
 });
 
@@ -158,21 +212,6 @@ describe('extractTaxonomy', () => {
 		vi.unstubAllGlobals();
 	});
 
-	function stubFetch(impl: (url: string, init?: RequestInit) => Response) {
-		const fetchMock = vi.fn((url: string, init?: RequestInit) =>
-			Promise.resolve(impl(url, init))
-		);
-		vi.stubGlobal('fetch', fetchMock);
-		return fetchMock;
-	}
-
-	function jsonResponse(body: unknown, status = 200): Response {
-		return new Response(JSON.stringify(body), {
-			status,
-			headers: { 'content-type': 'application/json' }
-		});
-	}
-
 	it('posts the text to /v1/extract and returns the skills and domains', async () => {
 		const fetchMock = stubFetch(() =>
 			jsonResponse({
@@ -233,5 +272,43 @@ describe('extractTaxonomy', () => {
 		expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
 			text: 'customer support'
 		});
+	});
+});
+
+describe('hasMatchingRecords', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	const { clause } = statusFilter('identityVerified');
+
+	it('asks for a single record matching the clause and reports a match', async () => {
+		const fetchMock = stubFetch(() => jsonResponse({ results: [], totalCount: 1 }));
+		const { signal } = new AbortController();
+
+		await expect(hasMatchingRecords(clause, signal)).resolves.toBe(true);
+
+		expect(fetchMock).toHaveBeenCalledOnce();
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe(`/v1/agents?page_size=1&filter=${encodeURIComponent(clause)}`);
+		expect(init?.signal).toBe(signal);
+	});
+
+	it('reports no match when the count is zero', async () => {
+		stubFetch(() => jsonResponse({ results: [], totalCount: 0 }));
+
+		await expect(hasMatchingRecords(clause)).resolves.toBe(false);
+	});
+
+	it('reports no match on a failed response instead of throwing', async () => {
+		stubFetch(() => jsonResponse({ message: 'boom' }, 500));
+
+		await expect(hasMatchingRecords(clause)).resolves.toBe(false);
+	});
+
+	it('reports no match when the request itself fails', async () => {
+		vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('network down'))));
+
+		await expect(hasMatchingRecords(clause)).resolves.toBe(false);
 	});
 });

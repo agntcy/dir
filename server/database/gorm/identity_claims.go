@@ -103,23 +103,24 @@ func (d *DB) DeleteIdentityClaim(cid, role string) error {
 // correlated subquery on identity_claims rather than a JOIN, so a record is never
 // duplicated.
 func applyIdentityFilters(query *gormlib.DB, cfg *types.RecordFilters) *gormlib.DB {
-	roles := []struct {
-		role     string
-		subjects []string
-		verified bool
-	}{
-		{types.ClaimRoleIdentity, cfg.Identities, cfg.IdentityVerified},
-		{types.ClaimRoleOwner, cfg.Owners, cfg.OwnerVerified},
+	if len(cfg.Identities) > 0 {
+		query = applyClaimSubjects(query, types.ClaimRoleIdentity, cfg.Identities)
 	}
 
-	for _, r := range roles {
-		if len(r.subjects) > 0 {
-			query = applyClaimSubjects(query, r.role, r.subjects)
-		}
+	if len(cfg.Owners) > 0 {
+		query = applyClaimSubjects(query, types.ClaimRoleOwner, cfg.Owners)
+	}
 
-		if r.verified {
-			query = applyClaimVerified(query, r.role)
+	if cfg.IdentityVerified != nil {
+		if *cfg.IdentityVerified {
+			query = applyClaimVerified(query, types.ClaimRoleIdentity)
+		} else {
+			query = applyClaimNotVerified(query, types.ClaimRoleIdentity)
 		}
+	}
+
+	if cfg.OwnerVerified {
+		query = applyClaimVerified(query, types.ClaimRoleOwner)
 	}
 
 	return query
@@ -141,6 +142,15 @@ func applyClaimSubjects(query *gormlib.DB, role string, patterns []string) *gorm
 func applyClaimVerified(query *gormlib.DB, role string) *gormlib.DB {
 	return query.Where(
 		"EXISTS (SELECT 1 FROM identity_claims ic WHERE ic.record_cid = records.record_cid AND ic.role = ? AND ic.status = ?)",
+		role, types.ClaimStatusVerified,
+	)
+}
+
+// applyClaimNotVerified keeps records without a verified claim of role, which
+// includes records that carry no claim of that role at all.
+func applyClaimNotVerified(query *gormlib.DB, role string) *gormlib.DB {
+	return query.Where(
+		utils.BuildNotExistsCondition("identity_claims", "ic", "ic.record_cid = records.record_cid AND ic.role = ? AND ic.status = ?"),
 		role, types.ClaimStatusVerified,
 	)
 }

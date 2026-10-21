@@ -312,6 +312,20 @@ func TestParseAgentFilter(t *testing.T) {
 		assert.True(t, *f.Safe)
 	})
 
+	t.Run("identityVerified=true", func(t *testing.T) {
+		f, err := parseAgentFilter(`identityVerified=TRUE`)
+		require.NoError(t, err)
+		require.NotNil(t, f.IdentityVerified)
+		assert.True(t, *f.IdentityVerified)
+	})
+
+	t.Run("identityVerified=false", func(t *testing.T) {
+		f, err := parseAgentFilter(`identityVerified=false`)
+		require.NoError(t, err)
+		require.NotNil(t, f.IdentityVerified)
+		assert.False(t, *f.IdentityVerified)
+	})
+
 	t.Run("tags skill tag", func(t *testing.T) {
 		f, err := parseAgentFilter(`tags=oasf:*:skills:natural_language_processing/*`)
 		require.NoError(t, err)
@@ -378,6 +392,9 @@ func TestParseAgentFilter(t *testing.T) {
 		{"multi-value verified", "verified=true,false"},
 		{"bad trusted value", "trusted=maybe"},
 		{"bad safe value", "safe=maybe"},
+		{"bad identityVerified value", "identityVerified=maybe"},
+		{"multi-value identityVerified", "identityVerified=true,false"},
+		{"duplicate identityVerified", "identityVerified=true AND identityVerified=false"},
 		{"empty annotation key", "tags==alice"},
 		{"unterminated quote", `displayName="oops`},
 	}
@@ -385,6 +402,40 @@ func TestParseAgentFilter(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := parseAgentFilter(tc.input)
 			require.Error(t, err)
+		})
+	}
+}
+
+func TestBoolClause(t *testing.T) {
+	truth := true
+	tests := []struct {
+		name    string
+		field   string
+		values  []string
+		want    agentFilter
+		wantErr string
+	}{
+		{name: "verified", field: "verified", values: []string{"true"}, want: agentFilter{Verified: &truth}},
+		{name: "identityVerified", field: "identityVerified", values: []string{"true"}, want: agentFilter{IdentityVerified: &truth}},
+		{name: "trusted", field: "trusted", values: []string{"true"}, want: agentFilter{Trusted: &truth}},
+		{name: "safe", field: "safe", values: []string{"true"}, want: agentFilter{Safe: &truth}},
+		{name: "bad value", field: "verified", values: []string{"maybe"}, wantErr: `filter field "verified": invalid boolean "maybe" (expected true or false)`},
+		{name: "not a boolean field", field: "displayName", values: []string{"true"}, wantErr: `filter field "displayName" is not a boolean field`},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var got agentFilter
+
+			err := boolClause(&got, tc.field, tc.values)
+			if tc.wantErr != "" {
+				require.EqualError(t, err, tc.wantErr)
+
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -403,6 +454,23 @@ func TestBuildCatalogFilterOptionsVerified(t *testing.T) {
 
 	require.NotNil(t, cfg.Verified)
 	assert.True(t, *cfg.Verified)
+}
+
+func TestBuildCatalogFilterOptionsIdentityVerified(t *testing.T) {
+	for _, want := range []bool{true, false} {
+		f := agentFilter{IdentityVerified: &want}
+
+		opts, ok := buildCatalogFilterOptions(f, nil, 20, 0)
+		require.True(t, ok)
+
+		cfg := types.CatalogFilters{}
+		for _, opt := range opts {
+			opt.ApplyCatalog(&cfg)
+		}
+
+		require.NotNil(t, cfg.IdentityVerified)
+		assert.Equal(t, want, *cfg.IdentityVerified)
+	}
 }
 
 func TestBuildCatalogFilterOptionsTrusted(t *testing.T) {

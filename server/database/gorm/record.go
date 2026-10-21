@@ -576,10 +576,7 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		if *cfg.Verified {
 			query = applyClaimVerified(query, types.ClaimRoleOwner)
 		} else {
-			query = query.Where(
-				utils.BuildNotExistsCondition("identity_claims", "ic", "ic.record_cid = records.record_cid AND ic.role = ? AND ic.status = ?"),
-				types.ClaimRoleOwner, types.ClaimStatusVerified,
-			)
+			query = applyClaimNotVerified(query, types.ClaimRoleOwner)
 		}
 	}
 

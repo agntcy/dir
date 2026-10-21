@@ -420,6 +420,36 @@ dirctl search --trusted --verified             # signed and owner-verified
 subject the record declares. See
 [CLI Reference — Search](dir-cli-reference.md#dirctl-search-query-flags) for all flags.
 
+### AI Finder and catalog UI
+
+The AI Catalog served by the HTTP gateway carries each entry's claim results under the
+metadata key `agntcy.dir.trust.v1.Status`: `verified` is the owner claim's result,
+`identityVerified` the identity claim's, and `claims` lists every claim the reconciler has
+checked with its `role`, `subject`, `status` (`verified` or `failed`) and `verifiedAt`. The
+stored failure reason is not published there; it stays on `dirctl identity status` and the
+`IdentityService`. A badge on a catalog card means the identity claim verified against the
+key material its subject published at `verifiedAt`, and the reconciler re-checks it every
+run. A red badge means the last check did not verify: a wrong key, a revoked or expired
+subject, or a first check whose lookup could not complete, which clears on the next run that
+reaches the subject. A record whose subject could not be reached keeps its previous result
+for the grace described under [Unreachable subjects](#unreachable-subjects). The detail view
+lists both claims under "Claims".
+
+A verified identity claim proves that whoever controls the keys the declared subject
+publishes signed a claim for this exact record; it does not say who that subject is in the
+world. For a `did:key` subject the key is the subject, so the badge shows only that the
+publisher holds the key they named; `dns:`, `https://`, `did:web` and `ans://` subjects
+prove control of the named domain or registered name. The badge is independent of
+`trusted` (a verified record signature) and of the scan result. Because anyone who can push
+a referrer can attach a claim to a record, a failed result can come from a claim the
+publisher never made; a claim that verifies decides the result, whoever else attached
+claims, and `DeleteReferrer` removes a bogus one.
+
+`GET /v1/agents?filter=identityVerified=true` lists records whose identity claim verified;
+`identityVerified=false` lists the rest, including records that carry no identity claim, the
+same way `verified=false` does for the owner claim. The sidebar's "Identity verified"
+checkbox appears once at least one record can match it.
+
 ## Configuration
 
 Claim verification is a reconciler task and is disabled by default. The `dirctl daemon`

@@ -167,6 +167,9 @@ jobs:
             exit 1
           fi
 
+      - name: Run UI unit tests
+        run: task ui:test
+
   # This build builds local artifacts to the workflow run so that
   # we can load and test functionalities locally.
   # It does not push a tag as it includes test-specific instrumentation
@@ -306,8 +309,13 @@ jobs:
     # job itself on the needs' results let failing PRs (and would let failing
     # merge-queue entries) through.
     if: ${{ always() }}
+    # lint, license and verify must be listed here too: when one of them fails,
+    # build and everything after it are skipped, which the check below accepts.
     needs:
       - changes
+      - lint
+      - license
+      - verify
       - test
       - coverage
       - release

@@ -330,21 +330,39 @@ func TestGetCatalogEntries_TrustStatusMetadata(t *testing.T) {
 		ContentType: "application/vnd.oci.image.manifest.v1+json",
 		Signature:   "sig-bytes",
 	}))
+
+	checked := time.Date(2026, 10, 12, 19, 48, 8, 0, time.UTC)
 	require.NoError(t, db.UpsertIdentityClaim(&gormdb.IdentityClaim{
 		RecordCID:  "cid-a2a",
 		Role:       types.ClaimRoleOwner,
 		Subject:    "acme.com",
 		Status:     types.ClaimStatusVerified,
-		VerifiedAt: time.Now(),
+		VerifiedAt: checked,
+	}))
+	require.NoError(t, db.UpsertIdentityClaim(&gormdb.IdentityClaim{
+		RecordCID:  "cid-a2a",
+		Role:       types.ClaimRoleIdentity,
+		Subject:    "did:web:acme.com:agents:alpha",
+		Status:     types.ClaimStatusFailed,
+		Error:      "resolve keys of did:web:acme.com:agents:alpha: lookup acme.com on 10.0.0.1:53: no such host",
+		VerifiedAt: checked,
 	}))
 
 	entries, _, err := db.GetCatalogEntries(types.WithCIDs("cid-a2a"))
 	require.NoError(t, err)
 	require.Len(t, entries, 1)
 
-	status := entries[0].GetMetadata()[catalogv1.TrustStatusMetadataKey].GetStructValue().AsMap()
-	assert.Equal(t, true, status["trusted"])
-	assert.Equal(t, true, status["verified"])
+	// Every claim's result is published, identity first; the stored error text,
+	// which names the operator's resolver, is not.
+	assert.Equal(t, map[string]any{
+		"trusted":          true,
+		"verified":         true,
+		"identityVerified": false,
+		"claims": []any{
+			map[string]any{"role": "identity", "subject": "did:web:acme.com:agents:alpha", "status": "failed", "verifiedAt": "2026-10-12T19:48:08Z"},
+			map[string]any{"role": "owner", "subject": "acme.com", "status": "verified", "verifiedAt": "2026-10-12T19:48:08Z"},
+		},
+	}, entries[0].GetMetadata()[catalogv1.TrustStatusMetadataKey].GetStructValue().AsMap())
 }
 
 // The manifest drives a scan badge, so only a row carrying a verdict may reach

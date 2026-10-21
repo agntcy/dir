@@ -269,7 +269,7 @@ func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, erro
 			}
 
 			if query.GetType() == searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY_VERIFIED {
-				options = append(options, types.WithIdentityVerified())
+				options = append(options, types.WithIdentityVerified(true))
 			} else {
 				options = append(options, types.WithOwnerVerified())
 			}
