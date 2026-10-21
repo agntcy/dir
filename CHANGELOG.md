@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **API**: **BREAKING**: `Workload.addresses` and `Workload.ports` are removed and their field numbers and names reserved; read endpoints from `locators`. The `DiscoveredWorkload` CRD drops the Addresses and Ports print columns (#2299)
+
 ## [v1.8.0] - 2026-10-15
 
 ### Added
