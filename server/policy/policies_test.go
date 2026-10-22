@@ -117,8 +117,8 @@ package dir.policy.require_name
 default allow := false
 
 allow if {
-	input.name != ""
-	input.version != ""
+	input.record.name != ""
+	input.record.version != ""
 }
 `
 

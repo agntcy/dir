@@ -16,6 +16,13 @@ const (
 	// celVarRecord is the OASF record, bound as a map of its fields.
 	celVarRecord = "record"
 
+	// celVarRecordCID is the record's content identifier.
+	celVarRecordCID = "record_cid"
+
+	// celVarIndexedAt is when this node first indexed the record.
+	// Absent until it has, so the binding is optional.
+	celVarIndexedAt = "indexed_at"
+
 	// celVarMeta is what this node has observed about the record.
 	celVarMeta = "meta"
 
@@ -36,7 +43,7 @@ var celEnumAbbrevs = []string{
 	"agntcy.dir.identity.v1.ClaimRole",
 }
 
-// newPolicyEnv builds the environment CEL policy expressions are compiled in.
+// newRecordEnv builds the environment a CEL policy is compiled in.
 //
 // Typed where there is a schema, dynamic where there is not. The facts in meta
 // come from policy/v1 protos, so registering their descriptors makes a
@@ -47,12 +54,18 @@ var celEnumAbbrevs = []string{
 // record stays dynamic on purpose. An OASF record has no compile-time schema
 // here, so a policy must be able to read fields of schema versions this build
 // does not know about. Declaring it as the google.protobuf.Struct it travels
-// in would be more precise and would break that.
-func newPolicyEnv() (*cel.Env, error) {
-	opts := []cel.EnvOption{
+// in would be more precise and would break that. indexed_at is optional
+// because a record that has not been indexed has no such time.
+//
+// verdicts and now are deliberately absent. An evaluation that could read
+// another policy's verdict, or the wall clock, is what RecordState is shaped
+// to prevent.
+func newRecordEnv() (*cel.Env, error) {
+	env, err := cel.NewEnv(
+		cel.OptionalTypes(),
 		cel.Container(policyContainer),
 		// Registering one message per file registers every type that file
-		// declares, which is how the enums reached through meta become
+		// declares, which is how the enums reached through the inputs become
 		// resolvable.
 		cel.Types(
 			&policyv1.RecordMeta{},
@@ -61,10 +74,10 @@ func newPolicyEnv() (*cel.Env, error) {
 		),
 		cel.Abbrevs(celEnumAbbrevs...),
 		cel.Variable(celVarRecord, cel.DynType),
+		cel.Variable(celVarRecordCID, cel.StringType),
+		cel.Variable(celVarIndexedAt, cel.OptionalType(cel.TimestampType)),
 		cel.Variable(celVarMeta, cel.ObjectType(recordMetaType)),
-	}
-
-	env, err := cel.NewEnv(opts...)
+	)
 	if err != nil {
 		return nil, fmt.Errorf("create CEL environment: %w", err)
 	}

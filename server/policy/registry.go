@@ -11,7 +11,6 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	policyconfig "github.com/agntcy/dir/server/policy/config"
-	"github.com/agntcy/oasf-sdk/pkg/validator"
 )
 
 // versionLength is how many hex digits of the content hash make a policy
@@ -22,24 +21,16 @@ const versionLength = 16
 // Registry maps operations to the operation policies that decide at them, and
 // holds the evaluation policies.
 type Registry struct {
-	byOp        map[string][]corev1.Validator
+	byOp        map[string][]Validator
 	evaluations []evaluation
 }
 
 // evaluation is one loaded evaluation policy. Evaluators turns it into an
 // Evaluator once it has a source of record content.
 type evaluation struct {
-	id      string
-	version string
-	engine  corev1.Validator
-}
-
-// built is a validator made from its config, with the version of its content
-// when its provider can define a policy. Config validation lets only such
-// providers appear as evaluations; the task refuses a policy with no version.
-type built struct {
-	validator corev1.Validator
+	id        string
 	version   string
+	validator Validator
 }
 
 // contentVersion is the version of a policy made of parts, in order. Each part
@@ -79,25 +70,29 @@ func NewRegistry(
 	var loaded []evaluation
 
 	for i, e := range evaluations {
-		b, err := buildProvider(ctx, e.Provider, provider{file: e.File, expressions: e.Expressions}, policyDir)
+		if e.Provider == policyconfig.ProviderOASF {
+			return nil, fmt.Errorf("evaluations[%d]: provider %q cannot define an evaluation policy", i, e.Provider)
+		}
+
+		v, version, err := newValidator(ctx, e.Provider, provider{file: e.File, expressions: e.Expressions}, policyDir)
 		if err != nil {
 			return nil, fmt.Errorf("evaluations[%d]: %w", i, err)
 		}
 
-		loaded = append(loaded, evaluation{id: e.PolicyID(), version: b.version, engine: b.validator})
+		loaded = append(loaded, evaluation{id: e.PolicyID(), version: version, validator: v})
 	}
 
-	byOp := make(map[string][]corev1.Validator)
+	byOp := make(map[string][]Validator)
 
 	for i, o := range operations {
-		b, err := buildProvider(ctx, o.Provider,
+		v, _, err := newValidator(ctx, o.Provider,
 			provider{schemaURL: o.SchemaURL, file: o.File, expressions: o.Expressions}, policyDir)
 		if err != nil {
 			return nil, fmt.Errorf("operations[%d]: %w", i, err)
 		}
 
 		for _, op := range o.Ops {
-			byOp[op] = append(byOp[op], b.validator)
+			byOp[op] = append(byOp[op], v)
 		}
 	}
 
@@ -112,37 +107,39 @@ type provider struct {
 	expressions []string
 }
 
-func buildProvider(ctx context.Context, name string, p provider, policyDir string) (built, error) {
+// newValidator builds the validator for one configured provider, and the version
+// of its content when the provider has any. OASF has none.
+func newValidator(ctx context.Context, name string, p provider, policyDir string) (Validator, string, error) {
 	switch name {
 	case policyconfig.ProviderOASF:
-		v, err := validator.New(p.schemaURL)
+		v, err := newOASFValidator(p.schemaURL)
 		if err != nil {
-			return built{}, fmt.Errorf("failed to initialize OASF validator: %w", err)
+			return nil, "", fmt.Errorf("failed to initialize OASF validator: %w", err)
 		}
 
-		return built{validator: v}, nil
+		return v, "", nil
 	case policyconfig.ProviderCEL:
 		v, err := newCELValidator(p.expressions)
 		if err != nil {
-			return built{}, fmt.Errorf("failed to initialize CEL validator: %w", err)
+			return nil, "", fmt.Errorf("failed to initialize CEL validator: %w", err)
 		}
 
-		return built{validator: v, version: v.version}, nil
+		return v, v.version, nil
 	case policyconfig.ProviderOPA:
 		v, err := newOPAValidator(ctx, policyDir, p.file)
 		if err != nil {
-			return built{}, fmt.Errorf("failed to initialize OPA validator: %w", err)
+			return nil, "", fmt.Errorf("failed to initialize OPA validator: %w", err)
 		}
 
-		return built{validator: v, version: v.version}, nil
+		return v, v.version, nil
 	default:
-		return built{}, fmt.Errorf("unsupported provider %q", name)
+		return nil, "", fmt.Errorf("unsupported provider %q", name)
 	}
 }
 
 // For returns the operation policies configured for op, in config order.
 // The slice is empty if none are configured.
-func (r *Registry) For(op string) []corev1.Validator {
+func (r *Registry) For(op string) []Validator {
 	if r == nil {
 		return nil
 	}
@@ -175,10 +172,10 @@ func (r *Registry) Evaluators(records RecordSource) []Evaluator {
 	out := make([]Evaluator, len(r.evaluations))
 	for i, e := range r.evaluations {
 		out[i] = &evaluator{
-			id:      e.id,
-			version: e.version,
-			engine:  e.engine,
-			records: records,
+			id:        e.id,
+			version:   e.version,
+			validator: e.validator,
+			records:   records,
 		}
 	}
 
@@ -196,7 +193,7 @@ func (r *Registry) Decide(ctx context.Context, op string, record *corev1.Record)
 			continue
 		}
 
-		ok, msgs, err := record.ValidateWith(ctx, v)
+		ok, msgs, err := validateOperation(ctx, record, v)
 		if err != nil {
 			return false, nil, fmt.Errorf("decide record: %w", err)
 		}
@@ -210,6 +207,6 @@ func (r *Registry) Decide(ctx context.Context, op string, record *corev1.Record)
 }
 
 // With returns a registry that runs vs for op. Intended for tests.
-func With(op string, vs ...corev1.Validator) *Registry {
-	return &Registry{byOp: map[string][]corev1.Validator{op: vs}}
+func With(op string, vs ...Validator) *Registry {
+	return &Registry{byOp: map[string][]Validator{op: vs}}
 }
