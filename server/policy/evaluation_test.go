@@ -11,6 +11,7 @@ import (
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	coretypes "github.com/agntcy/dir/api/core/types"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	policyv1 "github.com/agntcy/dir/api/policy/v1"
 	servertypes "github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,21 +49,25 @@ type indexRecord struct {
 
 func (r indexRecord) GetCid() string { return r.cid }
 
-type funcEngine func(*structpb.Struct) (bool, []string, []string, error)
+type funcValidator func(*policyv1.RecordState) (bool, []string, []string, error)
 
-func (f funcEngine) ValidateRecord(_ context.Context, data *structpb.Struct) (bool, []string, []string, error) {
-	return f(data)
+func (f funcValidator) ValidateEvaluation(_ context.Context, state *policyv1.RecordState) (bool, []string, []string, error) {
+	return f(state)
+}
+
+func (f funcValidator) ValidateOperation(context.Context, *structpb.Struct) (bool, []string, []string, error) {
+	return false, nil, nil, errors.New("not an operation")
 }
 
 func TestEvaluator_Evaluate(t *testing.T) {
 	t.Parallel()
 
-	accept := funcEngine(func(*structpb.Struct) (bool, []string, []string, error) { return true, nil, nil, nil })
-	reject := funcEngine(func(*structpb.Struct) (bool, []string, []string, error) {
+	accept := funcValidator(func(*policyv1.RecordState) (bool, []string, []string, error) { return true, nil, nil, nil })
+	reject := funcValidator(func(*policyv1.RecordState) (bool, []string, []string, error) {
 		return false, []string{"no licence", "no owner"}, nil, nil
 	})
-	broken := funcEngine(func(*structpb.Struct) (bool, []string, []string, error) {
-		return false, nil, nil, errors.New("engine failed")
+	broken := funcValidator(func(*policyv1.RecordState) (bool, []string, []string, error) {
+		return false, nil, nil, errors.New("validator failed")
 	})
 
 	record := corev1.New(&typesv1alpha1.Record{Name: "a"})
@@ -72,7 +77,7 @@ func TestEvaluator_Evaluate(t *testing.T) {
 		t.Parallel()
 
 		src := &mapSource{records: map[string]*corev1.Record{record.GetCid(): record}}
-		ev := &evaluator{id: "opa:p", version: "v1", engine: accept, records: src}
+		ev := &evaluator{id: "opa:p", version: "v1", validator: accept, records: src}
 
 		compliant, reason, err := ev.Evaluate(t.Context(), indexed)
 
@@ -86,7 +91,7 @@ func TestEvaluator_Evaluate(t *testing.T) {
 		t.Parallel()
 
 		src := &mapSource{records: map[string]*corev1.Record{record.GetCid(): record}}
-		ev := &evaluator{id: "opa:p", version: "v1", engine: reject, records: src}
+		ev := &evaluator{id: "opa:p", version: "v1", validator: reject, records: src}
 
 		compliant, reason, err := ev.Evaluate(t.Context(), indexed)
 
@@ -98,7 +103,7 @@ func TestEvaluator_Evaluate(t *testing.T) {
 	t.Run("a record that cannot be read is an error, not a verdict", func(t *testing.T) {
 		t.Parallel()
 
-		ev := &evaluator{id: "opa:p", version: "v1", engine: accept, records: &mapSource{}}
+		ev := &evaluator{id: "opa:p", version: "v1", validator: accept, records: &mapSource{}}
 
 		compliant, _, err := ev.Evaluate(t.Context(), indexed)
 
@@ -106,22 +111,22 @@ func TestEvaluator_Evaluate(t *testing.T) {
 		assert.False(t, compliant)
 	})
 
-	t.Run("an engine that fails is an error, not a verdict", func(t *testing.T) {
+	t.Run("a validator that fails is an error, not a verdict", func(t *testing.T) {
 		t.Parallel()
 
 		src := &mapSource{records: map[string]*corev1.Record{record.GetCid(): record}}
-		ev := &evaluator{id: "opa:p", version: "v1", engine: broken, records: src}
+		ev := &evaluator{id: "opa:p", version: "v1", validator: broken, records: src}
 
 		compliant, _, err := ev.Evaluate(t.Context(), indexed)
 
-		require.ErrorContains(t, err, "engine failed")
+		require.ErrorContains(t, err, "validator failed")
 		assert.False(t, compliant)
 	})
 
 	t.Run("it reports the policy it was given", func(t *testing.T) {
 		t.Parallel()
 
-		ev := &evaluator{id: "opa:p", version: "v1", engine: accept, records: &mapSource{}}
+		ev := &evaluator{id: "opa:p", version: "v1", validator: accept, records: &mapSource{}}
 
 		assert.Equal(t, "opa:p", ev.PolicyID())
 		assert.Equal(t, "v1", ev.PolicyVersion())

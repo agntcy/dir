@@ -189,30 +189,48 @@ func (r *Record) Marshal() ([]byte, error) {
 	return canonicalBytes, nil
 }
 
+// ValidationContext enforces the record size cap and bounds ctx by
+// DefaultValidationTimeout.
+//
+// msgs is set when validation must stop before the engine runs. cancel is
+// always safe to call. A nil record is reported here so every caller shares
+// one wording; callers that also reject a nil validator do that first, while
+// the record is still present, so a missing record keeps precedence.
+func (r *Record) ValidationContext(ctx context.Context) (context.Context, context.CancelFunc, []string) {
+	noop := func() {}
+
+	if r == nil || r.GetData() == nil {
+		return ctx, noop, []string{"record is nil"}
+	}
+
+	recordSize := proto.Size(r)
+	if recordSize > maxRecordSize {
+		return ctx, noop, []string{fmt.Sprintf("record size %d bytes exceeds maximum allowed size of %d bytes (4MB)", recordSize, maxRecordSize)}
+	}
+
+	// The caller's context stays the parent so validation respects cancellation.
+	// The timeout stops a slow or unreachable OASF server from hanging the call.
+	validationCtx, cancel := context.WithTimeout(ctx, DefaultValidationTimeout)
+
+	return validationCtx, cancel, nil
+}
+
 // ValidateWith validates the Record's data using the supplied Validator.
 //
 // Callers construct a concrete validator at the composition root and pass
 // it here, avoiding any reliance on package-level globals or initialization
 // order.
 func (r *Record) ValidateWith(ctx context.Context, v Validator) (bool, []string, error) {
-	if r == nil || r.GetData() == nil {
-		return false, []string{"record is nil"}, nil
-	}
-
-	if v == nil {
+	if v == nil && r != nil && r.GetData() != nil {
 		return false, []string{"validator is nil"}, nil
 	}
 
-	recordSize := proto.Size(r)
-	if recordSize > maxRecordSize {
-		return false, []string{fmt.Sprintf("record size %d bytes exceeds maximum allowed size of %d bytes (4MB)", recordSize, maxRecordSize)}, nil
-	}
-
-	// Create a context with timeout for API validation HTTP calls.
-	// We use the caller's context as parent so validation respects cancellation,
-	// but add our own timeout to prevent hanging if the OASF server is slow/unreachable.
-	validationCtx, cancel := context.WithTimeout(ctx, DefaultValidationTimeout)
+	validationCtx, cancel, msgs := r.ValidationContext(ctx)
 	defer cancel()
+
+	if msgs != nil {
+		return false, msgs, nil
+	}
 
 	valid, errs, warnings, err := v.ValidateRecord(validationCtx, r.GetData())
 	if err != nil {

@@ -209,7 +209,7 @@ package dir.policy.require_description
 default allow := false
 
 allow if {
-	input.description != ""
+	input.record.description != ""
 }
 `)
 	candidate := writeFile(t, dir, "candidate.yaml", `
