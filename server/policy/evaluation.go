@@ -37,18 +37,18 @@ type Evaluator interface {
 	// human-readable reason when it does not.
 	//
 	// A non-nil error means the evaluator could not reach a verdict: the
-	// policy engine failed, not the record. The task stores that as a failed
+	// validator failed, not the record. The task stores that as a failed
 	// evaluation, which reads as non-compliant, never as a pass.
 	Evaluate(ctx context.Context, record coretypes.Record) (compliant bool, reason string, err error)
 }
 
 // evaluator decides one evaluation policy by reading the record and running
-// its engine. A record complies when the engine accepts it.
+// its validator. A record complies when the validator accepts it.
 type evaluator struct {
-	id      string
-	version string
-	engine  corev1.Validator
-	records RecordSource
+	id        string
+	version   string
+	validator Validator
+	records   RecordSource
 }
 
 // PolicyID returns the policy's ID.
@@ -57,9 +57,9 @@ func (e *evaluator) PolicyID() string { return e.id }
 // PolicyVersion returns the version of the policy as it was loaded.
 func (e *evaluator) PolicyVersion() string { return e.version }
 
-// Evaluate reads the record from the store and has the engine decide on it.
-// When the record is rejected the reason is what the engine reported. A
-// record that cannot be read, or an engine that cannot reach a verdict, is an
+// Evaluate reads the record from the store and has the validator decide on it.
+// When the record is rejected the reason is what the validator reported. A
+// record that cannot be read, or a validator that cannot reach a verdict, is an
 // error: the task stores that as a failed evaluation, which stays excluded.
 func (e *evaluator) Evaluate(ctx context.Context, record coretypes.Record) (bool, string, error) {
 	cid := record.GetCid()
@@ -69,7 +69,7 @@ func (e *evaluator) Evaluate(ctx context.Context, record coretypes.Record) (bool
 		return false, "", fmt.Errorf("read record %s: %w", cid, err)
 	}
 
-	compliant, messages, err := full.ValidateWith(ctx, e.engine)
+	compliant, messages, err := validateEvaluation(ctx, full, recordState(full), e.validator)
 	if err != nil {
 		return false, "", fmt.Errorf("evaluate record %s against policy %s: %w", cid, e.id, err)
 	}
