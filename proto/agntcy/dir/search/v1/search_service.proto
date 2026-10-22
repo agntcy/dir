@@ -201,6 +201,20 @@ message RecordSummary {
 
   // Module names of the record, sorted lexicographically.
   repeated string modules = 10;
+
+  // True when at least one signature on the record passed verification.
+  // Same condition as RECORD_QUERY_TYPE_TRUSTED.
+  bool trusted = 11;
+
+  // True when the record's ownership claim was verified.
+  // Same condition as RECORD_QUERY_TYPE_VERIFIED.
+  bool verified = 12;
+
+  // Scan verdict across the scanners that reached one. Unset when the record
+  // has no completed or partial scan, true when no scanner flagged it unsafe,
+  // and false when at least one did.
+  // Same conditions as RECORD_QUERY_TYPE_SCAN_SAFE.
+  optional bool safe = 13;
 }
 
 message ListRecordSummariesResponse {
