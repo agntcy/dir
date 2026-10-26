@@ -37,7 +37,8 @@ var startCmd = &cobra.Command{
 	Short: "Start the local directory daemon",
 	Long: `Start the gRPC apiserver and reconciler in a single process.
 
-Without --config, built-in defaults (embedded daemon.config.yaml) are used.
+Without --config, <data-dir>/daemon.config.yaml is used; it is created from the
+built-in defaults on first start so it can be edited.
 When --config is provided, the file is read as the complete configuration.
 
 The daemon blocks until SIGINT or SIGTERM is received.`,
@@ -62,6 +63,12 @@ func runStart(cmd *cobra.Command, _ []string) error {
 
 	if err := os.MkdirAll(opts.DataDir, 0o700); err != nil { //nolint:mnd
 		return fmt.Errorf("failed to create data directory %s: %w", opts.DataDir, err)
+	}
+
+	if opts.ConfigFile == "" {
+		if err := ensureDefaultConfig(); err != nil {
+			return err
+		}
 	}
 
 	cfg, err := loadConfig()
