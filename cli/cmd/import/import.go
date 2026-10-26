@@ -34,6 +34,9 @@ For mcp, a2a and oasf, --file-path may be a directory, in which case every *.jso
 file directly inside it is imported. The search is not recursive, and a file that
 fails to parse is reported without stopping the rest of the run.
 
+Without --config, <home>/.agntcy/dir/import.config.yaml is used; it is created from
+the built-in defaults (LLM enricher) on first run so it can be edited.
+
 Examples:
   dirctl import --config import.config.yaml
   dirctl import --config import.config.yaml --filter=search=analytics --dry-run --output-dir=./out
@@ -55,6 +58,20 @@ func runImport(cmd *cobra.Command) error {
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
+	}
+
+	// Without --config, use (and create on first run) the default config file so
+	// it can be edited. A failure to write it is not fatal: the built-in
+	// defaults are used instead.
+	opts.implicitConfigFile = ""
+
+	if opts.ConfigFile == "" {
+		path := defaultConfigPath()
+		if err := ensureDefaultConfig(path); err != nil {
+			cmd.PrintErrf("warning: %v\n", err)
+		} else {
+			opts.implicitConfigFile = path
+		}
 	}
 
 	if err := opts.loadConfig(cmd.Flags()); err != nil {
