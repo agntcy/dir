@@ -27,11 +27,11 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 
 	// Setup temp record file
 	tmpDir := os.TempDir()
-	tempPath := filepath.Join(tmpDir, "record_v070_gossipsub_test.json")
+	tempPath := filepath.Join(tmpDir, "record_v080_gossipsub_test.json")
 
 	// Create directory and write record data
 	_ = os.MkdirAll(filepath.Dir(tempPath), 0o755)
-	_ = os.WriteFile(tempPath, testdata.ExpectedRecordV070JSON, 0o600)
+	_ = os.WriteFile(tempPath, testdata.ExpectedRecordV080JSON, 0o600)
 
 	ginkgo.BeforeEach(func() {
 		// Reset CLI state to ensure clean test environment
@@ -39,7 +39,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 	})
 
 	ginkgo.Context("GossipSub wide propagation to all peers", func() {
-		ginkgo.It("should push record_v070.json to peer 1", func() {
+		ginkgo.It("should push record_v080.json to peer 1", func() {
 			cid = testEnv.Peer1.Push(tempPath).WithArgs("--output", "raw").ShouldEventuallySucceed(15 * time.Second)
 
 			// Track CID for cleanup
@@ -121,8 +121,8 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 
 		ginkgo.BeforeAll(func() {
 			// Setup separate record for performance testing
-			perfPath = filepath.Join(tmpDir, "record_v070_gossipsub_perf_test.json")
-			_ = os.WriteFile(perfPath, testdata.ExpectedRecordV070JSON, 0o600)
+			perfPath = filepath.Join(tmpDir, "record_v080_gossipsub_perf_test.json")
+			_ = os.WriteFile(perfPath, testdata.ExpectedRecordV080JSON, 0o600)
 		})
 
 		ginkgo.It("should push performance test record to peer 1", func() {
@@ -167,8 +167,8 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 			// Note: Reusing same record content but treating as separate for propagation test
 			bulkPaths = make([]string, 5)
 			for i := range 5 {
-				bulkPaths[i] = filepath.Join(tmpDir, fmt.Sprintf("record_v070_gossipsub_bulk_%d_test.json", i))
-				_ = os.WriteFile(bulkPaths[i], testdata.ExpectedRecordV070JSON, 0o600)
+				bulkPaths[i] = filepath.Join(tmpDir, fmt.Sprintf("record_v080_gossipsub_bulk_%d_test.json", i))
+				_ = os.WriteFile(bulkPaths[i], testdata.ExpectedRecordV080JSON, 0o600)
 			}
 		})
 
@@ -245,8 +245,8 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 		var edgeCID string
 
 		ginkgo.It("should push edge case test record to peer 1", func() {
-			edgePath := filepath.Join(tmpDir, "record_v070_gossipsub_edge_test.json")
-			_ = os.WriteFile(edgePath, testdata.ExpectedRecordV070JSON, 0o600)
+			edgePath := filepath.Join(tmpDir, "record_v080_gossipsub_edge_test.json")
+			_ = os.WriteFile(edgePath, testdata.ExpectedRecordV080JSON, 0o600)
 
 			edgeCID = testEnv.Peer1.Push(edgePath).WithArgs("--output", "raw").ShouldSucceed()
 			RegisterCIDForCleanup(edgeCID, "gossipsub")
@@ -313,8 +313,8 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 			// This test compares against the known baseline from 01_deploy_test.go
 			// Baseline: 15 seconds wait for DHT propagation
 			// GossipSub: Should work in ~5 seconds
-			baselinePath := filepath.Join(tmpDir, "record_v070_gossipsub_baseline_test.json")
-			_ = os.WriteFile(baselinePath, testdata.ExpectedRecordV070JSON, 0o600)
+			baselinePath := filepath.Join(tmpDir, "record_v080_gossipsub_baseline_test.json")
+			_ = os.WriteFile(baselinePath, testdata.ExpectedRecordV080JSON, 0o600)
 
 			baselineCID := testEnv.Peer1.Push(baselinePath).WithArgs("--output", "raw").ShouldSucceed()
 			RegisterCIDForCleanup(baselineCID, "gossipsub")

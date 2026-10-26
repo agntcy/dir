@@ -48,7 +48,7 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 		ginkgo.It("should allow requests within rate limit", func(ctx context.Context) {
 			// Push multiple records within the rate limit
 			// Test expects: Global RPS=100, Burst=200 (default from Taskfile)
-			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Push 5 records with a small delay between each
@@ -71,7 +71,7 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 			// This test attempts to exceed the rate limit by making rapid sequential requests
 			// Test expects: Global RPS=100, Burst=200 (default from Taskfile)
 			// With burst=200, first 200 requests succeed immediately, then rate limiting kicks in
-			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Make more requests than burst capacity to ensure we hit rate limiting
@@ -121,7 +121,7 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 			// Test burst capacity by making quick successive requests
 			// Test expects: Global RPS=100, Burst=200 (default from Taskfile)
 			// Small bursts (<<200) should always succeed without rate limiting
-			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Make a burst of requests well within burst capacity (10 << 200)
@@ -154,7 +154,7 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 		ginkgo.It("should apply global rate limiting to all clients", func(ctx context.Context) {
 			// This test verifies that global rate limits are applied
 			// Note: Without authentication, all clients share the global rate limiter
-			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Make requests until we hit rate limit
@@ -184,7 +184,7 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 
 		ginkgo.It("should recover after rate limit period expires", func(ctx context.Context) {
 			// Push enough requests to potentially hit rate limit
-			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			ginkgo.By("Making rapid requests to potentially hit rate limit")
@@ -216,7 +216,7 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 		ginkgo.It("should apply rate limiting to all gRPC operations", func(ctx context.Context) {
 			// Test that rate limiting works for different operations
 			// Push, Pull, Delete should all be rate limited
-			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// First, push a record to have something to pull
@@ -249,7 +249,7 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 
 		ginkgo.It("should handle rate limit errors with proper status codes", func(ctx context.Context) {
 			// Verify that rate limit errors return the correct gRPC status code
-			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Make many rapid requests to trigger rate limiting
@@ -288,7 +288,7 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 		ginkgo.It("should respect per-method rate limits if configured", func(ctx context.Context) {
 			// This test validates that per-method rate limits work correctly
 			// The actual limits depend on server configuration
-			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Test different methods: Push vs Pull
@@ -345,7 +345,7 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 	ginkgo.Context("Concurrent clients", func() {
 		ginkgo.It("should handle rate limiting with concurrent requests", func() {
 			// Test that rate limiting works correctly with concurrent requests from the same client
-			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			const (
@@ -443,7 +443,7 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 	ginkgo.Context("Edge cases", func() {
 		ginkgo.It("should handle rate limiting with context timeout", func(ctx context.Context) {
 			// Test that rate limiting works correctly when combined with context timeouts
-			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Create context with timeout
@@ -476,7 +476,7 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 
 		ginkgo.It("should maintain rate limit state across multiple operations", func(ctx context.Context) {
 			// Verify that rate limiter maintains state correctly across different operations
-			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// First batch of requests

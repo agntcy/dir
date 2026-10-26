@@ -22,20 +22,20 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 	// Clean up all testdata records after all event tests
 	// This prevents interfering with existing 01_client_test.go tests
 	ginkgo.AfterAll(func() {
-		// Get CIDs for V070, V080, and V100 testdata
-		v070Record, _ := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+		// Get CIDs for record_080.json, record_080_v4.json, and record_100.json.
+		marketingRecord, _ := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 		v080Record, _ := corev1.UnmarshalRecord(testdata.ExpectedRecordV080V4JSON)
 		v100Record, _ := corev1.UnmarshalRecord(testdata.ExpectedRecordV100JSON)
 
 		// IMPORTANT: Unpublish first to remove routing labels, then delete from store
-		if v070Record != nil {
-			v070Ref := &corev1.RecordRef{Cid: v070Record.GetCid()}
+		if marketingRecord != nil {
+			marketingRef := &corev1.RecordRef{Cid: marketingRecord.GetCid()}
 			_ = testEnv.Client.Unpublish(context.Background(), &routingv1.UnpublishRequest{
 				Request: &routingv1.UnpublishRequest_RecordRefs{
-					RecordRefs: &routingv1.RecordRefs{Refs: []*corev1.RecordRef{v070Ref}},
+					RecordRefs: &routingv1.RecordRefs{Refs: []*corev1.RecordRef{marketingRef}},
 				},
 			})
-			_ = testEnv.Client.Delete(context.Background(), v070Ref)
+			_ = testEnv.Client.Delete(context.Background(), marketingRef)
 		}
 
 		if v080Record != nil {
@@ -77,7 +77,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 				time.Sleep(200 * time.Millisecond)
 
 				// Use valid test record from testdata
-				record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+				record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				_, pushErr := testEnv.Client.Push(context.Background(), record)
@@ -91,14 +91,14 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			event := resp.GetEvent()
 			gomega.Expect(event.GetType()).To(gomega.Equal(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED))
 			gomega.Expect(event.GetResourceId()).NotTo(gomega.BeEmpty())
-			gomega.Expect(event.GetLabels()).NotTo(gomega.BeEmpty()) // V070 has skills labels
+			gomega.Expect(event.GetLabels()).NotTo(gomega.BeEmpty()) // record_080.json has skills labels
 		})
 	})
 
 	ginkgo.Context("RECORD_PUBLISHED events", func() {
 		ginkgo.It("should receive RECORD_PUBLISHED event when publishing a record", func(ctx context.Context) {
 			// First push a record using valid testdata
-			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			ref, err := testEnv.Client.Push(ctx, record)
@@ -146,7 +146,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 	ginkgo.Context("RECORD_DELETED events", func() {
 		ginkgo.It("should receive RECORD_DELETED event when deleting a record", func(ctx context.Context) {
 			// First push a record using valid testdata
-			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			ref, err := testEnv.Client.Push(ctx, record)
@@ -183,7 +183,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 
 	ginkgo.Context("Event filtering", func() {
 		ginkgo.It("should filter events by label", func(ctx context.Context) {
-			// Subscribe with label filter (natural_language_processing is in V070 record)
+			// Subscribe with label filter (natural_language_processing is in record_080.json)
 			streamCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 
@@ -198,8 +198,8 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 
 				time.Sleep(200 * time.Millisecond)
 
-				// Use V070 test record which has natural_language_processing skills
-				record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+				// Use record_080.json, which has natural_language_processing skills
+				record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				_, _ = testEnv.Client.Push(context.Background(), record)
@@ -213,7 +213,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 
 		ginkgo.It("should filter events by CID", func(ctx context.Context) {
 			// First push a record using valid testdata
-			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			ref, err := testEnv.Client.Push(ctx, record)
@@ -235,7 +235,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 				time.Sleep(200 * time.Millisecond)
 
 				// Push another record (different CID, should be filtered out)
-				otherRecord, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+				otherRecord, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				_, _ = testEnv.Client.Push(context.Background(), otherRecord)
@@ -269,7 +269,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 				time.Sleep(200 * time.Millisecond)
 
 				// Use valid testdata
-				record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+				record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				// Push (should trigger PUSHED event - we should receive this)
@@ -319,7 +319,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 				time.Sleep(200 * time.Millisecond)
 
 				// Use valid testdata
-				record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+				record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				_, pushErr := testEnv.Client.Push(context.Background(), record)
@@ -376,7 +376,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 				time.Sleep(200 * time.Millisecond)
 
 				// Push first record
-				record1, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+				record1, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				ref1, _ := testEnv.Client.Push(context.Background(), record1)
@@ -384,7 +384,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 				time.Sleep(200 * time.Millisecond)
 
 				// Push second record
-				record2, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+				record2, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				_, _ = testEnv.Client.Push(context.Background(), record2)
@@ -425,8 +425,8 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 
 				time.Sleep(200 * time.Millisecond)
 
-				// Use valid testdata (V070 has multiple skills)
-				record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+				// Use valid testdata (record_080.json has multiple skills)
+				record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				_, _ = testEnv.Client.Push(context.Background(), record)
@@ -435,7 +435,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			// Receive event and verify labels
 			resp := receiveEvent(streamCtx, result)
 			gomega.Expect(resp.GetEvent().GetLabels()).NotTo(gomega.BeEmpty())
-			// V070 has "natural_language_processing" skills
+			// record_080.json has "natural_language_processing" skills
 			gomega.Expect(resp.GetEvent().GetLabels()).To(gomega.ContainElement(gomega.ContainSubstring("/skills/")))
 		})
 
@@ -453,7 +453,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 				time.Sleep(200 * time.Millisecond)
 
 				// Use valid testdata
-				record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+				record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				_, _ = testEnv.Client.Push(context.Background(), record)

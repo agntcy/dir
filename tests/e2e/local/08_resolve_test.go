@@ -25,7 +25,7 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 			recordCID string
 		)
 
-		// Record name from record_080.json: "http://dns-validation-http/example/research-assistant-v4"
+		// Record name from record_080_v4.json: "http://dns-validation-http/example/research-assistant-v4"
 		const recordName = "http://dns-validation-http/example/research-assistant-v4"
 
 		ginkgo.BeforeAll(func() {
@@ -34,8 +34,8 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 			tempDir, err = os.MkdirTemp("", "resolve-test")
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Write and push record_080.json
-			recordPath := filepath.Join(tempDir, "record_080.json")
+			// Write and push record_080_v4.json
+			recordPath := filepath.Join(tempDir, "record_080_v4.json")
 			err = os.WriteFile(recordPath, testdata.ExpectedRecordV080V4JSON, 0o600)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -128,7 +128,7 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 			tempDir, err = os.MkdirTemp("", "version-resolve-test")
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Push v4.0.0 (from record_080.json)
+			// Push v4.0.0 (from record_080_v4.json)
 			recordV4Path := filepath.Join(tempDir, "record_v4.json")
 			err = os.WriteFile(recordV4Path, testdata.ExpectedRecordV080V4JSON, 0o600)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())

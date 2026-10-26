@@ -47,7 +47,7 @@ tests/e2e/
 **Focus**: Core CLI commands with OASF version compatibility
 
 **Test Cases:**
-- `should successfully push a record` - Tests `dirctl push` with 0.7.0/0.8.0/1.0.0 record formats
+- `should successfully push a record` - Tests `dirctl push` with 0.8.0/1.0.0 record formats
 - `should successfully pull an existing record` - Tests `dirctl pull` functionality  
 - `should return identical record when pulled after push` - Validates data integrity across push/pull cycle
 - `should push the same record again and return the same cid` - Tests CID determinism
@@ -58,7 +58,7 @@ tests/e2e/
 - `should fail to pull a deleted record` - Validates deletion actually removes records
 
 **Key Features:**
-- OASF version compatibility (0.7.0, 0.8.0, 1.0.0)
+- OASF version compatibility (0.8.0, 1.0.0)
 - JSON data integrity validation
 - CID determinism testing
 - General search API testing (searchv1, not routing)
@@ -169,7 +169,7 @@ tests/e2e/
 **Key Features:**
 - Direct client library API testing
 - Routing API validation (publish, list, unpublish, search)
-- OASF version compatibility (0.7.0, 0.8.0, 1.0.0)
+- OASF version compatibility (0.8.0, 1.0.0)
 - RecordQuery API testing
 
 ### 🌐 **Network Package** (`tests/e2e/network/`)
@@ -181,11 +181,11 @@ tests/e2e/
 **Focus**: Multi-peer routing, DHT operations, local vs remote behavior
 
 **Test Cases:**
-- `should push record_v070.json to peer 1` - Tests storage on specific peer
-- `should pull record_v070.json from peer 1` - Tests local retrieval
-- `should fail to pull record_v070.json from peer 2` - Validates records are peer-specific
-- `should publish record_v070.json to the network on peer 1` - Tests DHT announcement
-- `should fail publish record_v070.json to the network on peer 2` - Tests publish validation
+- `should push record_080.json to peer 1` - Tests storage on specific peer
+- `should pull record_080.json from peer 1` - Tests local retrieval
+- `should fail to pull record_080.json from peer 2` - Validates records are peer-specific
+- `should publish record_080.json to the network on peer 1` - Tests DHT announcement
+- `should fail publish record_080.json to the network on peer 2` - Tests publish validation
 - `should list local records correctly (List is local-only)` - Tests local-only list behavior
 - `should list by skill correctly on local vs remote peers` - Validates local vs remote filtering
 - `should show routing info statistics` - Tests routing statistics command
@@ -207,23 +207,23 @@ tests/e2e/
 - `should accept a sync ID argument and return the sync status` - Tests `sync status` command
 - `should accept a sync ID argument and delete the sync` - Tests `sync delete` command
 - `should return deleted status` - Validates sync deletion
-- `should push record_v070_sync_v4.json to peer 1` - Setup for sync testing
-- `should publish record_v070_sync_v4.json` - Tests routing publish for sync records
-- `should push record_v070_sync_v5.json to peer 1` - Setup second record for multi-peer sync
-- `should publish record_v070_sync_v5.json` - Tests routing publish for second record
-- `should fail to pull record_v070_sync_v4.json from peer 2` - Validates initial isolation
+- `should push record_080_sync_v4.json to peer 1` - Setup for sync testing
+- `should publish record_080_sync_v4.json` - Tests routing publish for sync records
+- `should push record_080_sync_v5.json to peer 1` - Setup second record for multi-peer sync
+- `should publish record_080_sync_v5.json` - Tests routing publish for second record
+- `should fail to pull record_080_sync_v4.json from peer 2` - Validates initial isolation
 - `should create sync from peer 1 to peer 2` - Tests sync creation between peers
 - `should list the sync` - Tests sync listing on target peer
 - `should wait for sync to complete` - Tests sync completion monitoring
-- `should succeed to pull record_v070_sync_v4.json from peer 2 after sync` - Validates sync transferred data
-- `should succeed to search for record_v070_sync_v4.json from peer 2 after sync` - Tests search after sync
-- `should verify the record_v070_sync_v4.json from peer 2 after sync` - Tests verification after sync
+- `should succeed to pull record_080_sync_v4.json from peer 2 after sync` - Validates sync transferred data
+- `should succeed to search for record_080_sync_v4.json from peer 2 after sync` - Tests search after sync
+- `should verify the record_080_sync_v4.json from peer 2 after sync` - Tests verification after sync
 - `should delete sync from peer 2` - Tests sync cleanup
 - `should wait for delete to complete` - Tests sync deletion completion
 - `should create sync from peer 1 to peer 3 using routing search piped to sync create` - Tests advanced sync creation with routing search
 - `should wait for sync to complete` - Tests sync completion for peer 3
-- `should succeed to pull record_v070_sync_v5.json from peer 3 after sync` - Validates selective sync (Audio skill)
-- `should fail to pull record_v070_sync_v4.json from peer 3 after sync` - Validates sync filtering by skills
+- `should succeed to pull record_080_sync_v5.json from peer 3 after sync` - Validates selective sync (Audio skill)
+- `should fail to pull record_080_sync_v4.json from peer 3 after sync` - Validates sync filtering by skills
 
 **Key Features:**
 - Peer-to-peer synchronization testing
@@ -238,8 +238,8 @@ tests/e2e/
 **Focus**: Remote routing search functionality with OR logic and minMatchScore
 
 **Test Cases:**
-- `should push record_v070.json to peer 1` - Setup record for search tests
-- `should publish record_v070.json to routing on peer 1 only` - Creates remote search scenario
+- `should push record_080.json to peer 1` - Setup record for search tests
+- `should publish record_080.json to routing on peer 1 only` - Creates remote search scenario
 - `should verify setup - peer 1 has local record, peer 2 does not` - Validates test setup
 - `should debug: test working pattern first (minScore=1)` - Tests basic search functionality
 - `should debug: test exact skill matching (minScore=1)` - Tests exact skill searches
@@ -396,7 +396,7 @@ task test:e2e:daemon:
 
 ### **✅ Comprehensive Coverage:**
 - **103+ test cases** across all major functionality
-- **OASF version compatibility** (0.7.0, 0.8.0)
+- **OASF version compatibility** (0.8.0, 1.0.0)
 - **Both API types** - Client library and CLI commands
 - **Error handling** - Validation of failure scenarios
 - **Integration testing** - Multi-step workflows

@@ -8,8 +8,8 @@ import _ "embed"
 // Embedded test data files used across multiple test suites.
 // This centralizes all test data to avoid duplication and ensure consistency.
 
-//go:embed record_070.json
-var ExpectedRecordV070JSON []byte
+//go:embed record_080.json
+var ExpectedRecordV080JSON []byte
 
 //go:embed record_080_v4.json
 var ExpectedRecordV080V4JSON []byte
@@ -17,11 +17,11 @@ var ExpectedRecordV080V4JSON []byte
 //go:embed record_080_v5.json
 var ExpectedRecordV080V5JSON []byte
 
-//go:embed record_070_sync_v4.json
-var ExpectedRecordV070SyncV4JSON []byte
+//go:embed record_080_sync_v4.json
+var ExpectedRecordV080SyncV4JSON []byte
 
-//go:embed record_070_sync_v5.json
-var ExpectedRecordV070SyncV5JSON []byte
+//go:embed record_080_sync_v5.json
+var ExpectedRecordV080SyncV5JSON []byte
 
 //go:embed record_100.json
 var ExpectedRecordV100JSON []byte
@@ -29,8 +29,8 @@ var ExpectedRecordV100JSON []byte
 //go:embed record_110.json
 var ExpectedRecordV110JSON []byte
 
-//go:embed record_070_name_resolution.json
-var ExpectedRecordV070NameResolutionJSON []byte
+//go:embed record_080_name_resolution.json
+var ExpectedRecordV080NameResolutionJSON []byte
 
 // A2AAgentCard is a sample A2A AgentCard JSON following the Agent-to-Agent protocol
 // (https://a2a-protocol.org/latest/specification/#441-agentcard).

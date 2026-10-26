@@ -72,7 +72,7 @@ var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, ginkgo.Serial, func()
 	}
 
 	ginkgo.BeforeAll(func(ctx context.Context) {
-		recordCID = pushRecord(ctx, testdata.ExpectedRecordV070NameResolutionJSON, "", map[string]string{
+		recordCID = pushRecord(ctx, testdata.ExpectedRecordV080NameResolutionJSON, "", map[string]string{
 			corev1.AnnotationKeyIdentity: identitySubject,
 			corev1.AnnotationKeyOwner:    ownerSubject,
 		})

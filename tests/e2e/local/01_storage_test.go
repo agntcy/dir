@@ -32,9 +32,9 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 		shouldFailPush     bool // If true, push should fail (validation failure test)
 	}{
 		{
-			name:              "OASF_0.7.0_Record",
-			fileName:          "oasf_0.7.0_record_test.json",
-			jsonData:          testdata.ExpectedRecordV070JSON,
+			name:              "OASF_0.8.0_MarketingRecord",
+			fileName:          "oasf_0.8.0_marketing_record_test.json",
+			jsonData:          testdata.ExpectedRecordV080JSON,
 			expectedAgentName: "directory.agntcy.org/cisco/marketing-strategy-v3",
 			expectedSkillIDs:  []string{"10201", "10702"},
 			expectedSkillNames: []string{
@@ -42,7 +42,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				"natural_language_processing/analytical_reasoning/problem_solving",
 			},
 			expectedLocator: "docker_image:https://ghcr.io/agntcy/marketing-strategy",
-			expectedModule:  "runtime/model",
+			expectedModule:  "core/llm/model",
 			shouldFailPush:  false,
 		},
 		{

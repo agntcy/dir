@@ -28,8 +28,9 @@ const extractText = "an agent that reviews source code, files defects and answer
 const textOverMaxLen = 1025
 
 // taxonomyVersions are the OASF schema versions the extractor draws classes
-// from, newest first, kept in step with taxonomy_versions in the extractor asset
-// manifest. Each maps to a testdata record that already validates under it.
+// from, newest first. Each maps to a testdata record that already validates
+// under it. 0.7.0 is omitted: schema.oasf.outshift.com no longer serves it, so a
+// probe push of that version is a 404 rather than a class check.
 //
 // One extraction mixes versions freely, and ExtractTaxonomyRequest carries no
 // version, so each returned class is checked against every version and has to be
@@ -38,7 +39,7 @@ const textOverMaxLen = 1025
 // the phrase below, the skills split across 1.1.0 and 1.0.0 and so do the
 // domains. Probing classes together would make this spec fail whenever the
 // extractor's picks happen to straddle that boundary.
-var taxonomyVersions = []string{"1.1.0", "1.0.0", "0.8.0", "0.7.0"}
+var taxonomyVersions = []string{"1.1.0", "1.0.0", "0.8.0"}
 
 // probeBase returns a testdata record that validates under the given schema
 // version. Building each probe on one of these keeps every version's own record
@@ -53,8 +54,6 @@ func probeBase(version string) []byte {
 		return testdata.ExpectedRecordV100JSON
 	case "0.8.0":
 		return testdata.ExpectedRecordV080V4JSON
-	case "0.7.0":
-		return testdata.ExpectedRecordV070JSON
 	}
 
 	return nil
