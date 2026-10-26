@@ -10,6 +10,7 @@ import (
 
 	coretypes "github.com/agntcy/dir/api/core/types"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	policyv1 "github.com/agntcy/dir/api/policy/v1"
 )
 
 // RecordSource reads a record's content from the store. An evaluation selects
@@ -49,6 +50,7 @@ type evaluator struct {
 	version   string
 	validator Validator
 	records   RecordSource
+	facts     FactSource
 }
 
 // PolicyID returns the policy's ID.
@@ -69,7 +71,12 @@ func (e *evaluator) Evaluate(ctx context.Context, record coretypes.Record) (bool
 		return false, "", fmt.Errorf("read record %s: %w", cid, err)
 	}
 
-	compliant, messages, err := validateEvaluation(ctx, full, recordState(full), e.validator)
+	state, err := e.recordState(ctx, full)
+	if err != nil {
+		return false, "", err
+	}
+
+	compliant, messages, err := validateEvaluation(ctx, full, state, e.validator)
 	if err != nil {
 		return false, "", fmt.Errorf("evaluate record %s against policy %s: %w", cid, e.id, err)
 	}
@@ -79,4 +86,23 @@ func (e *evaluator) Evaluate(ctx context.Context, record coretypes.Record) (bool
 	}
 
 	return false, strings.Join(messages, "; "), nil
+}
+
+// recordState returns the input an evaluation policy sees. With no fact
+// source, meta stays unset. With one, meta is the projection of what this
+// node has stored, including the explicit "nothing here" statuses.
+func (e *evaluator) recordState(ctx context.Context, record *corev1.Record) (*policyv1.RecordState, error) {
+	state := recordState(record)
+	if e.facts == nil || record == nil {
+		return state, nil
+	}
+
+	observed, err := e.facts.Facts(ctx, record.GetCid())
+	if err != nil {
+		return nil, fmt.Errorf("read facts for record %s: %w", record.GetCid(), err)
+	}
+
+	state.Meta = project(record, observed)
+
+	return state, nil
 }

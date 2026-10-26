@@ -325,6 +325,10 @@ func (f *fakeSignatureDB) GetRecordsNeedingPolicyEvaluation(string, string, stri
 	return nil, nil
 }
 
+func (f *fakeSignatureDB) GetPolicyFacts(string) (types.PolicyFacts, error) {
+	return types.PolicyFacts{}, nil
+}
+
 func (f *fakeSignatureDB) RegisterPolicyVersion(string, string) error { return nil }
 
 func (f *fakeSignatureDB) GetCurrentPolicyVersion(string) (string, bool, error) {

@@ -143,7 +143,7 @@ func TestPolicyEnv_SeverityThreshold(t *testing.T) {
 
 // An absent fact group reads as its zero value rather than erroring, so a
 // policy requiring something positive rejects the record instead of failing
-// open. This is what the validator binds today for every record.
+// open. An unset meta binds this way.
 func TestPolicyEnv_EmptyMetaFailsPositiveRequirements(t *testing.T) {
 	t.Parallel()
 

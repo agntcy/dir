@@ -167,9 +167,10 @@ func (r *Registry) EvaluationIDs() []string {
 }
 
 // Evaluators returns one evaluator per evaluation policy, in config order.
-// records supplies the record content a verdict is decided on. A nil registry
-// returns no evaluators.
-func (r *Registry) Evaluators(records RecordSource) []Evaluator {
+// records supplies the record content a verdict is decided on. facts supplies
+// the stored observations projected into meta; a nil source leaves meta unset.
+// A nil registry returns no evaluators.
+func (r *Registry) Evaluators(records RecordSource, facts FactSource) []Evaluator {
 	if r == nil {
 		return nil
 	}
@@ -181,6 +182,7 @@ func (r *Registry) Evaluators(records RecordSource) []Evaluator {
 			version:   e.version,
 			validator: e.validator,
 			records:   records,
+			facts:     facts,
 		}
 	}
 

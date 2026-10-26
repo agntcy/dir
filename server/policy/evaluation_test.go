@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	coretypes "github.com/agntcy/dir/api/core/types"
@@ -129,5 +130,65 @@ func TestEvaluator_Evaluate(t *testing.T) {
 
 		assert.Equal(t, "opa:p", ev.PolicyID())
 		assert.Equal(t, "v1", ev.PolicyVersion())
+	})
+
+	t.Run("no fact source leaves meta unset", func(t *testing.T) {
+		t.Parallel()
+
+		src := &mapSource{records: map[string]*corev1.Record{record.GetCid(): record}}
+		ev := &evaluator{
+			id: "opa:p", version: "v1", records: src,
+			validator: funcValidator(func(state *policyv1.RecordState) (bool, []string, []string, error) {
+				return state.GetMeta() == nil, nil, nil, nil
+			}),
+		}
+
+		compliant, _, err := ev.Evaluate(t.Context(), indexed)
+
+		require.NoError(t, err)
+		assert.True(t, compliant)
+	})
+
+	t.Run("stored facts are what the policy reads", func(t *testing.T) {
+		t.Parallel()
+
+		verifiedAt := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
+		src := &mapSource{records: map[string]*corev1.Record{record.GetCid(): record}}
+		ev := &evaluator{
+			id: "opa:p", version: "v1", records: src,
+			facts: staticFacts{facts: servertypes.PolicyFacts{
+				Signed: true,
+				Signatures: []servertypes.SignatureVerificationObject{
+					sigRow{status: servertypes.SignatureStatusVerified, subject: "did:web:acme.com", issuer: "https://issuer.example", updated: verifiedAt},
+				},
+			}},
+			validator: funcValidator(func(state *policyv1.RecordState) (bool, []string, []string, error) {
+				sig := state.GetMeta().GetSignature()
+
+				return sig.GetStatus() == policyv1.SignatureStatus_SIGNATURE_STATUS_VERIFIED &&
+					sig.GetSignerIdentity() == "did:web:acme.com" &&
+					sig.GetVerifiedAt().AsTime().Equal(verifiedAt), nil, nil, nil
+			}),
+		}
+
+		compliant, _, err := ev.Evaluate(t.Context(), indexed)
+
+		require.NoError(t, err)
+		assert.True(t, compliant, "the verdict follows the projected signature, not an empty meta")
+	})
+
+	t.Run("facts that cannot be read are an error, not a verdict", func(t *testing.T) {
+		t.Parallel()
+
+		src := &mapSource{records: map[string]*corev1.Record{record.GetCid(): record}}
+		ev := &evaluator{
+			id: "opa:p", version: "v1", records: src, validator: accept,
+			facts: staticFacts{err: errors.New("db down")},
+		}
+
+		compliant, _, err := ev.Evaluate(t.Context(), indexed)
+
+		require.ErrorContains(t, err, "read facts for record "+record.GetCid())
+		assert.False(t, compliant)
 	})
 }

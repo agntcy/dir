@@ -225,7 +225,7 @@ func (s *Service) registerSyncTask(cfg *config.Config, db servertypes.DatabaseAP
 // while the task is disabled are reported too, since nothing then produces
 // their verdicts.
 func (s *Service) registerPolicyTask(cfg policy.Config, db servertypes.DatabaseAPI, store policy.RecordSource, policies *serverpolicy.Registry) error {
-	evaluators := policies.Evaluators(store)
+	evaluators := policies.Evaluators(store, serverpolicy.NewFactSource(db))
 
 	if !cfg.Enabled {
 		if len(evaluators) > 0 {

@@ -68,9 +68,8 @@ func operationInput(op string, record *corev1.Record) *policyv1.OperationInput {
 	}
 }
 
-// recordState is the RecordState a policy sees when nothing has been observed
-// about the record yet: the content and its CID. Meta and indexed_at stay
-// unset, which reads as "not produced" and "not indexed".
+// recordState is the content and CID of a record. Meta is filled by the
+// evaluator when it has a fact source; indexed_at stays unset.
 func recordState(record *corev1.Record) *policyv1.RecordState {
 	if record == nil {
 		return nil

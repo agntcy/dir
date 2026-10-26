@@ -59,7 +59,7 @@ func TestTask_RunsAConfiguredPolicy(t *testing.T) {
 		"cid-described": oasfRecord("described", "does something"),
 		"cid-bare":      oasfRecord("bare", ""),
 	}}
-	evaluators := registry.Evaluators(src)
+	evaluators := registry.Evaluators(src, nil)
 	require.Len(t, evaluators, 1)
 
 	db := &fakeDB{records: map[string][]coretypes.Record{evaluators[0].PolicyID(): records("cid-bare", "cid-described")}}
