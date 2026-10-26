@@ -9,6 +9,7 @@ import (
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	policyv1 "github.com/agntcy/dir/api/policy/v1"
 	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -90,8 +91,12 @@ type fakeValidator struct {
 	msgs  []string
 }
 
-func (f fakeValidator) ValidateRecord(context.Context, *structpb.Struct) (bool, []string, []string, error) {
+func (f fakeValidator) ValidateOperation(context.Context, *structpb.Struct) (bool, []string, []string, error) {
 	return f.valid, f.msgs, nil, nil
+}
+
+func (f fakeValidator) ValidateEvaluation(context.Context, *policyv1.RecordState) (bool, []string, []string, error) {
+	return false, nil, nil, nil
 }
 
 func TestRun_EmptyIsValid(t *testing.T) {

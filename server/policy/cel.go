@@ -11,6 +11,7 @@ import (
 	"cel.dev/cel-go/common/types"
 	policyv1 "github.com/agntcy/dir/api/policy/v1"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type celRule struct {
@@ -18,24 +19,35 @@ type celRule struct {
 	prg  cel.Program
 }
 
-// celValidator evaluates inline CEL expressions against record data.
-// Each expression is compiled once at construction and must return bool.
-// The record is bound as the `record` variable (a map of the OASF fields),
-// alongside the typed facts of `meta` (see newPolicyEnv).
-// Validation fails if any expression is false or errors.
-type celValidator struct {
+// celProgram is a set of CEL expressions compiled in the record environment.
+type celProgram struct {
 	rules []celRule
 
 	// version is a hash of the expressions, in order.
 	version string
 }
 
+// celValidator evaluates a CEL policy. ValidateEvaluation reads a RecordState.
+// ValidateOperation reads the record struct.
+type celValidator struct {
+	*celProgram
+}
+
 func newCELValidator(exprs []string) (*celValidator, error) {
-	env, err := newPolicyEnv()
+	env, err := newRecordEnv()
 	if err != nil {
 		return nil, err
 	}
 
+	prog, err := compileCEL(exprs, env)
+	if err != nil {
+		return nil, err
+	}
+
+	return &celValidator{prog}, nil
+}
+
+func compileCEL(exprs []string, env *cel.Env) (*celProgram, error) {
 	rules := make([]celRule, 0, len(exprs))
 	for i, expr := range exprs {
 		ast, iss := env.Compile(expr)
@@ -55,10 +67,22 @@ func newCELValidator(exprs []string) (*celValidator, error) {
 		rules = append(rules, celRule{expr: expr, prg: prg})
 	}
 
-	return &celValidator{rules: rules, version: contentVersion(exprs...)}, nil
+	return &celProgram{rules: rules, version: contentVersion(exprs...)}, nil
 }
 
-func (v *celValidator) ValidateRecord(ctx context.Context, data *structpb.Struct) (bool, []string, []string, error) {
+func (v *celValidator) ValidateEvaluation(ctx context.Context, state *policyv1.RecordState) (bool, []string, []string, error) {
+	if err := ctx.Err(); err != nil {
+		return false, nil, nil, fmt.Errorf("CEL validation canceled: %w", err)
+	}
+
+	if state.GetRecord() == nil {
+		return false, []string{"record data is nil"}, nil, nil
+	}
+
+	return v.eval(ctx, recordActivation(state))
+}
+
+func (v *celValidator) ValidateOperation(ctx context.Context, data *structpb.Struct) (bool, []string, []string, error) {
 	if err := ctx.Err(); err != nil {
 		return false, nil, nil, fmt.Errorf("CEL validation canceled: %w", err)
 	}
@@ -67,18 +91,18 @@ func (v *celValidator) ValidateRecord(ctx context.Context, data *structpb.Struct
 		return false, []string{"record data is nil"}, nil, nil
 	}
 
-	// meta is bound empty, which reads as every fact unspecified. That is the
-	// truth at push and autosync, where nothing has been produced about the
-	// record yet, and a gap at index and evaluate until the validator
-	// interface carries observed metadata.
-	vars := map[string]any{
-		celVarRecord: data.AsMap(),
-		celVarMeta:   &policyv1.RecordMeta{},
-	}
+	return v.eval(ctx, map[string]any{
+		celVarRecord:    data.AsMap(),
+		celVarRecordCID: "",
+		celVarIndexedAt: types.OptionalNone,
+		celVarMeta:      &policyv1.RecordMeta{},
+	})
+}
 
+func (p *celProgram) eval(ctx context.Context, vars map[string]any) (bool, []string, []string, error) {
 	var failures []string
 
-	for _, rule := range v.rules {
+	for _, rule := range p.rules {
 		if err := ctx.Err(); err != nil {
 			return false, nil, nil, fmt.Errorf("CEL validation canceled: %w", err)
 		}
@@ -109,4 +133,29 @@ func (v *celValidator) ValidateRecord(ctx context.Context, data *structpb.Struct
 	}
 
 	return true, nil, nil, nil
+}
+
+// recordActivation binds a RecordState the way the evaluation environment
+// declares it. An unset meta reads as every fact unspecified. An unset
+// indexed_at is absent rather than a zero time.
+func recordActivation(state *policyv1.RecordState) map[string]any {
+	meta := state.GetMeta()
+	if meta == nil {
+		meta = &policyv1.RecordMeta{}
+	}
+
+	return map[string]any{
+		celVarRecord:    state.GetRecord().AsMap(),
+		celVarRecordCID: state.GetRecordCid(),
+		celVarIndexedAt: optionalTime(state.GetIndexedAt()),
+		celVarMeta:      meta,
+	}
+}
+
+func optionalTime(ts *timestamppb.Timestamp) any {
+	if ts == nil {
+		return types.OptionalNone
+	}
+
+	return types.OptionalOf(types.Timestamp{Time: ts.AsTime()})
 }

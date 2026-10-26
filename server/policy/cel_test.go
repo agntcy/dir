@@ -9,8 +9,10 @@ import (
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	policyv1 "github.com/agntcy/dir/api/policy/v1"
 	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestNewCELValidator_RejectsBadExpression(t *testing.T) {
@@ -36,7 +38,7 @@ func TestCELValidator_AcceptsMatchingRecord(t *testing.T) {
 	require.NoError(t, err)
 
 	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent", Version: "1.0.0"})
-	ok, msgs, warnings, err := v.ValidateRecord(context.Background(), record.GetData())
+	ok, msgs, warnings, err := v.ValidateEvaluation(context.Background(), recordState(record))
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Empty(t, msgs)
@@ -54,7 +56,7 @@ func TestCELValidator_FailsIfAnyExpressionDoesNotMatch(t *testing.T) {
 	require.NoError(t, err)
 
 	record := corev1.New(&typesv1alpha1.Record{Name: "other.com/agent"})
-	ok, msgs, _, err := v.ValidateRecord(context.Background(), record.GetData())
+	ok, msgs, _, err := v.ValidateEvaluation(context.Background(), recordState(record))
 	require.NoError(t, err)
 	require.False(t, ok)
 	require.Equal(t, []string{
@@ -70,7 +72,7 @@ func TestCELValidator_EvalErrorIsValidationFailure(t *testing.T) {
 	require.NoError(t, err)
 
 	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
-	ok, msgs, _, err := v.ValidateRecord(context.Background(), record.GetData())
+	ok, msgs, _, err := v.ValidateEvaluation(context.Background(), recordState(record))
 	require.NoError(t, err)
 	require.False(t, ok)
 	require.NotEmpty(t, msgs)
@@ -100,7 +102,7 @@ func TestCELValidator_RecordStaysDynamic(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	ok, msgs, _, err := v.ValidateRecord(context.Background(), record.GetData())
+	ok, msgs, _, err := v.ValidateEvaluation(context.Background(), recordState(record))
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Empty(t, msgs)
@@ -115,7 +117,7 @@ func TestCELValidator_UnknownRecordFieldStillCompiles(t *testing.T) {
 	require.NoError(t, err)
 
 	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
-	ok, msgs, _, err := v.ValidateRecord(context.Background(), record.GetData())
+	ok, msgs, _, err := v.ValidateEvaluation(context.Background(), recordState(record))
 	require.NoError(t, err)
 	require.False(t, ok)
 	require.NotEmpty(t, msgs)
@@ -127,7 +129,7 @@ func TestCELValidator_NilData(t *testing.T) {
 	v, err := newCELValidator([]string{`true`})
 	require.NoError(t, err)
 
-	ok, msgs, _, err := v.ValidateRecord(context.Background(), nil)
+	ok, msgs, _, err := v.ValidateEvaluation(context.Background(), nil)
 	require.NoError(t, err)
 	require.False(t, ok)
 	require.Equal(t, []string{"record data is nil"}, msgs)
@@ -142,7 +144,7 @@ func TestCELValidator_CanceledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	ok, msgs, _, err := v.ValidateRecord(ctx, nil)
+	ok, msgs, _, err := v.ValidateEvaluation(ctx, nil)
 	require.Error(t, err)
 	require.ErrorIs(t, err, context.Canceled)
 	require.False(t, ok)
@@ -165,5 +167,48 @@ func TestNewRegistry_CEL(t *testing.T) {
 	ok, msgs, err := reg.Decide(context.Background(), policyconfig.OpPush, record)
 	require.NoError(t, err)
 	require.True(t, ok)
+	require.Empty(t, msgs)
+}
+
+func TestCELValidator_ReadsRecordState(t *testing.T) {
+	t.Parallel()
+
+	v, err := newCELValidator([]string{
+		`record.name == "cisco.com/agent"`,
+		`record_cid == "bafy"`,
+		`indexed_at.hasValue()`,
+		`meta.signature.status == SignatureStatus.SIGNATURE_STATUS_VERIFIED`,
+	})
+	require.NoError(t, err)
+
+	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
+	state := recordState(record)
+	state.RecordCid = "bafy"
+	state.IndexedAt = timestamppb.Now()
+	state.Meta = &policyv1.RecordMeta{
+		Signature: &policyv1.SignatureFacts{
+			Status: policyv1.SignatureStatus_SIGNATURE_STATUS_VERIFIED,
+		},
+	}
+
+	ok, msgs, _, err := v.ValidateEvaluation(context.Background(), state)
+	require.NoError(t, err)
+	require.True(t, ok, msgs)
+	require.Empty(t, msgs)
+}
+
+func TestCELValidator_UnsetFactsStayAbsent(t *testing.T) {
+	t.Parallel()
+
+	v, err := newCELValidator([]string{
+		`!indexed_at.hasValue()`,
+		`meta.signature.status == SignatureStatus.SIGNATURE_STATUS_UNSPECIFIED`,
+	})
+	require.NoError(t, err)
+
+	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
+	ok, msgs, _, err := v.ValidateEvaluation(context.Background(), recordState(record))
+	require.NoError(t, err)
+	require.True(t, ok, msgs)
 	require.Empty(t, msgs)
 }

@@ -14,12 +14,12 @@ import (
 )
 
 // evalWithMeta compiles expr in the policy environment and evaluates it
-// against meta. Metadata does not reach the validator yet, so these tests bind
-// it directly to exercise the typed half of the environment.
+// against meta. These tests bind meta directly to exercise the typed half of
+// the environment; the validator binds the same variable from RecordState.
 func evalWithMeta(t *testing.T, expr string, meta *policyv1.RecordMeta) bool {
 	t.Helper()
 
-	env, err := newPolicyEnv()
+	env, err := newRecordEnv()
 	require.NoError(t, err)
 
 	ast, iss := env.Compile(expr)
@@ -151,4 +151,18 @@ func TestPolicyEnv_EmptyMetaFailsPositiveRequirements(t *testing.T) {
 		`meta.scan.status == ScanStatus.SCAN_STATUS_COMPLETED`, empty))
 	require.True(t, evalWithMeta(t,
 		`meta.scan.max_severity == Severity.SEVERITY_UNSPECIFIED`, empty))
+}
+
+// An evaluation policy is compiled without the operation clock or verdicts.
+// Those are what RecordState is shaped to withhold.
+func TestRecordEnv_RejectsOperationFields(t *testing.T) {
+	t.Parallel()
+
+	_, err := newCELValidator([]string{`now > timestamp("2020-01-01T00:00:00Z")`})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "now")
+
+	_, err = newCELValidator([]string{`verdicts["cel:x"].compliant`})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "verdicts")
 }
