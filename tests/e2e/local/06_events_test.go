@@ -93,8 +93,8 @@ var _ = ginkgo.Describe("Events CLI Commands", ginkgo.Serial, ginkgo.Label("even
 			recordFile, err := os.CreateTemp("", "record-*.json")
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Use V070 to get a different CID from routing test
-			err = os.WriteFile(recordFile.Name(), testdata.ExpectedRecordV070JSON, 0o600)
+			// Use record_080.json to get a different CID from the routing test
+			err = os.WriteFile(recordFile.Name(), testdata.ExpectedRecordV080JSON, 0o600)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			pushCID = testEnv.CLI.Push(recordFile.Name()).WithArgs("--output", "raw").ShouldSucceed()
@@ -107,8 +107,8 @@ var _ = ginkgo.Describe("Events CLI Commands", ginkgo.Serial, ginkgo.Label("even
 			recordFile, err := os.CreateTemp("", "record-*.json")
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Use V070 to get a different CID from routing test
-			err = os.WriteFile(recordFile.Name(), testdata.ExpectedRecordV070JSON, 0o600)
+			// Use record_080.json to get a different CID from the routing test
+			err = os.WriteFile(recordFile.Name(), testdata.ExpectedRecordV080JSON, 0o600)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			publishCID = testEnv.CLI.Push(recordFile.Name()).WithArgs("--output", "raw").ShouldSucceed()

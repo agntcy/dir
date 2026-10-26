@@ -43,7 +43,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 			tempDir, err = os.MkdirTemp("", "search-test")
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			recordPath = filepath.Join(tempDir, "record_080.json")
+			recordPath = filepath.Join(tempDir, "record_080_v4.json")
 			err = os.WriteFile(recordPath, testdata.ExpectedRecordV080V4JSON, 0o600)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -318,7 +318,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 			tempDir, err = os.MkdirTemp("", "search-records-test")
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			recordPath = filepath.Join(tempDir, "record_080.json")
+			recordPath = filepath.Join(tempDir, "record_080_v4.json")
 			err = os.WriteFile(recordPath, testdata.ExpectedRecordV080V4JSON, 0o600)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 

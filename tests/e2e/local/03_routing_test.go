@@ -29,7 +29,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 
 		recordFile = tempPath.Name()
 
-		err = os.WriteFile(recordFile, testdata.ExpectedRecordV070JSON, 0o600)
+		err = os.WriteFile(recordFile, testdata.ExpectedRecordV080JSON, 0o600)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	}
 

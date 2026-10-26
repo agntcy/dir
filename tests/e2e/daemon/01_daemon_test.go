@@ -89,7 +89,7 @@ var _ = ginkgo.Describe("Daemon e2e", ginkgo.Ordered, ginkgo.Serial, func() {
 	)
 
 	ginkgo.It("should push a record to the store", func(ctx context.Context) {
-		record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+		record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080V4JSON)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		canonicalData, err = record.Marshal()

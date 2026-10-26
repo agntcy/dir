@@ -19,11 +19,11 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for name resolution acr
 	var syncID string
 
 	// Setup temp files for CLI commands
-	recordPath := filepath.Join(os.TempDir(), "record_070_name_resolution_test.json")
+	recordPath := filepath.Join(os.TempDir(), "record_080_name_resolution_test.json")
 
 	// Create directory and write record data
 	_ = os.MkdirAll(filepath.Dir(recordPath), 0o755)
-	_ = os.WriteFile(recordPath, testdata.ExpectedRecordV070NameResolutionJSON, 0o600)
+	_ = os.WriteFile(recordPath, testdata.ExpectedRecordV080NameResolutionJSON, 0o600)
 
 	ginkgo.BeforeEach(func() {
 		utils.ResetCLIState()
@@ -89,7 +89,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for name resolution acr
 			output := testEnv.Peer2.Pull(recordName).WithArgs("--output", "json").ShouldSucceed()
 
 			// Compare the output with the expected JSON
-			equal, err := utils.CompareOASFRecords([]byte(output), testdata.ExpectedRecordV070NameResolutionJSON)
+			equal, err := utils.CompareOASFRecords([]byte(output), testdata.ExpectedRecordV080NameResolutionJSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(equal).To(gomega.BeTrue())
 		})
@@ -99,7 +99,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for name resolution acr
 			output := testEnv.Peer2.Pull(recordName+":"+recordVersion).WithArgs("--output", "json").ShouldSucceed()
 
 			// Compare the output with the expected JSON
-			equal, err := utils.CompareOASFRecords([]byte(output), testdata.ExpectedRecordV070NameResolutionJSON)
+			equal, err := utils.CompareOASFRecords([]byte(output), testdata.ExpectedRecordV080NameResolutionJSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(equal).To(gomega.BeTrue())
 		})
@@ -109,7 +109,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for name resolution acr
 			output := testEnv.Peer2.Pull(recordName+"@"+cid).WithArgs("--output", "json").ShouldSucceed()
 
 			// Compare the output with the expected JSON
-			equal, err := utils.CompareOASFRecords([]byte(output), testdata.ExpectedRecordV070NameResolutionJSON)
+			equal, err := utils.CompareOASFRecords([]byte(output), testdata.ExpectedRecordV080NameResolutionJSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(equal).To(gomega.BeTrue())
 		})

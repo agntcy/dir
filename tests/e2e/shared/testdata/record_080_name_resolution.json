@@ -1,8 +1,8 @@
 {
-  "name": "directory.agntcy.org/cisco/marketing-strategy-v3",
-  "version": "v3.0.0",
-  "schema_version": "0.7.0",
-  "description": "Research agent for Cisco's marketing strategy.",
+  "name": "directory.agntcy.org/cisco/name-resolution-test",
+  "version": "v1.0.0",
+  "schema_version": "0.8.0",
+  "description": "Agent used exclusively for name resolution E2E tests.",
   "authors": [
     "Cisco Systems"
   ],
@@ -14,28 +14,24 @@
     {
       "name": "natural_language_processing/natural_language_generation/text_completion",
       "id": 10201
-    },
-    {
-      "name": "natural_language_processing/analytical_reasoning/problem_solving",
-      "id": 10702
     }
   ],
   "locators": [
     {
       "type": "docker_image",
-      "url": "https://ghcr.io/agntcy/marketing-strategy"
+      "url": "https://ghcr.io/agntcy/name-resolution-test"
     }
   ],
   "domains": [
     {
-      "id": 301,
-      "name": "life_science/biotechnology"
+      "name": "life_science/biotechnology",
+      "id": 301
     }
   ],
   "modules": [
     {
-      "name": "runtime/model",
-      "id": 303,
+      "name": "core/llm/model",
+      "id": 10201,
       "data": {
         "models": [
           {
@@ -47,12 +43,6 @@
                 "name": "OPENAI_API_KEY",
                 "description": "OpenAI API key for authentication",
                 "required": true
-              },
-              {
-                "name": "OPENAI_ORG_ID",
-                "description": "OpenAI organization ID",
-                "required": false,
-                "default_value": ""
               }
             ]
           }

@@ -27,25 +27,25 @@ var _ = ginkgo.Describe("Client core operations E2E Tests", ginkgo.Ordered, gink
 		expectedCID         string
 	}{
 		{
-			name:     "Record_070_Agent",
-			jsonData: testdata.ExpectedRecordV070JSON,
-			expectedSkillLabels: []string{
-				"/skills/natural_language_processing/natural_language_generation/text_completion",
-				"/skills/natural_language_processing/analytical_reasoning/problem_solving",
-			},
-			expectedDomainLabel: "/domains/life_science/biotechnology",
-			expectedModuleLabel: "/modules/runtime/model", // From record_070.json modules
-			expectedCID:         "baeareih47nx2vjmqxx5xlar766ufi7jbxyedv634kcgagqrmnt42xjor3u",
-		},
-		{
 			name:     "Record_080_Agent",
-			jsonData: testdata.ExpectedRecordV080V4JSON,
+			jsonData: testdata.ExpectedRecordV080JSON,
 			expectedSkillLabels: []string{
 				"/skills/natural_language_processing/natural_language_generation/text_completion",
 				"/skills/natural_language_processing/analytical_reasoning/problem_solving",
 			},
 			expectedDomainLabel: "/domains/life_science/biotechnology",
 			expectedModuleLabel: "/modules/core/llm/model", // From record_080.json modules
+			expectedCID:         "baeareif5psya7kt73xxfvqfb3vialpirkgdz7u7dbssjpp7p5m6nsmpjmq",
+		},
+		{
+			name:     "Record_080_V4_Agent",
+			jsonData: testdata.ExpectedRecordV080V4JSON,
+			expectedSkillLabels: []string{
+				"/skills/natural_language_processing/natural_language_generation/text_completion",
+				"/skills/natural_language_processing/analytical_reasoning/problem_solving",
+			},
+			expectedDomainLabel: "/domains/life_science/biotechnology",
+			expectedModuleLabel: "/modules/core/llm/model", // From record_080_v4.json modules
 			expectedCID:         "baeareih4lnfmd4rzl4banzcts7qr7f4h2rkhhnxu4wxvvh4lmmw7mryone",
 		},
 		{
@@ -175,7 +175,7 @@ var _ = ginkgo.Describe("Client core operations E2E Tests", ginkgo.Ordered, gink
 				if version.expectedDomainLabel != "" {
 					domainQuery := &routingv1.RecordQuery{
 						Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN,
-						Value: "life_science/biotechnology", // From record_070.json domains
+						Value: "life_science/biotechnology", // From record_080.json domains
 					}
 					domainItemsChan, err := testEnv.Client.List(ctx, &routingv1.ListRequest{
 						Queries: []*routingv1.RecordQuery{domainQuery},

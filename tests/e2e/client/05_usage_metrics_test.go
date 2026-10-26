@@ -18,12 +18,12 @@ import (
 
 var _ = ginkgo.Describe("Usage metrics and popularity sort", ginkgo.Ordered, ginkgo.Serial, func() {
 	var (
-		refA *corev1.RecordRef // v070 record — will receive more pulls
-		refB *corev1.RecordRef // v080 record — will receive fewer pulls
+		refA *corev1.RecordRef // record_080.json — will receive more pulls
+		refB *corev1.RecordRef // record_080_v4.json — will receive fewer pulls
 	)
 
 	ginkgo.BeforeAll(func(ctx context.Context) {
-		recordA, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+		recordA, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		refA, err = testEnv.Client.Push(ctx, recordA)
@@ -68,7 +68,7 @@ var _ = ginkgo.Describe("Usage metrics and popularity sort", ginkgo.Ordered, gin
 	})
 
 	ginkgo.It("SORT_MODE_POPULARITY should rank A before B", func(ctx context.Context) {
-		// Both v070 and v080 share skill ID 10201.
+		// record_080.json and record_080_v4.json share skill ID 10201.
 		cids, err := searchCIDs(ctx, &searchv1.SearchCIDsRequest{
 			Queries: []*searchv1.RecordQuery{
 				{

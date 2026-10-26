@@ -1,7 +1,7 @@
 {
   "name": "directory.agntcy.org/cisco/marketing-strategy-v5",
   "version": "v5.0.0",
-  "schema_version": "0.7.0",
+  "schema_version": "0.8.0",
   "description": "Research agent for Cisco's marketing strategy.",
   "authors": [
     "Cisco Systems"
@@ -30,8 +30,8 @@
   ],
   "modules": [
     {
-      "name": "runtime/model",
-      "id": 303,
+      "name": "core/llm/model",
+      "id": 10201,
       "data": {
         "models": [
           {

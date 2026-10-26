@@ -27,7 +27,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 
 	// Create directory and write V1Alpha1 record data
 	_ = os.MkdirAll(filepath.Dir(tempPath), 0o755)
-	_ = os.WriteFile(tempPath, testdata.ExpectedRecordV070JSON, 0o600)
+	_ = os.WriteFile(tempPath, testdata.ExpectedRecordV080JSON, 0o600)
 
 	ginkgo.BeforeEach(func() {
 		// ✅ CRITICAL: Reset CLI state to prevent flag accumulation across test executions
@@ -35,7 +35,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 	})
 
 	ginkgo.Context("setup for remote search testing", func() {
-		ginkgo.It("should push record_070.json to peer 1", func() {
+		ginkgo.It("should push record_080.json to peer 1", func() {
 			cid = testEnv.Peer1.Push(tempPath).WithArgs("--output", "raw").ShouldSucceed()
 
 			// Track CID for cleanup
@@ -45,7 +45,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 			utils.LoadAndValidateCID(cid, tempPath)
 		})
 
-		ginkgo.It("should publish record_070.json to routing on peer 1 only", func() {
+		ginkgo.It("should publish record_080.json to routing on peer 1 only", func() {
 			// ONLY publish on Peer 1 - this creates the scenario:
 			// - Peer 1: has record locally (published)
 			// - Peer 2: will see it as remote via DHT
