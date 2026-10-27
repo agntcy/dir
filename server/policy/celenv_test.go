@@ -188,6 +188,19 @@ func TestOperationEnv_RejectsEvaluationFields(t *testing.T) {
 	require.Contains(t, err.Error(), "indexed_at")
 }
 
+// A policy belongs to one of the two layers. An unknown one must not quietly
+// compile against either environment, least of all the evaluation one, which
+// is the environment that has the facts.
+func TestCELEnv_RejectsUnknownLayer(t *testing.T) {
+	t.Parallel()
+
+	_, err := celEnv(layer("neither"))
+	require.ErrorContains(t, err, `unknown policy layer "neither"`)
+
+	_, err = newCELValidator([]string{`true`}, layer("neither"))
+	require.ErrorContains(t, err, `unknown policy layer "neither"`)
+}
+
 // A policy is compiled for one layer and can only answer for that layer, so
 // asking it the other question fails the validator rather than the record.
 func TestCELValidator_RejectsWrongLayer(t *testing.T) {
