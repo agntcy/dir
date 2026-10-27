@@ -59,6 +59,19 @@ var knownOps = map[string]struct{}{
 	OpIndex:    {},
 }
 
+// KnownOps returns every op a policy may be configured at, in no order.
+//
+// Exported so that what the rest of the server derives per op can be checked
+// against this list rather than restating it.
+func KnownOps() []string {
+	ops := make([]string, 0, len(knownOps))
+	for op := range knownOps {
+		ops = append(ops, op)
+	}
+
+	return ops
+}
+
 // Mode is how a policy's decision applies.
 type Mode string
 

@@ -11,7 +11,6 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	policyv1 "github.com/agntcy/dir/api/policy/v1"
 	oasfvalidator "github.com/agntcy/oasf-sdk/pkg/validator"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // oasfValidator adapts the OASF SDK validator, whose method is ValidateRecord.
@@ -28,12 +27,15 @@ func newOASFValidator(schemaURL string) (oasfValidator, error) {
 	return oasfValidator{inner: inner}, nil
 }
 
-func (v oasfValidator) ValidateOperation(ctx context.Context, data *structpb.Struct) (bool, []string, []string, error) {
+// ValidateOperation validates the record against the schema. It reads only the
+// record out of the input: a schema has no interest in the circumstances of
+// the operation, which is why oasf-sdk's own signature needs nothing from us.
+func (v oasfValidator) ValidateOperation(ctx context.Context, input *policyv1.OperationInput) (bool, []string, []string, error) {
 	if v.inner == nil {
 		return false, nil, nil, errors.New("OASF validator is nil")
 	}
 
-	valid, errs, warnings, err := v.inner.ValidateRecord(ctx, data)
+	valid, errs, warnings, err := v.inner.ValidateRecord(ctx, input.GetRecord())
 
 	// validateOperation wraps the validator error. Wrapping again here would
 	// change the text OASF failures already report.

@@ -104,14 +104,17 @@ func TestNewOPAValidator_RequiresDirAndFile(t *testing.T) {
 func TestNewRegistry_OPA(t *testing.T) {
 	t.Parallel()
 
-	// An operation policy reads the record as the Rego input document.
+	// An operation policy reads the record the same way an evaluation does,
+	// and reads the circumstances of the operation beside it.
 	const src = `
 package dir.policy.require_name
 
 default allow := false
 
 allow if {
-	input.name != ""
+	input.record.name != ""
+	input.context.operation == "OPERATION_PUSH"
+	input.now != ""
 }
 `
 

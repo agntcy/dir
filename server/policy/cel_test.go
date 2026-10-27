@@ -18,7 +18,7 @@ import (
 func TestNewCELValidator_RejectsBadExpression(t *testing.T) {
 	t.Parallel()
 
-	_, err := newCELValidator([]string{"this is not cel"})
+	_, err := newCELValidator([]string{"this is not cel"}, layerEvaluation)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "compile CEL expressions[0]")
 }
@@ -26,7 +26,7 @@ func TestNewCELValidator_RejectsBadExpression(t *testing.T) {
 func TestNewCELValidator_RejectsNonBool(t *testing.T) {
 	t.Parallel()
 
-	_, err := newCELValidator([]string{"record.name"})
+	_, err := newCELValidator([]string{"record.name"}, layerEvaluation)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "must evaluate to bool")
 }
@@ -34,7 +34,7 @@ func TestNewCELValidator_RejectsNonBool(t *testing.T) {
 func TestCELValidator_AcceptsMatchingRecord(t *testing.T) {
 	t.Parallel()
 
-	v, err := newCELValidator([]string{`record.name != ""`, `record.version != ""`})
+	v, err := newCELValidator([]string{`record.name != ""`, `record.version != ""`}, layerEvaluation)
 	require.NoError(t, err)
 
 	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent", Version: "1.0.0"})
@@ -52,7 +52,7 @@ func TestCELValidator_FailsIfAnyExpressionDoesNotMatch(t *testing.T) {
 		`record.name != ""`,
 		`record.name.startsWith("cisco.com/")`,
 		`record.name.endsWith("/allowed")`,
-	})
+	}, layerEvaluation)
 	require.NoError(t, err)
 
 	record := corev1.New(&typesv1alpha1.Record{Name: "other.com/agent"})
@@ -68,7 +68,7 @@ func TestCELValidator_FailsIfAnyExpressionDoesNotMatch(t *testing.T) {
 func TestCELValidator_EvalErrorIsValidationFailure(t *testing.T) {
 	t.Parallel()
 
-	v, err := newCELValidator([]string{`record.missing_field == "x"`})
+	v, err := newCELValidator([]string{`record.missing_field == "x"`}, layerEvaluation)
 	require.NoError(t, err)
 
 	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
@@ -99,7 +99,7 @@ func TestCELValidator_RecordStaysDynamic(t *testing.T) {
 		`record.locators[0].type == "docker-image"`,
 		`record.locators.all(l, l.url != "")`,
 		`!has(record.unknown_field)`,
-	})
+	}, layerEvaluation)
 	require.NoError(t, err)
 
 	ok, msgs, _, err := v.ValidateEvaluation(context.Background(), recordState(record))
@@ -113,7 +113,7 @@ func TestCELValidator_RecordStaysDynamic(t *testing.T) {
 func TestCELValidator_UnknownRecordFieldStillCompiles(t *testing.T) {
 	t.Parallel()
 
-	v, err := newCELValidator([]string{`record.locatrs.size() > 0`})
+	v, err := newCELValidator([]string{`record.locatrs.size() > 0`}, layerEvaluation)
 	require.NoError(t, err)
 
 	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
@@ -126,7 +126,7 @@ func TestCELValidator_UnknownRecordFieldStillCompiles(t *testing.T) {
 func TestCELValidator_NilData(t *testing.T) {
 	t.Parallel()
 
-	v, err := newCELValidator([]string{`true`})
+	v, err := newCELValidator([]string{`true`}, layerEvaluation)
 	require.NoError(t, err)
 
 	ok, msgs, _, err := v.ValidateEvaluation(context.Background(), nil)
@@ -138,7 +138,7 @@ func TestCELValidator_NilData(t *testing.T) {
 func TestCELValidator_CanceledContext(t *testing.T) {
 	t.Parallel()
 
-	v, err := newCELValidator([]string{`true`})
+	v, err := newCELValidator([]string{`true`}, layerEvaluation)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -178,7 +178,7 @@ func TestCELValidator_ReadsRecordState(t *testing.T) {
 		`record_cid == "bafy"`,
 		`indexed_at.hasValue()`,
 		`meta.signature.status == SignatureStatus.SIGNATURE_STATUS_VERIFIED`,
-	})
+	}, layerEvaluation)
 	require.NoError(t, err)
 
 	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
@@ -197,13 +197,91 @@ func TestCELValidator_ReadsRecordState(t *testing.T) {
 	require.Empty(t, msgs)
 }
 
+// The operation layer reads the record, the circumstances of the call, and the
+// instant it is being decided at.
+func TestCELValidator_ReadsOperationInput(t *testing.T) {
+	t.Parallel()
+
+	v, err := newCELValidator([]string{
+		`record.name == "cisco.com/agent"`,
+		`record_cid == "bafy"`,
+		`context.operation == Operation.OPERATION_PUSH`,
+		`now > timestamp("2020-01-01T00:00:00Z")`,
+	}, layerOperation)
+	require.NoError(t, err)
+
+	input := operationInput(policyconfig.OpPush,
+		corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"}))
+	input.RecordCid = "bafy"
+
+	ok, msgs, warnings, err := v.ValidateOperation(context.Background(), input)
+	require.NoError(t, err)
+	require.True(t, ok, msgs)
+	require.Empty(t, msgs)
+	require.Empty(t, warnings)
+}
+
+// One policy configured for several operations can hold each to its own rule,
+// which is what reading context is for. This is the example in the records
+// validation docs.
+func TestCELValidator_SamePolicyDecidesPerOperation(t *testing.T) {
+	t.Parallel()
+
+	v, err := newCELValidator([]string{
+		`context.operation != Operation.OPERATION_AUTOSYNC || has(record.locators)`,
+	}, layerOperation)
+	require.NoError(t, err)
+
+	bare := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
+	located := corev1.New(&typesv1alpha1.Record{
+		Name:     "cisco.com/agent",
+		Locators: []*typesv1alpha1.Locator{{Type: "docker-image", Url: "ghcr.io/example/agent:1"}},
+	})
+
+	tests := []struct {
+		name   string
+		op     string
+		record *corev1.Record
+		want   bool
+	}{
+		{"push is not held to it", policyconfig.OpPush, bare, true},
+		{"autosync without locators is rejected", policyconfig.OpAutosync, bare, false},
+		{"autosync with locators is accepted", policyconfig.OpAutosync, located, true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ok, msgs, _, err := v.ValidateOperation(context.Background(),
+				operationInput(tc.op, tc.record))
+			require.NoError(t, err)
+			require.Equal(t, tc.want, ok, msgs)
+		})
+	}
+}
+
+// Nothing populates source_peer_id yet, so it reads as absent rather than as
+// the empty string, and a policy can tell the two apart once it is populated.
+func TestCELValidator_SourcePeerIDReadsAbsent(t *testing.T) {
+	t.Parallel()
+
+	v, err := newCELValidator([]string{`!has(context.source_peer_id)`}, layerOperation)
+	require.NoError(t, err)
+
+	ok, msgs, _, err := v.ValidateOperation(context.Background(), operationInput(
+		policyconfig.OpPush, corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})))
+	require.NoError(t, err)
+	require.True(t, ok, msgs)
+}
+
 func TestCELValidator_UnsetFactsStayAbsent(t *testing.T) {
 	t.Parallel()
 
 	v, err := newCELValidator([]string{
 		`!indexed_at.hasValue()`,
 		`meta.signature.status == SignatureStatus.SIGNATURE_STATUS_UNSPECIFIED`,
-	})
+	}, layerEvaluation)
 	require.NoError(t, err)
 
 	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})

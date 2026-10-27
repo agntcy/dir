@@ -108,6 +108,30 @@ A second block, `policy.evaluations`, holds the policies that do not check recor
     and Helm charts enable the official OASF schema URL on push, autosync, and index
     unless overridden.
 
+### What a Policy Can Read
+
+A policy in `policy.operations` decides one operation, so it is given the record and the circumstances of that operation, and nothing it would have to look up. `oasf` reads the record only. `cel` reads these variables:
+
+| Variable | Type | Value |
+|---|---|---|
+| `record` | dynamic | The record's OASF content, read by field name. |
+| `record_cid` | string | The record's content identifier. |
+| `context.operation` | enum | Which operation is being decided: `Operation.OPERATION_PUSH`, `Operation.OPERATION_AUTOSYNC` or `Operation.OPERATION_INDEX`. |
+| `context.source_peer_id` | optional string | The authenticated peer a record is being pulled from, which only autosync has. Nothing populates it yet, so it reads as absent at every operation; a policy tests it with `has(context.source_peer_id)` rather than comparing it. |
+| `now` | timestamp | The instant the operation is being decided at, the same one for every policy deciding it. |
+
+```yaml
+- provider: cel
+  op: ["push", "autosync"]
+  name: synced-records-are-locatable
+  expressions:
+    - 'context.operation != Operation.OPERATION_AUTOSYNC || has(record.locators)'
+```
+
+`opa` is given the same values as its input document: `input.record.name`, `input.record_cid`, `input.context.operation`, `input.context.source_peer_id`, `input.now`. Two differences follow from the document being JSON. An enum arrives as its name, so the comparison is `input.context.operation == "OPERATION_PUSH"` rather than a number. An unset `source_peer_id` is absent from the document rather than empty, so a policy tests it with `not input.context.source_peer_id`. `now` is an RFC 3339 string.
+
+A policy in this block cannot read `meta`, the facts about a record that an evaluation policy reads, nor another policy's verdict. Those belong to `policy.evaluations`, which runs per record rather than per operation; see [Content Policy Enforcement](dir-content-policy-enforcement.md). A `cel` policy here that names one does not load, and the node reports it at startup rather than letting the policy decide on nothing.
+
 ### Validation Behavior
 
 The Directory server uses API-based validation against the configured OASF schema server:

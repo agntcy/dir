@@ -5,21 +5,67 @@ package policy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	policyv1 "github.com/agntcy/dir/api/policy/v1"
-	"google.golang.org/protobuf/types/known/structpb"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Validator evaluates a policy.
 //
-// ValidateOperation reads the record struct. ValidateEvaluation reads a
+// ValidateOperation reads an OperationInput. ValidateEvaluation reads a
 // RecordState. A non-nil error from either means the validator failed, not the
 // record.
 type Validator interface {
-	ValidateOperation(ctx context.Context, data *structpb.Struct) (valid bool, errors []string, warnings []string, err error)
+	ValidateOperation(ctx context.Context, input *policyv1.OperationInput) (valid bool, errors []string, warnings []string, err error)
 	ValidateEvaluation(ctx context.Context, state *policyv1.RecordState) (valid bool, errors []string, warnings []string, err error)
+}
+
+// layer is which of the two questions a loaded policy answers, and so which
+// half of Validator is live on it.
+//
+// Carried from the config block a policy was read from down to its provider,
+// because the inputs differ by layer and a provider that compiles its policy
+// has to know which inputs to compile it against.
+type layer string
+
+const (
+	layerEvaluation layer = "evaluation"
+	layerOperation  layer = "operation"
+)
+
+// operations maps a configured op to the operation it decides at. An op the
+// config does not know cannot reach here, because config validation rejects it.
+var operations = map[string]policyv1.Operation{
+	policyconfig.OpPush:     policyv1.Operation_OPERATION_PUSH,
+	policyconfig.OpAutosync: policyv1.Operation_OPERATION_AUTOSYNC,
+	policyconfig.OpIndex:    policyv1.Operation_OPERATION_INDEX,
+}
+
+// operationInput is the OperationInput the policies at one operation see.
+//
+// Built once per decision so that every policy deciding it reads the same
+// instant, which is what the proto's now is for.
+//
+// verdicts and indexed_at stay unset: both need a database read, and this is
+// reached from paths that have none. source_peer_id stays unset too, so a
+// policy asking for it is told there is none rather than the wrong one.
+func operationInput(op string, record *corev1.Record) *policyv1.OperationInput {
+	if record == nil {
+		return nil
+	}
+
+	return &policyv1.OperationInput{
+		Record:    record.GetData(),
+		RecordCid: record.GetCid(),
+		Context: &policyv1.OperationContext{
+			Operation: operations[op],
+		},
+		Now: timestamppb.Now(),
+	}
 }
 
 // recordState is the RecordState a policy sees when nothing has been observed
@@ -45,16 +91,32 @@ func validateEvaluation(ctx context.Context, record *corev1.Record, state *polic
 	})
 }
 
-// validateOperation runs one operation policy against the record struct, with
-// the same nil, size and timeout checks as validateEvaluation.
-func validateOperation(ctx context.Context, record *corev1.Record, v Validator) (bool, []string, error) {
-	return runValidator(ctx, record, v == nil, func(ctx context.Context) (bool, []string, []string, error) {
-		var data *structpb.Struct
-		if record != nil {
-			data = record.GetData()
-		}
+// checkOperationInput reports whether input carries the circumstances every
+// operation policy is entitled to read.
+//
+// context and now are required rather than defaulted, because every provider
+// hands them to its policy as a value: an unset context reads as
+// OPERATION_UNSPECIFIED and an unset now as 1970, so a policy comparing either
+// would reach a confident wrong answer. A caller that failed to set them is
+// the bug, and failing the validator says so instead of failing the record.
+func checkOperationInput(input *policyv1.OperationInput) error {
+	if input.GetContext() == nil {
+		return errors.New("operation input has no context")
+	}
 
-		return v.ValidateOperation(ctx, data)
+	if input.GetNow() == nil {
+		return errors.New("operation input has no now")
+	}
+
+	return nil
+}
+
+// validateOperation runs one operation policy against input, with the same
+// nil, size and timeout checks as validateEvaluation. The record is what those
+// checks measure; input is what the validator reads.
+func validateOperation(ctx context.Context, record *corev1.Record, input *policyv1.OperationInput, v Validator) (bool, []string, error) {
+	return runValidator(ctx, record, v == nil, func(ctx context.Context) (bool, []string, []string, error) {
+		return v.ValidateOperation(ctx, input)
 	})
 }
 

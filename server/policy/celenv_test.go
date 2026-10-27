@@ -4,12 +4,16 @@
 package policy
 
 import (
+	"context"
 	"testing"
 
+	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	"cel.dev/cel-go/cel"
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	policyv1 "github.com/agntcy/dir/api/policy/v1"
 	securityv1 "github.com/agntcy/dir/api/security/v1"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +23,7 @@ import (
 func evalWithMeta(t *testing.T, expr string, meta *policyv1.RecordMeta) bool {
 	t.Helper()
 
-	env, err := newRecordEnv()
+	env, err := newEvaluationEnv()
 	require.NoError(t, err)
 
 	ast, iss := env.Compile(expr)
@@ -46,7 +50,7 @@ func evalWithMeta(t *testing.T, expr string, meta *policyv1.RecordMeta) bool {
 func TestPolicyEnv_MisspelledFieldFailsAtLoad(t *testing.T) {
 	t.Parallel()
 
-	_, err := newCELValidator([]string{`meta.signature.statsu == SignatureStatus.SIGNATURE_STATUS_VERIFIED`})
+	_, err := newCELValidator([]string{`meta.signature.statsu == SignatureStatus.SIGNATURE_STATUS_VERIFIED`}, layerEvaluation)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "compile CEL expressions[0]")
 	require.Contains(t, err.Error(), "statsu", "the error should name the misspelled field")
@@ -56,7 +60,7 @@ func TestPolicyEnv_MisspelledFieldFailsAtLoad(t *testing.T) {
 func TestPolicyEnv_MisspelledGroupFailsAtLoad(t *testing.T) {
 	t.Parallel()
 
-	_, err := newCELValidator([]string{`meta.signatrue.status == SignatureStatus.SIGNATURE_STATUS_VERIFIED`})
+	_, err := newCELValidator([]string{`meta.signatrue.status == SignatureStatus.SIGNATURE_STATUS_VERIFIED`}, layerEvaluation)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "signatrue")
 }
@@ -158,11 +162,53 @@ func TestPolicyEnv_EmptyMetaFailsPositiveRequirements(t *testing.T) {
 func TestRecordEnv_RejectsOperationFields(t *testing.T) {
 	t.Parallel()
 
-	_, err := newCELValidator([]string{`now > timestamp("2020-01-01T00:00:00Z")`})
+	_, err := newCELValidator([]string{`now > timestamp("2020-01-01T00:00:00Z")`}, layerEvaluation)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "now")
 
-	_, err = newCELValidator([]string{`verdicts["cel:x"].compliant`})
+	_, err = newCELValidator([]string{`verdicts["cel:x"].compliant`}, layerEvaluation)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "verdicts")
+}
+
+// An operation policy is compiled without the facts. Reaching one is what a
+// verdict is for, so a policy that reads meta here is not held back at run
+// time, it does not load at all.
+func TestOperationEnv_RejectsEvaluationFields(t *testing.T) {
+	t.Parallel()
+
+	_, err := newCELValidator([]string{
+		`meta.signature.status == SignatureStatus.SIGNATURE_STATUS_VERIFIED`,
+	}, layerOperation)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "meta")
+
+	_, err = newCELValidator([]string{`indexed_at.hasValue()`}, layerOperation)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "indexed_at")
+}
+
+// A policy is compiled for one layer and can only answer for that layer, so
+// asking it the other question fails the validator rather than the record.
+func TestCELValidator_RejectsWrongLayer(t *testing.T) {
+	t.Parallel()
+
+	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
+
+	op, err := newCELValidator([]string{`true`}, layerOperation)
+	require.NoError(t, err)
+
+	ok, msgs, _, err := op.ValidateEvaluation(context.Background(), recordState(record))
+	require.ErrorContains(t, err, "cannot produce a verdict")
+	require.False(t, ok)
+	require.Empty(t, msgs, "a failed validator reports nothing about the record")
+
+	eval, err := newCELValidator([]string{`true`}, layerEvaluation)
+	require.NoError(t, err)
+
+	ok, msgs, _, err = eval.ValidateOperation(context.Background(),
+		operationInput(policyconfig.OpPush, record))
+	require.ErrorContains(t, err, "cannot decide an operation")
+	require.False(t, ok)
+	require.Empty(t, msgs)
 }

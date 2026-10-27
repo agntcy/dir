@@ -10,7 +10,6 @@ import (
 	"cel.dev/cel-go/cel"
 	"cel.dev/cel-go/common/types"
 	policyv1 "github.com/agntcy/dir/api/policy/v1"
-	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -27,14 +26,18 @@ type celProgram struct {
 	version string
 }
 
-// celValidator evaluates a CEL policy. ValidateEvaluation reads a RecordState.
-// ValidateOperation reads the record struct.
+// celValidator evaluates a CEL policy.
+//
+// Its layer is fixed when it is built, because that is when its expressions
+// were compiled: the one method matching that layer is the only one it can
+// answer.
 type celValidator struct {
 	*celProgram
+	layer layer
 }
 
-func newCELValidator(exprs []string) (*celValidator, error) {
-	env, err := newRecordEnv()
+func newCELValidator(exprs []string, l layer) (*celValidator, error) {
+	env, err := celEnv(l)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +47,7 @@ func newCELValidator(exprs []string) (*celValidator, error) {
 		return nil, err
 	}
 
-	return &celValidator{prog}, nil
+	return &celValidator{celProgram: prog, layer: l}, nil
 }
 
 func compileCEL(exprs []string, env *cel.Env) (*celProgram, error) {
@@ -71,6 +74,10 @@ func compileCEL(exprs []string, env *cel.Env) (*celProgram, error) {
 }
 
 func (v *celValidator) ValidateEvaluation(ctx context.Context, state *policyv1.RecordState) (bool, []string, []string, error) {
+	if v.layer != layerEvaluation {
+		return false, nil, nil, fmt.Errorf("CEL policy compiled for the %s layer cannot produce a verdict", v.layer)
+	}
+
 	if err := ctx.Err(); err != nil {
 		return false, nil, nil, fmt.Errorf("CEL validation canceled: %w", err)
 	}
@@ -79,24 +86,28 @@ func (v *celValidator) ValidateEvaluation(ctx context.Context, state *policyv1.R
 		return false, []string{"record data is nil"}, nil, nil
 	}
 
-	return v.eval(ctx, recordActivation(state))
+	return v.eval(ctx, stateActivation(state))
 }
 
-func (v *celValidator) ValidateOperation(ctx context.Context, data *structpb.Struct) (bool, []string, []string, error) {
+func (v *celValidator) ValidateOperation(ctx context.Context, input *policyv1.OperationInput) (bool, []string, []string, error) {
+	if v.layer != layerOperation {
+		return false, nil, nil, fmt.Errorf("CEL policy compiled for the %s layer cannot decide an operation", v.layer)
+	}
+
 	if err := ctx.Err(); err != nil {
 		return false, nil, nil, fmt.Errorf("CEL validation canceled: %w", err)
 	}
 
-	if data == nil {
+	if input.GetRecord() == nil {
 		return false, []string{"record data is nil"}, nil, nil
 	}
 
-	return v.eval(ctx, map[string]any{
-		celVarRecord:    data.AsMap(),
-		celVarRecordCID: "",
-		celVarIndexedAt: types.OptionalNone,
-		celVarMeta:      &policyv1.RecordMeta{},
-	})
+	vars, err := operationActivation(input)
+	if err != nil {
+		return false, nil, nil, err
+	}
+
+	return v.eval(ctx, vars)
 }
 
 func (p *celProgram) eval(ctx context.Context, vars map[string]any) (bool, []string, []string, error) {
@@ -135,10 +146,10 @@ func (p *celProgram) eval(ctx context.Context, vars map[string]any) (bool, []str
 	return true, nil, nil, nil
 }
 
-// recordActivation binds a RecordState the way the evaluation environment
+// stateActivation binds a RecordState the way the evaluation environment
 // declares it. An unset meta reads as every fact unspecified. An unset
 // indexed_at is absent rather than a zero time.
-func recordActivation(state *policyv1.RecordState) map[string]any {
+func stateActivation(state *policyv1.RecordState) map[string]any {
 	meta := state.GetMeta()
 	if meta == nil {
 		meta = &policyv1.RecordMeta{}
@@ -150,6 +161,21 @@ func recordActivation(state *policyv1.RecordState) map[string]any {
 		celVarIndexedAt: optionalTime(state.GetIndexedAt()),
 		celVarMeta:      meta,
 	}
+}
+
+// operationActivation binds an OperationInput the way the operation
+// environment declares it.
+func operationActivation(input *policyv1.OperationInput) (map[string]any, error) {
+	if err := checkOperationInput(input); err != nil {
+		return nil, err
+	}
+
+	return map[string]any{
+		celVarRecord:    input.GetRecord().AsMap(),
+		celVarRecordCID: input.GetRecordCid(),
+		celVarContext:   input.GetContext(),
+		celVarNow:       types.Timestamp{Time: input.GetNow().AsTime()},
+	}, nil
 }
 
 func optionalTime(ts *timestamppb.Timestamp) any {
