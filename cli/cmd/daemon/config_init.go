@@ -159,3 +159,14 @@ func writeDefaultConfig(target string, force, callerChosePath bool) error {
 
 	return nil
 }
+
+// ensureDefaultConfig writes the default config to <data-dir>/daemon.config.yaml
+// when it does not exist yet, leaving an existing file untouched.
+func ensureDefaultConfig() error {
+	target := opts.ConfigFilePath()
+	if _, err := os.Stat(target); err == nil {
+		return nil
+	}
+
+	return writeDefaultConfig(target, false, false)
+}

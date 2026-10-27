@@ -7,6 +7,7 @@ import (
 	_ "embed"
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -258,7 +259,8 @@ var defaultConfigYAML string
 
 // loadConfig loads the daemon configuration. When the user provides a config
 // file via --config, that file is read as-is (no defaults merged). Otherwise
-// the embedded daemon.config.yaml is used as the complete default configuration.
+// <data-dir>/daemon.config.yaml is read when present (runStart writes it on first
+// start); otherwise the embedded daemon.config.yaml is used.
 func loadConfig() (*DaemonConfig, error) {
 	v := viper.NewWithOptions(
 		viper.KeyDelimiter("."),
@@ -275,16 +277,8 @@ func loadConfig() (*DaemonConfig, error) {
 	registerServerDefaults(v)
 	registerReconcilerDefaults(v)
 
-	if opts.ConfigFile != "" {
-		v.SetConfigFile(opts.ConfigFile)
-
-		if err := v.ReadInConfig(); err != nil {
-			return nil, fmt.Errorf("failed to read config file: %w", err)
-		}
-	} else {
-		if err := v.ReadConfig(strings.NewReader(defaultConfigYAML)); err != nil {
-			return nil, fmt.Errorf("failed to load embedded default config: %w", err)
-		}
+	if err := readConfigSource(v); err != nil {
+		return nil, err
 	}
 
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(
@@ -302,6 +296,28 @@ func loadConfig() (*DaemonConfig, error) {
 	resolveRelativePaths(cfg)
 
 	return cfg, nil
+}
+
+// readConfigSource reads the explicit --config file, else <data-dir>/daemon.config.yaml
+// when present, else the embedded defaults.
+func readConfigSource(v *viper.Viper) error {
+	path := opts.ConfigFilePath()
+
+	if _, statErr := os.Stat(path); opts.ConfigFile != "" || statErr == nil {
+		v.SetConfigFile(path)
+
+		if err := v.ReadInConfig(); err != nil {
+			return fmt.Errorf("failed to read config file: %w", err)
+		}
+
+		return nil
+	}
+
+	if err := v.ReadConfig(strings.NewReader(defaultConfigYAML)); err != nil {
+		return fmt.Errorf("failed to load embedded default config: %w", err)
+	}
+
+	return nil
 }
 
 // bindCredentialEnvVars registers credential keys so that AutomaticEnv can
