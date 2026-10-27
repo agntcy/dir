@@ -46,6 +46,7 @@ var scannerPackages = []scannerPackage{
 
 // installTool runs `uv tool install` for one scanner; replaced in tests.
 var installTool = func(ctx context.Context, sp scannerPackage) ([]byte, error) {
+	//nolint:gosec // G204: package and version come from the pinned scannerPackages table, not user input.
 	return exec.CommandContext(ctx, "uv", "tool", "install", "--python", "3.13",
 		fmt.Sprintf("%s==%s", sp.pkg, sp.version)).CombinedOutput()
 }
