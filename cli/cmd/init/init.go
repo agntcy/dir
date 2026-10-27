@@ -28,6 +28,7 @@ OASF endpoint and asset directory are saved to the dirctl config for later use.
 
   dirctl init                 provision (prompts for confirmation + OASF URL)
   dirctl init --yes           provision non-interactively with defaults
+  dirctl init --scanners      also install the security scanner CLIs (requires uv)
   dirctl init --remove        remove provisioned assets and clear saved config
 `,
 	RunE: func(cmd *cobra.Command, _ []string) error {
