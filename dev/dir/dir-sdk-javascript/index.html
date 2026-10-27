@@ -2115,17 +2115,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#examplesexample_interactive_oidcjs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        examples/example_interactive_oidc.js
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -2607,17 +2596,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#examplesexample_interactive_oidcjs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        examples/example_interactive_oidc.js
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -2779,7 +2757,7 @@ both JavaScript and TypeScript projects.</p>
 </tr>
 <tr>
 <td><strong>Signing</strong></td>
-<td><code>sign</code> (local via <code>dirctl</code>), <code>verify</code> (remote gRPC)</td>
+<td><code>sign</code> (native, key or OIDC), <code>verify</code> (local, or cached server result with <code>fromServer</code>)</td>
 </tr>
 </tbody>
 </table>
@@ -2803,7 +2781,6 @@ need to pass what differs from the defaults.</p>
 <h3 id="environment-variables">Environment variables</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Insecure (local development)</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_SERVER_ADDRESS</span><span class="o">=</span><span class="s2">&quot;localhost:8888&quot;</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">DIRCTL_PATH</span><span class="o">=</span><span class="s2">&quot;/path/to/dirctl&quot;</span>
 
 <span class="c1"># X.509 / SPIFFE</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_SERVER_ADDRESS</span><span class="o">=</span><span class="s2">&quot;localhost:8888&quot;</span>
@@ -2830,13 +2807,12 @@ need to pass what differs from the defaults.</p>
 <div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">Config</span><span class="p">,</span><span class="w"> </span><span class="nx">Client</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;agntcy-dir&#39;</span><span class="p">;</span>
 
 <span class="c1">// Insecure (local development only)</span>
-<span class="kd">const</span><span class="w"> </span><span class="nx">config</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">Config</span><span class="p">(</span><span class="s2">&quot;localhost:8888&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;/usr/local/bin/dirctl&quot;</span><span class="p">);</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">config</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">Config</span><span class="p">(</span><span class="s2">&quot;localhost:8888&quot;</span><span class="p">);</span>
 <span class="kd">const</span><span class="w"> </span><span class="nx">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">Client</span><span class="p">(</span><span class="nx">config</span><span class="p">);</span>
 
 <span class="c1">// X.509 with SPIRE</span>
 <span class="kd">const</span><span class="w"> </span><span class="nx">x509Config</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">Config</span><span class="p">(</span>
 <span class="w">    </span><span class="s2">&quot;localhost:8888&quot;</span><span class="p">,</span><span class="w">        </span><span class="c1">// serverAddress</span>
-<span class="w">    </span><span class="s2">&quot;/usr/local/bin/dirctl&quot;</span><span class="p">,</span><span class="w"> </span><span class="c1">// dirctlPath</span>
 <span class="w">    </span><span class="s2">&quot;/tmp/agent.sock&quot;</span><span class="p">,</span><span class="w">       </span><span class="c1">// spiffeEndpointSocket</span>
 <span class="w">    </span><span class="s2">&quot;x509&quot;</span><span class="w">                   </span><span class="c1">// authMode</span>
 <span class="p">);</span>
@@ -2846,7 +2822,6 @@ need to pass what differs from the defaults.</p>
 <span class="c1">// JWT with SPIRE</span>
 <span class="kd">const</span><span class="w"> </span><span class="nx">jwtConfig</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">Config</span><span class="p">(</span>
 <span class="w">    </span><span class="s2">&quot;localhost:8888&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;/usr/local/bin/dirctl&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="s2">&quot;/tmp/agent.sock&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="s2">&quot;jwt&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="s2">&quot;spiffe://example.org/dir-server&quot;</span><span class="w">  </span><span class="c1">// jwtAudience</span>
@@ -2854,10 +2829,6 @@ need to pass what differs from the defaults.</p>
 <span class="kd">const</span><span class="w"> </span><span class="nx">jwtTransport</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">Client</span><span class="p">.</span><span class="nx">createGRPCTransport</span><span class="p">(</span><span class="nx">jwtConfig</span><span class="p">);</span>
 <span class="kd">const</span><span class="w"> </span><span class="nx">jwtClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">Client</span><span class="p">(</span><span class="nx">jwtConfig</span><span class="p">,</span><span class="w"> </span><span class="nx">jwtTransport</span><span class="p">);</span>
 </code></pre></div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p><code>dirctl</code> is only required for local signing operations. All other API calls work without it.</p>
-</div>
 <h2 id="oauth-20-oidc-bearer-auth">OAuth 2.0 / OIDC bearer auth</h2>
 <p>Use <code>authMode: 'oidc'</code> when your deployment expects a Bearer token on gRPC (e.g. via an
 Envoy gateway that validates OIDC tokens).</p>
@@ -2887,7 +2858,6 @@ Envoy gateway that validates OIDC tokens).</p>
 
 <span class="kd">const</span><span class="w"> </span><span class="nx">config</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">Config</span><span class="p">(</span>
 <span class="w">    </span><span class="s2">&quot;directory.example.com:443&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="kc">undefined</span><span class="p">,</span><span class="w">   </span><span class="c1">// dirctlPath — not needed if signing is unused</span>
 <span class="w">    </span><span class="kc">undefined</span><span class="p">,</span><span class="w">   </span><span class="c1">// spiffeEndpointSocket</span>
 <span class="w">    </span><span class="s2">&quot;oidc&quot;</span><span class="p">,</span><span class="w">      </span><span class="c1">// authMode</span>
 <span class="w">    </span><span class="kc">undefined</span><span class="p">,</span><span class="w">   </span><span class="c1">// jwtAudience</span>
@@ -2958,12 +2928,38 @@ Envoy gateway that validates OIDC tokens).</p>
 <span class="p">}</span>
 </code></pre></div>
 <h3 id="signing-and-verification">Signing and verification</h3>
-<div class="highlight"><pre><span></span><code><span class="c1">// Sign a record locally (requires dirctl binary)</span>
-<span class="nx">client</span><span class="p">.</span><span class="nx">sign</span><span class="p">({</span><span class="w"> </span><span class="nx">cid</span><span class="w"> </span><span class="p">});</span>
+<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">create</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@bufbuild/protobuf&#39;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">models</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;agntcy-dir&#39;</span><span class="p">;</span>
 
-<span class="c1">// Verify a record signature via gRPC</span>
-<span class="kd">const</span><span class="w"> </span><span class="nx">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">verify</span><span class="p">({</span><span class="w"> </span><span class="nx">cid</span><span class="w"> </span><span class="p">});</span>
-<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">resp</span><span class="p">.</span><span class="nx">valid</span><span class="p">);</span>
+<span class="c1">// Sign a record natively with a cosign key (PEM content or a key file path).</span>
+<span class="c1">// The public key and the signature are pushed to the store as referrers.</span>
+<span class="k">await</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">sign</span><span class="p">(</span><span class="nx">create</span><span class="p">(</span><span class="nx">models</span><span class="p">.</span><span class="nx">sign_v1</span><span class="p">.</span><span class="nx">SignRequestSchema</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">recordRef</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">cid</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nx">provider</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">request</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">case</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;key&#39;</span><span class="p">,</span>
+<span class="w">            </span><span class="nx">value</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">privateKey</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;cosign.key&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">password</span><span class="o">:</span><span class="w"> </span><span class="nx">Buffer</span><span class="p">.</span><span class="kr">from</span><span class="p">(</span><span class="s1">&#39;key-password&#39;</span><span class="p">)</span><span class="w"> </span><span class="p">},</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">}));</span>
+
+<span class="c1">// Keyless signing with an OIDC token (Fulcio certificate, Rekor and TSA)</span>
+<span class="k">await</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">sign</span><span class="p">(</span><span class="nx">create</span><span class="p">(</span><span class="nx">models</span><span class="p">.</span><span class="nx">sign_v1</span><span class="p">.</span><span class="nx">SignRequestSchema</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">recordRef</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">cid</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nx">provider</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">request</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">case</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;oidc&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">value</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">idToken</span><span class="o">:</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">OIDC_TOKEN</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="p">}));</span>
+
+<span class="c1">// Verify the record signatures locally (key, OIDC identity or any provider)</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">verify</span><span class="p">(</span><span class="nx">create</span><span class="p">(</span><span class="nx">models</span><span class="p">.</span><span class="nx">sign_v1</span><span class="p">.</span><span class="nx">VerifyRequestSchema</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">recordRef</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">cid</span><span class="w"> </span><span class="p">},</span>
+<span class="p">}));</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">resp</span><span class="p">.</span><span class="nx">success</span><span class="p">,</span><span class="w"> </span><span class="nx">resp</span><span class="p">.</span><span class="nx">signers</span><span class="p">);</span>
+
+<span class="c1">// Or fetch the server-side (cached) verification result</span>
+<span class="k">await</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">verify</span><span class="p">(</span><span class="nx">create</span><span class="p">(</span><span class="nx">models</span><span class="p">.</span><span class="nx">sign_v1</span><span class="p">.</span><span class="nx">VerifyRequestSchema</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">recordRef</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">cid</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nx">fromServer</span><span class="o">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="p">}));</span>
 </code></pre></div>
 <h2 id="error-handling">Error handling</h2>
 <p>gRPC errors from <code>@connectrpc/connect</code> are thrown as <code>ConnectError</code>. Check <code>error.code</code> against
@@ -2989,9 +2985,8 @@ the <code>Code</code> enum:</p>
 <code>Code.PermissionDenied</code>, <code>Code.InvalidArgument</code>.</p>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
-<li><a href="https://nodejs.org/en/">Node.js</a> 18 or higher</li>
+<li><a href="https://nodejs.org/en/">Node.js</a> 22.22.2, 24.15.0 or higher</li>
 <li><a href="https://www.npmjs.com/">npm</a> package manager</li>
-<li><a href="https://github.com/agntcy/dir/releases">dirctl</a> CLI binary (signing operations only)</li>
 <li>A running Directory server — see <a href="../dir-quickstart/">Quickstart</a> or
   <a href="../dir-deployment-kubernetes/">Kubernetes Deployment</a></li>
 </ul>
@@ -3014,23 +3009,6 @@ the <code>Code</code> enum:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>examples
 npm<span class="w"> </span>install
 npm<span class="w"> </span>run<span class="w"> </span>example
-</code></pre></div>
-<h3 id="examplesexample_interactive_oidcjs"><code>examples/example_interactive_oidc.js</code></h3>
-<p><strong>Source:</strong> <a href="https://github.com/agntcy/dir-sdk-javascript/blob/main/examples/example_interactive_oidc.js"><code>examples/example_interactive_oidc.js</code></a></p>
-<p>Demonstrates OIDC/PKCE interactive login. Reuses a cached token if one exists, otherwise
-opens the system browser for the authorization flow. Once authenticated, runs a <code>searchCIDs</code>
-query filtered by version. Accepts <code>--version</code> and <code>--limit</code> CLI arguments.</p>
-<p><strong>Required environment variable:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_OIDC_CLIENT_ID</span><span class="o">=</span><span class="s2">&quot;your-client-id&quot;</span>
-</code></pre></div>
-<p><strong>Optional overrides:</strong> <code>DIRECTORY_CLIENT_SERVER_ADDRESS</code>, <code>DIRECTORY_CLIENT_OIDC_CLIENT_SECRET</code>,
-<code>DIRECTORY_CLIENT_OIDC_REDIRECT_URI</code>, <code>DIRECTORY_CLIENT_OIDC_CALLBACK_PORT</code>,
-<code>DIRECTORY_CLIENT_OIDC_AUTH_TIMEOUT</code>, <code>DIRECTORY_CLIENT_TLS_SERVER_NAME</code>,
-<code>DIRECTORY_CLIENT_AUTH_TOKEN</code> (skips the browser flow when a pre-issued token is available).</p>
-<p><strong>Run:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>examples
-npm<span class="w"> </span>install
-node<span class="w"> </span>example_interactive_oidc.js<span class="w"> </span>--version<span class="w"> </span><span class="s2">&quot;v1*&quot;</span><span class="w"> </span>--limit<span class="w"> </span><span class="m">3</span>
 </code></pre></div>
 
 

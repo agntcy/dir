@@ -1937,17 +1937,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#docker-based-dirctl" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Docker-based dirctl
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -2474,17 +2463,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#docker-based-dirctl" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Docker-based dirctl
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -2796,7 +2774,7 @@ Directory gRPC API from Python 3.10+ applications.</p>
 </tr>
 <tr>
 <td><strong>Signing</strong></td>
-<td><code>sign</code> (local via <code>dirctl</code>), <code>verify</code> (remote gRPC)</td>
+<td><code>sign</code> (native, cosign/Sigstore compatible), <code>verify</code> (local or <code>from_server</code> gRPC)</td>
 </tr>
 </tbody>
 </table>
@@ -2818,7 +2796,6 @@ Directory gRPC API from Python 3.10+ applications.</p>
 <h3 id="environment-variables">Environment variables</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Insecure (local development)</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_SERVER_ADDRESS</span><span class="o">=</span><span class="s2">&quot;localhost:8888&quot;</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">DIRCTL_PATH</span><span class="o">=</span><span class="s2">&quot;/path/to/dirctl&quot;</span>
 
 <span class="c1"># X.509 / SPIFFE</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_SERVER_ADDRESS</span><span class="o">=</span><span class="s2">&quot;localhost:8888&quot;</span>
@@ -2847,7 +2824,6 @@ Directory gRPC API from Python 3.10+ applications.</p>
 <span class="c1"># Insecure (local development only)</span>
 <span class="n">config</span> <span class="o">=</span> <span class="n">Config</span><span class="p">(</span>
     <span class="n">server_address</span><span class="o">=</span><span class="s2">&quot;localhost:8888&quot;</span><span class="p">,</span>
-    <span class="n">dirctl_path</span><span class="o">=</span><span class="s2">&quot;/usr/local/bin/dirctl&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
 
@@ -2868,26 +2844,6 @@ Directory gRPC API from Python 3.10+ applications.</p>
 <span class="p">)</span>
 <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
 </code></pre></div>
-<h3 id="docker-based-dirctl">Docker-based dirctl</h3>
-<p>If you don't have <code>dirctl</code> installed locally you can run it via Docker by passing a
-<code>DockerConfig</code> instead of <code>dirctl_path</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span><span class="p">,</span> <span class="n">Client</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.client.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">DockerConfig</span>
-
-<span class="n">config</span> <span class="o">=</span> <span class="n">Config</span><span class="p">(</span>
-    <span class="n">server_address</span><span class="o">=</span><span class="s2">&quot;localhost:8888&quot;</span><span class="p">,</span>
-    <span class="n">docker_config</span><span class="o">=</span><span class="n">DockerConfig</span><span class="p">(</span>
-        <span class="n">dirctl_image</span><span class="o">=</span><span class="s2">&quot;ghcr.io/agntcy/dir-ctl&quot;</span><span class="p">,</span>
-        <span class="n">dirctl_image_tag</span><span class="o">=</span><span class="s2">&quot;latest&quot;</span><span class="p">,</span>
-    <span class="p">),</span>
-<span class="p">)</span>
-<span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
-</code></pre></div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p><code>dirctl_path</code> and <code>docker_config</code> are mutually exclusive. Setting both raises a
-<code>ValueError</code>.</p>
-</div>
 <h2 id="oauth-20-oidc-bearer-auth">OAuth 2.0 / OIDC bearer auth</h2>
 <p>Use <code>auth_mode="oidc"</code> when your deployment expects a Bearer token on gRPC (e.g. via an
 Envoy gateway that validates OIDC tokens).</p>
@@ -2979,14 +2935,10 @@ endpoints), not to the gRPC TLS connection to the Directory server.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">search_v1</span>
 
 <span class="c1"># Full-text / semantic record search</span>
-<span class="n">results</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">search_records</span><span class="p">(</span>
-    <span class="n">search_v1</span><span class="o">.</span><span class="n">SearchRecordsRequest</span><span class="p">(</span><span class="n">query</span><span class="o">=</span><span class="s2">&quot;my-agent&quot;</span><span class="p">)</span>
-<span class="p">)</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">search_records</span><span class="p">(</span><span class="n">search_v1</span><span class="o">.</span><span class="n">SearchRecordsRequest</span><span class="p">(</span><span class="n">query</span><span class="o">=</span><span class="s2">&quot;my-agent&quot;</span><span class="p">))</span>
 
 <span class="c1"># CID-only search</span>
-<span class="n">cids</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">search_cids</span><span class="p">(</span>
-    <span class="n">search_v1</span><span class="o">.</span><span class="n">SearchCIDsRequest</span><span class="p">(</span><span class="n">query</span><span class="o">=</span><span class="s2">&quot;my-agent&quot;</span><span class="p">)</span>
-<span class="p">)</span>
+<span class="n">cids</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">search_cids</span><span class="p">(</span><span class="n">search_v1</span><span class="o">.</span><span class="n">SearchCIDsRequest</span><span class="p">(</span><span class="n">query</span><span class="o">=</span><span class="s2">&quot;my-agent&quot;</span><span class="p">))</span>
 </code></pre></div>
 <h3 id="naming-resolve-and-verify">Naming — resolve and verify</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Resolve a name to a record reference</span>
@@ -3004,14 +2956,36 @@ endpoints), not to the gRPC TLS connection to the Directory server.</p>
     <span class="nb">print</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="signing-and-verification">Signing and verification</h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">sign_v1</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">core_v1</span><span class="p">,</span> <span class="n">sign_v1</span>
 
-<span class="c1"># Sign a record locally (requires dirctl binary)</span>
-<span class="n">client</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">sign_v1</span><span class="o">.</span><span class="n">SignRequest</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="n">cid</span><span class="p">))</span>
+<span class="n">ref</span> <span class="o">=</span> <span class="n">core_v1</span><span class="o">.</span><span class="n">RecordRef</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="n">cid</span><span class="p">)</span>
 
-<span class="c1"># Verify a record signature via gRPC</span>
-<span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">verify</span><span class="p">(</span><span class="n">sign_v1</span><span class="o">.</span><span class="n">VerifyRequest</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="n">cid</span><span class="p">))</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">valid</span><span class="p">)</span>
+<span class="c1"># Sign a record with a cosign-compatible private key (PEM content or key file path).</span>
+<span class="c1"># The signature and public key are stored as referrers of the record.</span>
+<span class="n">client</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span>
+    <span class="n">sign_v1</span><span class="o">.</span><span class="n">SignRequest</span><span class="p">(</span>
+        <span class="n">record_ref</span><span class="o">=</span><span class="n">ref</span><span class="p">,</span>
+        <span class="n">provider</span><span class="o">=</span><span class="n">sign_v1</span><span class="o">.</span><span class="n">SignRequestProvider</span><span class="p">(</span>
+            <span class="n">key</span><span class="o">=</span><span class="n">sign_v1</span><span class="o">.</span><span class="n">SignWithKey</span><span class="p">(</span><span class="n">private_key</span><span class="o">=</span><span class="s2">&quot;cosign.key&quot;</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="sa">b</span><span class="s2">&quot;secret&quot;</span><span class="p">)</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># Or sign keylessly with an OIDC identity token (Sigstore Fulcio/Rekor/TSA).</span>
+<span class="n">client</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span>
+    <span class="n">sign_v1</span><span class="o">.</span><span class="n">SignRequest</span><span class="p">(</span>
+        <span class="n">record_ref</span><span class="o">=</span><span class="n">ref</span><span class="p">,</span>
+        <span class="n">provider</span><span class="o">=</span><span class="n">sign_v1</span><span class="o">.</span><span class="n">SignRequestProvider</span><span class="p">(</span><span class="n">oidc</span><span class="o">=</span><span class="n">sign_v1</span><span class="o">.</span><span class="n">SignWithOIDC</span><span class="p">(</span><span class="n">id_token</span><span class="o">=</span><span class="n">token</span><span class="p">)),</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># Verify locally against the signatures stored with the record.</span>
+<span class="c1"># Without a provider, any signer is accepted (keys and OIDC bundles).</span>
+<span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">verify</span><span class="p">(</span><span class="n">sign_v1</span><span class="o">.</span><span class="n">VerifyRequest</span><span class="p">(</span><span class="n">record_ref</span><span class="o">=</span><span class="n">ref</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">success</span><span class="p">,</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">WhichOneof</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">resp</span><span class="o">.</span><span class="n">signers</span><span class="p">])</span>
+
+<span class="c1"># Or fetch the server&#39;s cached verification result.</span>
+<span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">verify</span><span class="p">(</span><span class="n">sign_v1</span><span class="o">.</span><span class="n">VerifyRequest</span><span class="p">(</span><span class="n">record_ref</span><span class="o">=</span><span class="n">ref</span><span class="p">,</span> <span class="n">from_server</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
 </code></pre></div>
 <h2 id="error-handling">Error handling</h2>
 <p>The SDK raises <code>grpc.RpcError</code> for gRPC errors and <code>RuntimeError</code> for configuration problems:</p>
@@ -3039,7 +3013,6 @@ endpoints), not to the gRPC TLS connection to the Directory server.</p>
 <ul>
 <li>Python 3.10 or higher</li>
 <li><a href="https://github.com/astral-sh/uv">uv</a> package manager</li>
-<li><a href="https://github.com/agntcy/dir/releases">dirctl</a> CLI binary (signing operations only)</li>
 <li>A running Directory server — see <a href="../dir-quickstart/">Quickstart</a> or
   <a href="../dir-deployment-kubernetes/">Kubernetes Deployment</a></li>
 </ul>

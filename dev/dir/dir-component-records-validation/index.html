@@ -1005,6 +1005,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#what-a-policy-can-read" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a Policy Can Read
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#validation-behavior" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2454,6 +2465,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#what-a-policy-can-read" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a Policy Can Read
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#validation-behavior" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2763,6 +2785,52 @@ Deployment tooling provides defaults: Docker Compose, the <code>dirctl</code> da
 and Helm charts enable the official OASF schema URL on push, autosync, and index
 unless overridden.</p>
 </div>
+<h3 id="what-a-policy-can-read">What a Policy Can Read</h3>
+<p>A policy in <code>policy.operations</code> decides one operation, so it is given the record and the circumstances of that operation, and nothing it would have to look up. <code>oasf</code> reads the record only. <code>cel</code> reads these variables:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Type</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>record</code></td>
+<td>dynamic</td>
+<td>The record's OASF content, read by field name.</td>
+</tr>
+<tr>
+<td><code>record_cid</code></td>
+<td>string</td>
+<td>The record's content identifier.</td>
+</tr>
+<tr>
+<td><code>context.operation</code></td>
+<td>enum</td>
+<td>Which operation is being decided: <code>Operation.OPERATION_PUSH</code>, <code>Operation.OPERATION_AUTOSYNC</code> or <code>Operation.OPERATION_INDEX</code>.</td>
+</tr>
+<tr>
+<td><code>context.source_peer_id</code></td>
+<td>optional string</td>
+<td>The authenticated peer a record is being pulled from, which only autosync has. Nothing populates it yet, so it reads as absent at every operation; a policy tests it with <code>has(context.source_peer_id)</code> rather than comparing it.</td>
+</tr>
+<tr>
+<td><code>now</code></td>
+<td>timestamp</td>
+<td>The instant the operation is being decided at, the same one for every policy deciding it.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cel</span>
+<span class="w">  </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;push&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;autosync&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">synced-records-are-locatable</span>
+<span class="w">  </span><span class="nt">expressions</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;context.operation</span><span class="nv"> </span><span class="s">!=</span><span class="nv"> </span><span class="s">Operation.OPERATION_AUTOSYNC</span><span class="nv"> </span><span class="s">||</span><span class="nv"> </span><span class="s">has(record.locators)&#39;</span>
+</code></pre></div>
+<p><code>opa</code> is given the same values as its input document: <code>input.record.name</code>, <code>input.record_cid</code>, <code>input.context.operation</code>, <code>input.context.source_peer_id</code>, <code>input.now</code>. Two differences follow from the document being JSON. An enum arrives as its name, so the comparison is <code>input.context.operation == "OPERATION_PUSH"</code> rather than a number. An unset <code>source_peer_id</code> is absent from the document rather than empty, so a policy tests it with <code>not input.context.source_peer_id</code>. <code>now</code> is an RFC 3339 string.</p>
+<p>A policy in this block cannot read <code>meta</code>, the facts about a record that an evaluation policy reads, nor another policy's verdict. Those belong to <code>policy.evaluations</code>, which runs per record rather than per operation; see <a href="../dir-content-policy-enforcement/">Content Policy Enforcement</a>. A <code>cel</code> policy here that names one does not load, and the node reports it at startup rather than letting the policy decide on nothing.</p>
 <h3 id="validation-behavior">Validation Behavior</h3>
 <p>The Directory server uses API-based validation against the configured OASF schema server:</p>
 <ul>
