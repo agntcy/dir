@@ -102,7 +102,7 @@ func TestRegistryPolicies_NoneConfigured(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Empty(t, reg.Evaluators(nil), "an operation policy defines no evaluation policy")
-	assert.Len(t, reg.For(policyconfig.OpPush), 1)
+	assert.Len(t, reg.OperationIDs(policyconfig.OpPush), 1)
 	assert.Empty(t, policiesOf(t, ""))
 }
 

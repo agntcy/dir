@@ -21,8 +21,20 @@ const versionLength = 16
 // Registry maps operations to the operation policies that decide at them, and
 // holds the evaluation policies.
 type Registry struct {
-	byOp        map[string][]Validator
+	byOp        map[string][]operationPolicy
 	evaluations []evaluation
+}
+
+// operationPolicy is one loaded operation policy: what decides, what it is
+// called, and how its decision applies.
+//
+// The mode is kept here because it is a property of the configured policy, not
+// of the decision: the same validator in two entries can enforce at one
+// operation and only report at another.
+type operationPolicy struct {
+	id        string
+	mode      policyconfig.Mode
+	validator Validator
 }
 
 // evaluation is one loaded evaluation policy. Evaluators turns it into an
@@ -83,7 +95,7 @@ func NewRegistry(
 		loaded = append(loaded, evaluation{id: e.PolicyID(), version: version, validator: v})
 	}
 
-	byOp := make(map[string][]Validator)
+	byOp := make(map[string][]operationPolicy)
 
 	for i, o := range operations {
 		v, _, err := newValidator(ctx, layerOperation, o.Provider,
@@ -92,8 +104,15 @@ func NewRegistry(
 			return nil, fmt.Errorf("operations[%d]: %w", i, err)
 		}
 
+		// Resolved once, here, so that a decision and the log of it report the
+		// mode the policy runs in rather than the mode the operator omitted.
+		mode := o.Mode
+		if mode == "" {
+			mode = policyconfig.ModeEnforce
+		}
+
 		for _, op := range o.Ops {
-			byOp[op] = append(byOp[op], v)
+			byOp[op] = append(byOp[op], operationPolicy{id: o.PolicyID(), mode: mode, validator: v})
 		}
 	}
 
@@ -142,14 +161,19 @@ func newValidator(ctx context.Context, l layer, name string, p provider, policyD
 	}
 }
 
-// For returns the operation policies configured for op, in config order.
-// The slice is empty if none are configured.
-func (r *Registry) For(op string) []Validator {
+// OperationIDs returns the IDs of the policies configured at op, in config
+// order, whatever mode each runs in. The slice is empty if none are.
+func (r *Registry) OperationIDs(op string) []string {
 	if r == nil {
 		return nil
 	}
 
-	return r.byOp[op]
+	ids := make([]string, 0, len(r.byOp[op]))
+	for _, p := range r.byOp[op] {
+		ids = append(ids, p.id)
+	}
+
+	return ids
 }
 
 // EvaluationIDs returns the evaluation policy IDs, in config order.
@@ -189,23 +213,43 @@ func (r *Registry) Evaluators(records RecordSource) []Evaluator {
 
 // Decide applies every operation policy configured for op, in config order.
 // A nil registry or an op with no policies is a no-op and reports that the
-// record passes. Messages from every failing policy are collected.
-func (r *Registry) Decide(ctx context.Context, op string, record *corev1.Record) (bool, []string, error) {
+// record passes. Messages from every failing enforcing policy are collected.
+//
+// Each policy applies in its own mode. A policy in off is not run at all. A
+// policy in shadow is run and its decision reported, but it does not reach the
+// caller: that is the whole of the difference between shadow and enforce, and
+// it is why the decision has to be reached per policy rather than once.
+//
+// Every decision is logged here rather than by the caller, because what was
+// decided and by which policy in which mode is known here and nowhere else —
+// a shadow decision in particular is never returned at all.
+func (r *Registry) Decide(
+	ctx context.Context,
+	op string,
+	record *corev1.Record,
+	opts ...DecideOption,
+) (bool, []string, error) {
+	if r == nil {
+		return true, nil, nil
+	}
+
 	var all []string
 
-	input := operationInput(op, record)
+	input := operationInput(op, record, opts...)
 
-	for _, v := range r.For(op) {
-		if v == nil {
+	for _, p := range r.byOp[op] {
+		if p.validator == nil || p.mode == policyconfig.ModeOff {
 			continue
 		}
 
-		ok, msgs, err := validateOperation(ctx, record, input, v)
+		ok, msgs, err := validateOperation(ctx, record, input, p.validator)
 		if err != nil {
-			return false, nil, fmt.Errorf("decide record: %w", err)
+			return false, nil, fmt.Errorf("decide record with policy %q: %w", p.id, err)
 		}
 
-		if !ok {
+		logDecision(ctx, p, input, ok, msgs)
+
+		if !ok && p.mode == policyconfig.ModeEnforce {
 			all = append(all, msgs...)
 		}
 	}
@@ -213,7 +257,17 @@ func (r *Registry) Decide(ctx context.Context, op string, record *corev1.Record)
 	return len(all) == 0, all, nil
 }
 
-// With returns a registry that runs vs for op. Intended for tests.
+// With returns a registry that runs vs for op, each enforcing, which is what
+// an operation policy does when its mode is unset. Intended for tests.
 func With(op string, vs ...Validator) *Registry {
-	return &Registry{byOp: map[string][]Validator{op: vs}}
+	policies := make([]operationPolicy, 0, len(vs))
+	for i, v := range vs {
+		policies = append(policies, operationPolicy{
+			id:        fmt.Sprintf("test:%d", i),
+			mode:      policyconfig.ModeEnforce,
+			validator: v,
+		})
+	}
+
+	return &Registry{byOp: map[string][]operationPolicy{op: policies}}
 }

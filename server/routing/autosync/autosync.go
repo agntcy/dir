@@ -267,7 +267,10 @@ func (m *Manager) process(parentCtx context.Context, j job) {
 	}
 
 	// Validity: run the operation policies configured for autosync before ingest.
-	valid, validationErrors, err := m.policyRegistry.Decide(ctx, policyconfig.OpAutosync, record)
+	// The peer is passed so a policy can hold a particular one to particular
+	// rules; it is not what decides whether the peer is trusted at all.
+	valid, validationErrors, err := m.policyRegistry.Decide(ctx, policyconfig.OpAutosync, record,
+		policy.FromPeer(peerID.String()))
 	if err != nil {
 		logger.Error("Autosync record validation error", "cid", cid, "peer", peerID, "error", err)
 

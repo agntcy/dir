@@ -45,26 +45,55 @@ var operations = map[string]policyv1.Operation{
 	policyconfig.OpIndex:    policyv1.Operation_OPERATION_INDEX,
 }
 
+// DecideOption supplies a circumstance of the operation that the op and the
+// record do not carry: where the record came from, and in time who is asking.
+//
+// An option rather than a parameter because only one caller has one. The three
+// that do not should not have to name its absence, and the next circumstance
+// to land in OperationContext should not have to touch them either.
+type DecideOption func(*policyv1.OperationContext)
+
+// FromPeer names the authenticated peer the record is being pulled from.
+//
+// An empty id leaves the field unset rather than setting it to "": the field
+// is optional so that a policy can tell "no peer" from a peer, and an empty
+// string would report a peer whose ID is nothing.
+//
+// This is not an authorization input. The peer allow-set is matched against
+// the authenticated peer ID before a record reaches a policy, so this only
+// buys per-peer rules.
+func FromPeer(id string) DecideOption {
+	return func(opCtx *policyv1.OperationContext) {
+		if id == "" {
+			return
+		}
+
+		opCtx.SourcePeerId = &id
+	}
+}
+
 // operationInput is the OperationInput the policies at one operation see.
 //
 // Built once per decision so that every policy deciding it reads the same
 // instant, which is what the proto's now is for.
 //
 // verdicts and indexed_at stay unset: both need a database read, and this is
-// reached from paths that have none. source_peer_id stays unset too, so a
-// policy asking for it is told there is none rather than the wrong one.
-func operationInput(op string, record *corev1.Record) *policyv1.OperationInput {
+// reached from paths that have none.
+func operationInput(op string, record *corev1.Record, opts ...DecideOption) *policyv1.OperationInput {
 	if record == nil {
 		return nil
+	}
+
+	opCtx := &policyv1.OperationContext{Operation: operations[op]}
+	for _, opt := range opts {
+		opt(opCtx)
 	}
 
 	return &policyv1.OperationInput{
 		Record:    record.GetData(),
 		RecordCid: record.GetCid(),
-		Context: &policyv1.OperationContext{
-			Operation: operations[op],
-		},
-		Now: timestamppb.Now(),
+		Context:   opCtx,
+		Now:       timestamppb.Now(),
 	}
 }
 

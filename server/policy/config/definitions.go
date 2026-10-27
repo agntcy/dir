@@ -76,7 +76,9 @@ func KnownOps() []string {
 type Mode string
 
 const (
-	// ModeOff applies no policy. The empty mode means the same.
+	// ModeOff applies no policy. For a read gate the empty mode means the
+	// same; for an operation policy it means enforce, because a policy
+	// configured at an operation was always acted on.
 	ModeOff Mode = "off"
 
 	// ModeShadow checks and reports what it would have done, but does
@@ -136,10 +138,8 @@ type Operation struct {
 	// Mode is how the decision applies. An empty mode means enforce, which
 	// is what every operation policy did before there was a mode.
 	//
-	// Only enforce is acted on today. A record failing a policy in off or
-	// shadow mode is still refused, because reporting a decision without
-	// acting on it needs the decision log that arrives with the operation
-	// write path.
+	// off does not run the policy. shadow runs it and reports the decision
+	// without refusing the record. enforce refuses it.
 	Mode Mode `json:"mode,omitempty" mapstructure:"mode"`
 
 	// Name is what this policy is called, and what a decision about it is

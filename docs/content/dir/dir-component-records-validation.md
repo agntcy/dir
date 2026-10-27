@@ -80,7 +80,7 @@ Validation is performed using the [OASF SDK](https://docs.agntcy.org/oasf/oasf-
 
 ### Configuration
 
-The Directory server validates records using `policy.operations` in YAML. Each entry selects a provider, the operations it applies to (`push`, `autosync`, `index`), a `name`, and that provider's settings. An empty list disables record validation. This list cannot be set via environment variables.
+The Directory server validates records using `policy.operations` in YAML. Each entry selects a provider, the operations it applies to (`push`, `autosync`, `index`), a `name`, that provider's settings, and optionally a `mode`. An empty list disables record validation. This list cannot be set via environment variables.
 
 ```yaml
 # server.config.yml
@@ -117,7 +117,7 @@ A policy in `policy.operations` decides one operation, so it is given the record
 | `record` | dynamic | The record's OASF content, read by field name. |
 | `record_cid` | string | The record's content identifier. |
 | `context.operation` | enum | Which operation is being decided: `Operation.OPERATION_PUSH`, `Operation.OPERATION_AUTOSYNC` or `Operation.OPERATION_INDEX`. |
-| `context.source_peer_id` | optional string | The authenticated peer a record is being pulled from, which only autosync has. Nothing populates it yet, so it reads as absent at every operation; a policy tests it with `has(context.source_peer_id)` rather than comparing it. |
+| `context.source_peer_id` | optional string | The authenticated peer the record is being pulled from. Set at `autosync` and absent at `push` and `index`, so a policy covering more than one operation tests it with `has(context.source_peer_id)` before comparing it. |
 | `now` | timestamp | The instant the operation is being decided at, the same one for every policy deciding it. |
 
 ```yaml
@@ -131,6 +131,43 @@ A policy in `policy.operations` decides one operation, so it is given the record
 `opa` is given the same values as its input document: `input.record.name`, `input.record_cid`, `input.context.operation`, `input.context.source_peer_id`, `input.now`. Two differences follow from the document being JSON. An enum arrives as its name, so the comparison is `input.context.operation == "OPERATION_PUSH"` rather than a number. An unset `source_peer_id` is absent from the document rather than empty, so a policy tests it with `not input.context.source_peer_id`. `now` is an RFC 3339 string.
 
 A policy in this block cannot read `meta`, the facts about a record that an evaluation policy reads, nor another policy's verdict. Those belong to `policy.evaluations`, which runs per record rather than per operation; see [Content Policy Enforcement](dir-content-policy-enforcement.md). A `cel` policy here that names one does not load, and the node reports it at startup rather than letting the policy decide on nothing.
+
+### Modes
+
+Each entry carries an optional `mode`, which decides what happens to its refusals. It applies to that entry alone, so one policy can be tried out while the others keep enforcing.
+
+| Mode | What it does |
+|---|---|
+| `enforce` | Refuses the record. This is the default: an entry with no `mode` enforces. |
+| `shadow` | Decides and logs the decision, but does not refuse the record. |
+| `off` | Does not run the policy at all. |
+
+`shadow` is how a policy is introduced to a running node: it reports what it would refuse, against real traffic, without turning away a record anyone depended on being accepted.
+
+```yaml
+- provider: cel
+  op: ["push"]
+  name: annotations-are-required
+  mode: shadow
+  expressions:
+    - 'has(record.annotations)'
+```
+
+### The Decision Log
+
+An operation policy stores nothing, so the log is the only trace a decision leaves. Each policy that runs writes one line, under the `policy` component:
+
+```text
+level=INFO msg="Operation policy refused the record" component=policy
+  operation=OPERATION_PUSH cid=baeareid5t7... policy_id=cel:annotations-are-required
+  mode=enforce decision=refuse reason="[ERROR: record has no annotations]"
+```
+
+A refusal is logged at `INFO` and an accepted record at `DEBUG`, since every record pushed, synced or indexed produces one of the latter. `peer` names the peer a record was synced from, and `caller` the authenticated identity of a push; each appears only where it is known.
+
+`decision` is always what the policy decided, and `mode` says what was done about it. A line reading `decision=refuse mode=shadow` is a record that was accepted — reported by the message `Shadow mode: operation policy would have refused the record` — and counting those is how a shadow policy is assessed before it is switched to `enforce`.
+
+The Prometheus counters under `dir_policy_gate_*` are not this. They aggregate reads the *evaluation* layer excludes, carrying no CID and no policy ID; see [Content Policy Enforcement](dir-content-policy-enforcement.md).
 
 ### Validation Behavior
 
