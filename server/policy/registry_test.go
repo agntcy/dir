@@ -12,7 +12,6 @@ import (
 	policyv1 "github.com/agntcy/dir/api/policy/v1"
 	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestNewRegistry_Empty(t *testing.T) {
@@ -91,7 +90,7 @@ type fakeValidator struct {
 	msgs  []string
 }
 
-func (f fakeValidator) ValidateOperation(context.Context, *structpb.Struct) (bool, []string, []string, error) {
+func (f fakeValidator) ValidateOperation(context.Context, *policyv1.OperationInput) (bool, []string, []string, error) {
 	return f.valid, f.msgs, nil, nil
 }
 

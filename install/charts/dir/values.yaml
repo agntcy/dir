@@ -185,8 +185,9 @@ apiserver:
           op: ["push", "autosync", "index"]
           name: schema
           schema_url: "https://schema.oasf.outshift.com"
-        # Inline CEL expressions. The record is bound as `record`; each
-        # expression must evaluate to bool. Validation fails if any is false.
+        # Inline CEL expressions. The record is bound as `record`, with
+        # `record_cid`, `context` and `now` beside it; each expression must
+        # evaluate to bool. Validation fails if any is false.
         # - provider: cel
         #   op: ["push"]
         #   name: require-identity

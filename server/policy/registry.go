@@ -74,7 +74,8 @@ func NewRegistry(
 			return nil, fmt.Errorf("evaluations[%d]: provider %q cannot define an evaluation policy", i, e.Provider)
 		}
 
-		v, version, err := newValidator(ctx, e.Provider, provider{file: e.File, expressions: e.Expressions}, policyDir)
+		v, version, err := newValidator(ctx, layerEvaluation, e.Provider,
+			provider{file: e.File, expressions: e.Expressions}, policyDir)
 		if err != nil {
 			return nil, fmt.Errorf("evaluations[%d]: %w", i, err)
 		}
@@ -85,7 +86,7 @@ func NewRegistry(
 	byOp := make(map[string][]Validator)
 
 	for i, o := range operations {
-		v, _, err := newValidator(ctx, o.Provider,
+		v, _, err := newValidator(ctx, layerOperation, o.Provider,
 			provider{schemaURL: o.SchemaURL, file: o.File, expressions: o.Expressions}, policyDir)
 		if err != nil {
 			return nil, fmt.Errorf("operations[%d]: %w", i, err)
@@ -109,7 +110,11 @@ type provider struct {
 
 // newValidator builds the validator for one configured provider, and the version
 // of its content when the provider has any. OASF has none.
-func newValidator(ctx context.Context, name string, p provider, policyDir string) (Validator, string, error) {
+//
+// l is the layer the policy was configured in. Only CEL needs it today,
+// because it is the only provider that compiles its policy here and so the
+// only one that can reject reading the other layer's inputs at load time.
+func newValidator(ctx context.Context, l layer, name string, p provider, policyDir string) (Validator, string, error) {
 	switch name {
 	case policyconfig.ProviderOASF:
 		v, err := newOASFValidator(p.schemaURL)
@@ -119,7 +124,7 @@ func newValidator(ctx context.Context, name string, p provider, policyDir string
 
 		return v, "", nil
 	case policyconfig.ProviderCEL:
-		v, err := newCELValidator(p.expressions)
+		v, err := newCELValidator(p.expressions, l)
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to initialize CEL validator: %w", err)
 		}
@@ -188,12 +193,14 @@ func (r *Registry) Evaluators(records RecordSource) []Evaluator {
 func (r *Registry) Decide(ctx context.Context, op string, record *corev1.Record) (bool, []string, error) {
 	var all []string
 
+	input := operationInput(op, record)
+
 	for _, v := range r.For(op) {
 		if v == nil {
 			continue
 		}
 
-		ok, msgs, err := validateOperation(ctx, record, v)
+		ok, msgs, err := validateOperation(ctx, record, input, v)
 		if err != nil {
 			return false, nil, fmt.Errorf("decide record: %w", err)
 		}

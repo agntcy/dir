@@ -15,7 +15,6 @@ import (
 	servertypes "github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type mapSource struct {
@@ -55,7 +54,7 @@ func (f funcValidator) ValidateEvaluation(_ context.Context, state *policyv1.Rec
 	return f(state)
 }
 
-func (f funcValidator) ValidateOperation(context.Context, *structpb.Struct) (bool, []string, []string, error) {
+func (f funcValidator) ValidateOperation(context.Context, *policyv1.OperationInput) (bool, []string, []string, error) {
 	return false, nil, nil, errors.New("not an operation")
 }
 

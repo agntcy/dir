@@ -18,7 +18,6 @@ import (
 	"github.com/open-policy-agent/opa/v1/rego"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const allowQuerySfx = ".allow"
@@ -90,12 +89,17 @@ func (v *opaValidator) ValidateEvaluation(ctx context.Context, state *policyv1.R
 	return v.decide(ctx, input)
 }
 
-func (v *opaValidator) ValidateOperation(ctx context.Context, data *structpb.Struct) (bool, []string, []string, error) {
-	if data == nil {
+func (v *opaValidator) ValidateOperation(ctx context.Context, opInput *policyv1.OperationInput) (bool, []string, []string, error) {
+	if opInput.GetRecord() == nil {
 		return false, []string{"record data is required"}, nil, nil
 	}
 
-	return v.decide(ctx, data.AsMap())
+	input, err := operationAsInput(opInput)
+	if err != nil {
+		return false, nil, nil, fmt.Errorf("encode input for policy %q: %w", v.name, err)
+	}
+
+	return v.decide(ctx, input)
 }
 
 func (v *opaValidator) decide(ctx context.Context, input map[string]any) (bool, []string, []string, error) {
@@ -136,6 +140,40 @@ func stateAsInput(state *policyv1.RecordState) (map[string]any, error) {
 		}
 
 		input["meta"] = encoded
+	}
+
+	return input, nil
+}
+
+// operationAsInput is the Rego input document for an OperationInput.
+//
+// Shaped like stateAsInput so that a record field is reached the same way in
+// both layers: the record is nested under its own key rather than merged into
+// the root, which also keeps a record that happens to carry a top-level field
+// named context or now from shadowing ours.
+//
+// context is encoded from the proto with proto field names, so a policy reads
+// input.context.operation, and reads it as the enum's name: the string
+// "OPERATION_PUSH", not a number. verdicts and indexed_at stay out for the
+// same reason the operation CEL environment does not declare them.
+func operationAsInput(opInput *policyv1.OperationInput) (map[string]any, error) {
+	if err := checkOperationInput(opInput); err != nil {
+		return nil, err
+	}
+
+	encodedCtx, err := protoToMap(opInput.GetContext())
+	if err != nil {
+		return nil, err
+	}
+
+	input := map[string]any{
+		"record":  opInput.GetRecord().AsMap(),
+		"context": encodedCtx,
+		"now":     opInput.GetNow().AsTime().UTC().Format(time.RFC3339Nano),
+	}
+
+	if cid := opInput.GetRecordCid(); cid != "" {
+		input["record_cid"] = cid
 	}
 
 	return input, nil

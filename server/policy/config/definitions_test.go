@@ -115,6 +115,37 @@ func TestOperationsValidate_Mode(t *testing.T) {
 	}}).Validate(), `operations[0]: unknown mode "on", expected "off", "shadow" or "enforce"`)
 }
 
+// What the rest of the server derives per op is checked against KnownOps, so
+// it has to agree with the ops a policy can actually be configured at.
+func TestKnownOps_AgreesWithValidation(t *testing.T) {
+	t.Parallel()
+
+	ops := KnownOps()
+	require.NotEmpty(t, ops)
+
+	for _, op := range ops {
+		require.NoError(t, (Operations{{
+			Provider:    ProviderCEL,
+			Ops:         []string{op},
+			Name:        "require-identity",
+			Expressions: []string{`true`},
+		}}).Validate(), "op %q", op)
+	}
+}
+
+// An expression that is only whitespace is a line someone left behind, not a
+// rule, and it would otherwise compile to nothing.
+func TestOperationsValidate_BlankExpression(t *testing.T) {
+	t.Parallel()
+
+	require.EqualError(t, (Operations{{
+		Provider:    ProviderCEL,
+		Ops:         []string{OpPush},
+		Name:        "require-identity",
+		Expressions: []string{`true`, "  "},
+	}}).Validate(), "operations[0]: expressions[1]: value is empty")
+}
+
 // Each provider's settings are its own. A setting meant for another one is a
 // mistake, and silently ignoring it would leave a policy doing nothing like
 // what its author wrote.

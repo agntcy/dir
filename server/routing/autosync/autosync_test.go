@@ -20,7 +20,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // --- mocks ---
@@ -136,7 +135,7 @@ type fakeValidator struct {
 	valid bool
 }
 
-func (f fakeValidator) ValidateOperation(context.Context, *structpb.Struct) (bool, []string, []string, error) {
+func (f fakeValidator) ValidateOperation(context.Context, *policyv1.OperationInput) (bool, []string, []string, error) {
 	if f.valid {
 		return true, nil, nil, nil
 	}

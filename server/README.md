@@ -31,7 +31,7 @@ policy:
       file: "require-annotations.rego"
 ```
 
-The `cel` provider compiles `expressions` at startup. The record's OASF fields are bound as the `record` variable, and each expression must evaluate to `bool`. Validation fails if any expression is false.
+The `cel` provider compiles `expressions` at startup. The record's OASF fields are bound as the `record` variable, with `record_cid`, `context` and `now` beside it, and each expression must evaluate to `bool`. Validation fails if any expression is false. See [What a Policy Can Read](../docs/content/dir/dir-component-records-validation.md#what-a-policy-can-read).
 
 The daemon nests the same lists under `server.policy`. Helm exposes them as `apiserver.config.policy.operations` and `apiserver.config.policy.evaluations`, and copies `config.policy` into both the apiserver and the reconciler.
 
