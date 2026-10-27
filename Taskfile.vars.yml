@@ -33,8 +33,11 @@ vars:
     - "docker.io/bitnami/postgresql:{{.POSTGRESQL_VERSION}}"
 
   ## Scanner versions
+  # renovate: datasource=pypi depName=cisco-ai-mcp-scanner versioning=pep440
   MCP_SCANNER_VERSION: "4.8.6"
+  # renovate: datasource=pypi depName=cisco-ai-skill-scanner versioning=pep440
   SKILL_SCANNER_VERSION: "2.0.12"
+  # renovate: datasource=pypi depName=cisco-ai-a2a-scanner versioning=pep440
   A2A_SCANNER_VERSION: "1.0.1"
 
   ## Image config

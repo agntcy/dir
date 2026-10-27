@@ -10,6 +10,19 @@
   "customManagers": [
     {
       "customType": "regex",
+      "managerFilePatterns": [
+        "/^cli/cmd/init/scanners\\.go$/",
+        "/(^|/)docker-bake\\.hcl$/"
+      ],
+      "matchStrings": [
+        "(?m)^\\s*(?://|#)\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\s*\\r?\\n\\s*(?:version:|variable\\s+\\S+\\s*\\{\\s*default\\s*=)\\s*\\\"(?<currentValue>[^\\\"\\s]+)\\\""
+      ],
+      "description": [
+        "Custom dependency manager for security scanner versions in dirctl init and docker-bake.hcl."
+      ]
+    },
+    {
+      "customType": "regex",
       "managerFilePatterns": ["/(^|/)Taskfile[^/]*\\.yml$/"],
       "matchStrings": [
         "(?m)^\\s*#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?(?:\\s+registryUrl=(?<registryUrl>\\S+))?\\s*\\r?\\n\\s*(?<varName>[A-Z0-9_]+)_VERSION:\\s+\"?(?<currentValue>[^\"@\\s]+)\"?\\s*$"
@@ -187,6 +200,19 @@
       "description": [
         "Add build label to PRs which are related to build tools defined in Taskfile.",
         "Group Taskfile dependency updates in single PR."
+      ]
+    },
+    {
+      "groupName": "Security scanners",
+      "groupSlug": "security-scanners",
+      "matchDatasources": ["pypi"],
+      "matchPackageNames": [
+        "cisco-ai-mcp-scanner",
+        "cisco-ai-skill-scanner",
+        "cisco-ai-a2a-scanner"
+      ],
+      "description": [
+        "Group scanner bumps (Taskfile, docker-bake.hcl, dirctl init) into a single PR."
       ]
     },
     {

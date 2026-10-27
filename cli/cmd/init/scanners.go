@@ -21,10 +21,27 @@ type scannerPackage struct {
 	version string
 }
 
+// Versions are bumped by Renovate (see customManagers in renovate.json); keep
+// the "renovate:" comment directly above each entry's version field.
 var scannerPackages = []scannerPackage{
-	{binary: "mcp-scanner", pkg: "cisco-ai-mcp-scanner", version: "4.8.6"},
-	{binary: "skill-scanner", pkg: "cisco-ai-skill-scanner", version: "2.0.12"},
-	{binary: "a2a-scanner", pkg: "cisco-ai-a2a-scanner", version: "1.0.1"},
+	{
+		binary: "mcp-scanner",
+		pkg:    "cisco-ai-mcp-scanner",
+		// renovate: datasource=pypi depName=cisco-ai-mcp-scanner versioning=pep440
+		version: "4.8.6",
+	},
+	{
+		binary: "skill-scanner",
+		pkg:    "cisco-ai-skill-scanner",
+		// renovate: datasource=pypi depName=cisco-ai-skill-scanner versioning=pep440
+		version: "2.0.12",
+	},
+	{
+		binary: "a2a-scanner",
+		pkg:    "cisco-ai-a2a-scanner",
+		// renovate: datasource=pypi depName=cisco-ai-a2a-scanner versioning=pep440
+		version: "1.0.1",
+	},
 }
 
 // installTool runs `uv tool install` for one scanner; replaced in tests.
