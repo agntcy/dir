@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"sync"
 	"testing"
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
@@ -145,6 +146,33 @@ func (f fakeValidator) ValidateOperation(context.Context, *policyv1.OperationInp
 
 func (f fakeValidator) ValidateEvaluation(context.Context, *policyv1.RecordState) (bool, []string, []string, error) {
 	return false, nil, nil, nil
+}
+
+// capturingValidator keeps the input it was given, so a test can assert on the
+// circumstances autosync reported rather than only on the decision.
+type capturingValidator struct {
+	mu    sync.Mutex
+	input *policyv1.OperationInput
+}
+
+func (c *capturingValidator) ValidateOperation(_ context.Context, input *policyv1.OperationInput) (bool, []string, []string, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.input = input
+
+	return true, nil, nil, nil
+}
+
+func (c *capturingValidator) ValidateEvaluation(context.Context, *policyv1.RecordState) (bool, []string, []string, error) {
+	return false, nil, nil, nil
+}
+
+func (c *capturingValidator) captured() *policyv1.OperationInput {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.input
 }
 
 // --- helpers ---
@@ -341,6 +369,24 @@ func TestPullRecord_ResolvesAddressesWhenNoneProvided(t *testing.T) {
 
 	assert.GreaterOrEqual(t, router.findPeerCalls, 1, "must resolve addresses via FindPeer when none are provided")
 	assert.Equal(t, 1, ing.importRecordCalls, "record should still be ingested")
+}
+
+// OpAutosync exists apart from OpPush so an operator can be stricter about
+// records they did not push, which is only possible if the policy is told
+// which peer the record came from.
+func TestProcess_PolicySeesTheSourcePeer(t *testing.T) {
+	trusted := randomPeerID(t)
+	rec := testRecord(t)
+
+	v := &capturingValidator{}
+	m := newManager(map[peer.ID]struct{}{trusted: {}}, &fakeTransport{pullRecord: rec}, fakeRouter{},
+		&fakeIngestor{}, &fakeStore{}, policy.With(policyconfig.OpAutosync, v))
+	m.process(t.Context(), job{ref: &corev1.RecordRef{Cid: rec.GetCid()}, peer: peer.AddrInfo{ID: trusted}})
+
+	input := v.captured()
+	require.NotNil(t, input, "the policy should have been asked")
+	assert.Equal(t, policyv1.Operation_OPERATION_AUTOSYNC, input.GetContext().GetOperation())
+	assert.Equal(t, trusted.String(), input.GetContext().GetSourcePeerId())
 }
 
 func TestComputeBackoff(t *testing.T) {

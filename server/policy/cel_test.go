@@ -161,7 +161,7 @@ func TestNewRegistry_CEL(t *testing.T) {
 		Expressions: []string{`record.name != ""`},
 	}}, "")
 	require.NoError(t, err)
-	require.Len(t, reg.For(policyconfig.OpPush), 1)
+	require.Len(t, reg.OperationIDs(policyconfig.OpPush), 1)
 
 	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
 	ok, msgs, err := reg.Decide(context.Background(), policyconfig.OpPush, record)
@@ -261,18 +261,40 @@ func TestCELValidator_SamePolicyDecidesPerOperation(t *testing.T) {
 	}
 }
 
-// Nothing populates source_peer_id yet, so it reads as absent rather than as
-// the empty string, and a policy can tell the two apart once it is populated.
-func TestCELValidator_SourcePeerIDReadsAbsent(t *testing.T) {
+// A policy can hold one peer to a rule the others are not held to, which is
+// what separating autosync from push is for. A push has no peer, so the two
+// have to be distinguishable rather than one reading as the empty string.
+func TestCELValidator_MatchesSourcePeer(t *testing.T) {
 	t.Parallel()
 
-	v, err := newCELValidator([]string{`!has(context.source_peer_id)`}, layerOperation)
+	const peerID = "12D3KooWLf9p3cedc86xGQBaqak6rAFmQk1HxKAK1yh7umHE3amu"
+
+	v, err := newCELValidator([]string{
+		`!has(context.source_peer_id) || context.source_peer_id == "` + peerID + `"`,
+	}, layerOperation)
 	require.NoError(t, err)
 
-	ok, msgs, _, err := v.ValidateOperation(context.Background(), operationInput(
-		policyconfig.OpPush, corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})))
-	require.NoError(t, err)
-	require.True(t, ok, msgs)
+	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
+
+	tests := []struct {
+		name  string
+		input *policyv1.OperationInput
+		want  bool
+	}{
+		{"push has no peer", operationInput(policyconfig.OpPush, record), true},
+		{"the named peer", operationInput(policyconfig.OpAutosync, record, FromPeer(peerID)), true},
+		{"another peer", operationInput(policyconfig.OpAutosync, record, FromPeer("12D3KooWOther")), false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ok, msgs, _, err := v.ValidateOperation(context.Background(), tc.input)
+			require.NoError(t, err)
+			require.Equal(t, tc.want, ok, msgs)
+		})
+	}
 }
 
 func TestCELValidator_UnsetFactsStayAbsent(t *testing.T) {

@@ -31,6 +31,21 @@ func TestOperationInput_NamesEveryConfigurableOp(t *testing.T) {
 	}
 }
 
+// An absent peer and a peer with an empty name have to read differently, so
+// an empty id leaves the field unset rather than reporting a peer called "".
+func TestFromPeer_EmptyLeavesItUnset(t *testing.T) {
+	t.Parallel()
+
+	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
+
+	set := operationInput(policyconfig.OpAutosync, record, FromPeer("12D3KooWSomePeer"))
+	require.Equal(t, "12D3KooWSomePeer", set.GetContext().GetSourcePeerId())
+	require.NotNil(t, set.GetContext().SourcePeerId)
+
+	unset := operationInput(policyconfig.OpAutosync, record, FromPeer(""))
+	require.Nil(t, unset.GetContext().SourcePeerId)
+}
+
 // A policy reads context and now as values, so an input missing either fails
 // the validator rather than letting the policy decide on 1970.
 func TestCheckOperationInput_RequiresContextAndNow(t *testing.T) {
