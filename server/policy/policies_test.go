@@ -192,6 +192,46 @@ func TestRegistryPolicies_DecidesOnProjectedMeta(t *testing.T) {
 	assert.Contains(t, reason, "meta.signature.status == SignatureStatus.SIGNATURE_STATUS_VERIFIED")
 }
 
+// indexed_at is declared in the evaluation environment, so a policy can select
+// on when a record arrived here. Compared against a literal rather than now:
+// the evaluation layer has no now, because a verdict that depends on the clock
+// cannot be cached.
+func TestRegistryPolicies_DecidesOnIndexedAt(t *testing.T) {
+	t.Parallel()
+
+	reg, err := NewRegistry(context.Background(), policyconfig.Evaluations{
+		celPolicy("since-cutover", `indexed_at.orValue(timestamp('1970-01-01T00:00:00Z')) >= timestamp('2026-01-01T00:00:00Z')`),
+	}, nil, "")
+	require.NoError(t, err)
+
+	record := annotatedRecord(t, nil)
+	src := &mapSource{records: map[string]*corev1.Record{record.GetCid(): record}}
+
+	tests := []struct {
+		name      string
+		indexedAt time.Time
+		want      bool
+	}{
+		{"indexed after the cutover", time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC), true},
+		{"indexed before it", time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), false},
+		{"not indexed at all", time.Time{}, false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			evs := reg.Evaluators(src, cidFacts{byCID: map[string]types.PolicyFacts{
+				record.GetCid(): {IndexedAt: tc.indexedAt},
+			}})
+
+			ok, _, err := evs[0].Evaluate(context.Background(), indexRecord{cid: record.GetCid()})
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, ok)
+		})
+	}
+}
+
 // The version follows the policy's content and nothing else, so an edit is
 // evaluated again and a restart is not.
 func TestPolicyVersion_FollowsContent(t *testing.T) {
