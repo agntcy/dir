@@ -255,6 +255,11 @@ type ScanReportObject interface {
 	// GetSource is one of the ScanSource* values, or empty when the writer
 	// did not record who produced the row.
 	GetSource() string
+
+	// GetFindingCount is how many findings this scanner reported. Zero when
+	// the writer did not record one, which is what a row stored before the
+	// column existed says.
+	GetFindingCount() int
 }
 
 // ScanSchedule controls when a scan result stops suppressing a rescan.

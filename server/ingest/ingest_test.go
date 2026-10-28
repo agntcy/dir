@@ -209,6 +209,10 @@ func TestImportReferrer_ScanReport(t *testing.T) {
 		ScannerType: securityv1.ScannerType_SCANNER_TYPE_MCP,
 		IsSafe:      true,
 		MaxSeverity: securityv1.Severity_SEVERITY_HIGH,
+		Findings: []*securityv1.Finding{
+			{RuleId: "one", Severity: securityv1.Severity_SEVERITY_HIGH},
+			{RuleId: "two", Severity: securityv1.Severity_SEVERITY_LOW},
+		},
 	}).MarshalReferrer()
 	require.NoError(t, err)
 
@@ -224,6 +228,7 @@ func TestImportReferrer_ScanReport(t *testing.T) {
 	assert.Equal(t, "HIGH", db.upsertReport.GetMaxSeverity())
 	assert.True(t, db.upsertReport.GetIsSafe())
 	assert.Equal(t, types.ScanSourceImported, db.upsertReport.GetSource())
+	assert.Equal(t, 2, db.upsertReport.GetFindingCount())
 }
 
 func TestImportReferrer_UnsupportedStore(t *testing.T) {
