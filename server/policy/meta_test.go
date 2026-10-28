@@ -68,9 +68,9 @@ func (s sigRow) GetUpdatedAt() time.Time          { return s.updated }
 func (sigRow) GetSignature() string               { return "" }
 
 type scanRow struct {
-	scanner, status, severity string
-	safe                      bool
-	updated                   time.Time
+	scanner, status, severity, source string
+	safe                              bool
+	updated                           time.Time
 }
 
 func (scanRow) GetRecordCID() string      { return "" }
@@ -81,6 +81,7 @@ func (s scanRow) GetUpdatedAt() time.Time { return s.updated }
 func (s scanRow) GetStatus() string       { return s.status }
 func (scanRow) GetFailureReason() string  { return "" }
 func (scanRow) GetFailureDetail() string  { return "" }
+func (s scanRow) GetSource() string       { return s.source }
 
 type claimRow struct {
 	role, subject, status string
@@ -252,6 +253,73 @@ func TestProject_Scan(t *testing.T) {
 		assert.Equal(t, policyv1.ScanStatus_SCAN_STATUS_PARTIAL, got.GetStatus())
 		assert.True(t, got.GetIsSafe())
 		assert.Equal(t, securityv1.Severity_SEVERITY_NONE, got.GetMaxSeverity())
+	})
+
+	t.Run("a local verdict is this node's observation", func(t *testing.T) {
+		t.Parallel()
+
+		got := project(nil, types.PolicyFacts{Scans: []types.ScanReportObject{
+			scanRow{scanner: "MCP", status: types.ScanStatusCompleted, severity: "NONE", source: types.ScanSourceLocal, safe: true, updated: late},
+			scanRow{scanner: "SKILL", status: types.ScanStatusFailed, source: types.ScanSourceLocal, updated: early},
+		}}).GetScan()
+
+		assert.Equal(t, policyv1.FactSource_FACT_SOURCE_LOCAL, got.GetSource())
+		assert.Equal(t, policyv1.ScanStatus_SCAN_STATUS_PARTIAL, got.GetStatus())
+	})
+
+	t.Run("an imported verdict is a peer's assertion", func(t *testing.T) {
+		t.Parallel()
+
+		got := project(nil, types.PolicyFacts{Scans: []types.ScanReportObject{
+			scanRow{scanner: "MCP", status: types.ScanStatusCompleted, severity: "NONE", source: types.ScanSourceImported, safe: true, updated: late},
+		}}).GetScan()
+
+		assert.Equal(t, policyv1.FactSource_FACT_SOURCE_IMPORTED, got.GetSource())
+	})
+
+	t.Run("a failed attempt still names who tried", func(t *testing.T) {
+		t.Parallel()
+
+		got := project(nil, types.PolicyFacts{Scans: []types.ScanReportObject{
+			scanRow{scanner: "MCP", status: types.ScanStatusFailed, source: types.ScanSourceLocal, updated: late},
+		}}).GetScan()
+
+		assert.Equal(t, policyv1.FactSource_FACT_SOURCE_LOCAL, got.GetSource())
+		assert.Equal(t, policyv1.ScanStatus_SCAN_STATUS_FAILED, got.GetStatus())
+	})
+
+	t.Run("a local failure does not change an imported verdict", func(t *testing.T) {
+		t.Parallel()
+
+		got := project(nil, types.PolicyFacts{Scans: []types.ScanReportObject{
+			scanRow{scanner: "MCP", status: types.ScanStatusCompleted, severity: "NONE", source: types.ScanSourceImported, safe: true, updated: early},
+			scanRow{scanner: "SKILL", status: types.ScanStatusFailed, source: types.ScanSourceLocal, updated: late},
+		}}).GetScan()
+
+		assert.Equal(t, policyv1.FactSource_FACT_SOURCE_IMPORTED, got.GetSource())
+	})
+
+	t.Run("mixed verdicts stay unspecified", func(t *testing.T) {
+		t.Parallel()
+
+		got := project(nil, types.PolicyFacts{Scans: []types.ScanReportObject{
+			scanRow{scanner: "MCP", status: types.ScanStatusCompleted, severity: "NONE", source: types.ScanSourceLocal, safe: true, updated: early},
+			scanRow{scanner: "SKILL", status: types.ScanStatusCompleted, severity: "LOW", source: types.ScanSourceImported, safe: true, updated: late},
+		}}).GetScan()
+
+		assert.Equal(t, policyv1.FactSource_FACT_SOURCE_UNSPECIFIED, got.GetSource())
+		assert.Equal(t, policyv1.ScanStatus_SCAN_STATUS_COMPLETED, got.GetStatus())
+	})
+
+	t.Run("a row that never recorded a source stays unspecified", func(t *testing.T) {
+		t.Parallel()
+
+		got := project(nil, types.PolicyFacts{Scans: []types.ScanReportObject{
+			scanRow{scanner: "MCP", status: types.ScanStatusCompleted, severity: "NONE", safe: true, updated: late},
+			scanRow{scanner: "SKILL", status: types.ScanStatusCompleted, severity: "NONE", source: types.ScanSourceLocal, safe: true, updated: early},
+		}}).GetScan()
+
+		assert.Equal(t, policyv1.FactSource_FACT_SOURCE_UNSPECIFIED, got.GetSource())
 	})
 }
 

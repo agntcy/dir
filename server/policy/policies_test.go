@@ -128,6 +128,7 @@ func TestRegistryPolicies_DecidesOnProjectedMeta(t *testing.T) {
 			`meta.signature.status == SignatureStatus.SIGNATURE_STATUS_VERIFIED`,
 			`meta.signature.source == FactSource.FACT_SOURCE_LOCAL`,
 			`meta.scan.status == ScanStatus.SCAN_STATUS_COMPLETED`,
+			`meta.scan.source == FactSource.FACT_SOURCE_LOCAL`,
 			`meta.scan.is_safe`,
 			`meta.identity.identity.status == ClaimStatus.CLAIM_STATUS_VERIFIED`,
 			`meta.identity.owner.status == ClaimStatus.CLAIM_STATUS_UNCLAIMED`,
@@ -139,31 +140,51 @@ func TestRegistryPolicies_DecidesOnProjectedMeta(t *testing.T) {
 	trusted := annotatedRecord(t, map[string]string{
 		corev1.AnnotationKeyIdentity: "did:web:acme.com",
 	})
+	// Same claims as trusted, so the only difference a policy can reject on is
+	// that the scan was imported rather than run here.
+	imported := annotatedRecord(t, map[string]string{
+		corev1.AnnotationKeyIdentity: "did:web:acme.com",
+		"note":                       "imported",
+	})
 	bare := annotatedRecord(t, nil)
 
+	verified := types.PolicyFacts{
+		Signed: true,
+		Signatures: []types.SignatureVerificationObject{
+			sigRow{status: types.SignatureStatusVerified, subject: "did:web:acme.com", issuer: "https://issuer.example", updated: verifiedAt},
+		},
+		Claims: []types.IdentityClaimObject{
+			claimRow{role: types.ClaimRoleIdentity, subject: "did:web:acme.com", status: types.ClaimStatusVerified, verified: verifiedAt},
+		},
+	}
+	local := verified
+	local.Scans = []types.ScanReportObject{
+		scanRow{scanner: "MCP", status: types.ScanStatusCompleted, severity: "NONE", source: types.ScanSourceLocal, safe: true, updated: verifiedAt},
+	}
+	peer := verified
+	peer.Scans = []types.ScanReportObject{
+		scanRow{scanner: "MCP", status: types.ScanStatusCompleted, severity: "NONE", source: types.ScanSourceImported, safe: true, updated: verifiedAt},
+	}
+
 	src := &mapSource{records: map[string]*corev1.Record{
-		trusted.GetCid(): trusted,
-		bare.GetCid():    bare,
+		trusted.GetCid():  trusted,
+		imported.GetCid(): imported,
+		bare.GetCid():     bare,
 	}}
 	evs := reg.Evaluators(src, cidFacts{byCID: map[string]types.PolicyFacts{
-		trusted.GetCid(): {
-			Signed: true,
-			Signatures: []types.SignatureVerificationObject{
-				sigRow{status: types.SignatureStatusVerified, subject: "did:web:acme.com", issuer: "https://issuer.example", updated: verifiedAt},
-			},
-			Scans: []types.ScanReportObject{
-				scanRow{scanner: "MCP", status: types.ScanStatusCompleted, severity: "NONE", safe: true, updated: verifiedAt},
-			},
-			Claims: []types.IdentityClaimObject{
-				claimRow{role: types.ClaimRoleIdentity, subject: "did:web:acme.com", status: types.ClaimStatusVerified, verified: verifiedAt},
-			},
-		},
+		trusted.GetCid():  local,
+		imported.GetCid(): peer,
 	}})
 	require.Len(t, evs, 1)
 
 	ok, reason, err := evs[0].Evaluate(context.Background(), indexRecord{cid: trusted.GetCid()})
 	require.NoError(t, err)
 	assert.True(t, ok, reason)
+
+	ok, reason, err = evs[0].Evaluate(context.Background(), indexRecord{cid: imported.GetCid()})
+	require.NoError(t, err)
+	assert.False(t, ok)
+	assert.Contains(t, reason, "meta.scan.source == FactSource.FACT_SOURCE_LOCAL")
 
 	ok, reason, err = evs[0].Evaluate(context.Background(), indexRecord{cid: bare.GetCid()})
 	require.NoError(t, err)

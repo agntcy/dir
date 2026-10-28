@@ -23,9 +23,10 @@ import (
 // public key and the individual findings stay in the database. finding_count
 // stays zero because the summary row does not store a count.
 //
-// Scan source stays unspecified. A completed scan row is written both by this
-// node's scanner and by ingesting a peer's report, and the row does not say
-// which.
+// Scan source comes from the row. This node's scanner writes local, and
+// ingesting a peer's report writes imported. Rows that disagree, or that
+// never recorded a source, stay unspecified: a policy cannot treat a mixture
+// of an observation and an assertion as either one.
 func project(record *corev1.Record, facts types.PolicyFacts) *policyv1.RecordMeta {
 	return &policyv1.RecordMeta{
 		Signature: signatureFacts(facts),
@@ -136,8 +137,74 @@ func scanFacts(rows []types.ScanReportObject) *policyv1.ScanFacts {
 
 	facts.IsSafe = sawVerdict && allSafe
 	facts.ScannedAt = timestampOf(latest)
+	facts.Source = scanSource(sorted)
 
 	return facts
+}
+
+// scanSource reports who produced the rows a policy is reading.
+//
+// The source describes the verdicts, because that is the conclusion the
+// aggregate severity and safety are drawn from. A failed row is an attempt,
+// not a verdict, so it does not change the source of a verdict that exists.
+// When nothing reached a verdict, the source is taken from the attempts.
+//
+// Every row in that set must name the same source. One unspecified row, or
+// two that disagree, leaves the aggregate unspecified.
+func scanSource(rows []types.ScanReportObject) policyv1.FactSource {
+	considered := verdictRows(rows)
+	if len(considered) == 0 {
+		considered = rows
+	}
+
+	var source policyv1.FactSource
+
+	for i, row := range considered {
+		got := factSourceOf(row.GetSource())
+		if got == policyv1.FactSource_FACT_SOURCE_UNSPECIFIED {
+			return policyv1.FactSource_FACT_SOURCE_UNSPECIFIED
+		}
+
+		if i == 0 {
+			source = got
+
+			continue
+		}
+
+		if got != source {
+			return policyv1.FactSource_FACT_SOURCE_UNSPECIFIED
+		}
+	}
+
+	return source
+}
+
+func verdictRows(rows []types.ScanReportObject) []types.ScanReportObject {
+	var out []types.ScanReportObject
+
+	for _, row := range rows {
+		switch scanStatusOf(row.GetStatus()) {
+		case policyv1.ScanStatus_SCAN_STATUS_COMPLETED, policyv1.ScanStatus_SCAN_STATUS_PARTIAL:
+			out = append(out, row)
+		case policyv1.ScanStatus_SCAN_STATUS_FAILED,
+			policyv1.ScanStatus_SCAN_STATUS_UNSCANNED,
+			policyv1.ScanStatus_SCAN_STATUS_UNSPECIFIED:
+			// An attempt, not a verdict.
+		}
+	}
+
+	return out
+}
+
+func factSourceOf(source string) policyv1.FactSource {
+	switch source {
+	case types.ScanSourceLocal:
+		return policyv1.FactSource_FACT_SOURCE_LOCAL
+	case types.ScanSourceImported:
+		return policyv1.FactSource_FACT_SOURCE_IMPORTED
+	default:
+		return policyv1.FactSource_FACT_SOURCE_UNSPECIFIED
+	}
 }
 
 // aggregateScanStatus reports how far scanning got from the rows that exist.
