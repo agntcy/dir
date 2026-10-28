@@ -223,6 +223,7 @@ func TestImportReferrer_ScanReport(t *testing.T) {
 	assert.Equal(t, "MCP", db.upsertReport.GetScannerType())
 	assert.Equal(t, "HIGH", db.upsertReport.GetMaxSeverity())
 	assert.True(t, db.upsertReport.GetIsSafe())
+	assert.Equal(t, types.ScanSourceImported, db.upsertReport.GetSource())
 }
 
 func TestImportReferrer_UnsupportedStore(t *testing.T) {

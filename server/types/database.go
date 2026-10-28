@@ -211,6 +211,20 @@ const (
 	ScanStatusFailed = "failed"
 )
 
+// Scan source values. Who produced a scan_reports row.
+//
+// Empty means the writer did not record one. Rows stored before the column
+// existed are empty: they were written both by this node's scanner and by
+// ingesting a peer's report, and nothing distinguished the two.
+const (
+	// ScanSourceLocal means this node's scanner wrote the row.
+	ScanSourceLocal = "local"
+
+	// ScanSourceImported means the row was copied from a peer's scan report.
+	// It is that peer's assertion, not an observation this node made.
+	ScanSourceImported = "imported"
+)
+
 // ScannedStatuses are the statuses under which a scanner reached a verdict.
 //
 // Every safety filter must gate on these: a failed row stores is_safe = false
@@ -237,6 +251,10 @@ type ScanReportObject interface {
 
 	// GetFailureDetail is human-readable context for the failure reason.
 	GetFailureDetail() string
+
+	// GetSource is one of the ScanSource* values, or empty when the writer
+	// did not record who produced the row.
+	GetSource() string
 }
 
 // ScanSchedule controls when a scan result stops suppressing a rescan.
