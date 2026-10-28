@@ -92,11 +92,33 @@ The reconciler's `record_events` settings (`RECONCILER_RECORD_EVENTS_*` in the e
 - **Standalone reconciler.** It listens through the apiserver's events API, over the connection set by `server_address`. With authorization on, its identity needs a rule that lets it call `/agntcy.dir.events.v1.EventService/Listen`. Without one it logs once that events are unavailable and the intervals apply; it never gains access it was not given. The daemon listens in-process.
 - **Nothing is served sooner than it is evaluated.** An event only starts the work; a record is served when it has a passing verdict, as before.
 
+## When a Record's Metadata Changes
+
+A verdict is reached on the metadata as it stood. A policy reading `meta.scan`, `meta.signature` or `meta.identity` answers a question whose inputs keep moving: a scan completes, a signature stops verifying, an ownership claim resolves. The verdict was true when it was written, and afterwards it says nothing about the record.
+
+So the write that changes the metadata supersedes that record's verdicts, in the same transaction that stores it. A superseded verdict counts as no verdict, which has two effects and needs no configuration:
+
+- **The record is withheld until it has been evaluated again**, rather than served on evidence that has moved. It is counted by `dir_policy_gate_records_unevaluated` while it waits, the same as a record never evaluated, and the policy task picks it up on its next run.
+- **Enforcement is not lifted.** A policy already being enforced stays enforced; superseding verdicts does not make it pending again, so the records wait rather than being served while they do.
+
+Which writes count:
+
+| Metadata | A record's verdicts are superseded when |
+|---|---|
+| Scan reports | A scanner's status, maximum severity, safe-or-unsafe conclusion or source changes, or a scanner reports on the record for the first time. |
+| Signature verifications | A signer's status, subject or issuer changes, or a signature is verified for the first time. The signature task also marks a signer failed once it stops appearing in a verification run, which counts. |
+| Identity claims | A claim's status or resolved subject changes, a claim resolves for the first time, or a stored claim is removed. |
+| The signed flag | A signature referrer arrives for a record that was not signed before. |
+
+- **Only effective changes count.** The reconciler re-reports the same scan result, re-verifies the same signature and re-asserts the same claim on every pass, and none of that supersedes anything. If it did, the verdicts would never settle and most of the catalogue would be hidden most of the time.
+- **Timestamps do not count.** `meta.scan.scanned_at`, `meta.signature.verified_at` and `meta.identity.*.resolved_at` record when the node last looked, not what it concluded, so they move on every pass whatever the result. A CEL policy cannot depend on them in a way that goes stale, because the evaluation environment declares no clock to compare them against: `record`, `record_cid`, `indexed_at` and `meta`, and nothing else. A Rego policy can call `time.now_ns()`, and a verdict that does is wrong as soon as the clock moves, with nothing to recompute it — so keep conditions on the passage of time out of a policy that stores a verdict.
+- **A record's verdicts are superseded together.** A changed scan report supersedes the verdict of a policy that reads only signature state as well. That policy reaches the same answer again, so the cost is the re-evaluation rather than a wrong result.
+
 ## Metrics
 
 | Metric | Meaning |
 |---|---|
-| `dir_policy_gate_records_unevaluated{policy_id, version}` | Indexed records with no verdict yet under the policy's current version. Enforcing reads hide them. It is the size of the blackout after an edit, and what remains before a new policy is first enforced. |
+| `dir_policy_gate_records_unevaluated{policy_id, version}` | Indexed records with no verdict yet under the policy's current version, including those whose verdict was [superseded by a metadata change](#when-a-records-metadata-changes). Enforcing reads hide them. It is the size of the blackout after an edit, and what remains before a new policy is first enforced. |
 | `dir_policy_gate_search_records_excluded{outcome}` | Indexed records searches exclude, counted at each scrape. |
 | `dir_policy_gate_fetches_excluded_total{outcome}` | Reads by CID the policies refused. |
 

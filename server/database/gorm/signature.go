@@ -4,6 +4,7 @@
 package gorm
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -122,22 +123,51 @@ func (d *DB) CreateSignatureVerification(verification types.SignatureVerificatio
 }
 
 // UpdateSignatureVerification updates an existing row by (record_cid, signature).
+//
+// The signature task uses this to mark a signer failed once it stops appearing
+// in a verification run, which is a conclusion changing rather than a row being
+// refreshed, so it supersedes the record's verdicts.
 func (d *DB) UpdateSignatureVerification(verification types.SignatureVerificationObject) error {
 	now := time.Now()
 
-	result := d.gormDB.Model(&SignatureVerification{}).
-		Where("record_cid = ? AND signer_key = ?", verification.GetRecordCID(), verification.GetSignerKey()).
-		Updates(map[string]any{
-			"status":        verification.GetStatus(),
-			"error_message": verification.GetErrorMessage(),
-			"updated_at":    now,
-		})
-	if result.Error != nil {
-		return fmt.Errorf("failed to update signature verification: %w", result.Error)
-	}
+	err := d.gormDB.Transaction(func(tx *gormlib.DB) error {
+		var existing SignatureVerification
 
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("signature verification not found: record_cid=%s", verification.GetRecordCID())
+		err := tx.Where("record_cid = ? AND signer_key = ?",
+			verification.GetRecordCID(), verification.GetSignerKey()).Take(&existing).Error
+		if errors.Is(err, gormlib.ErrRecordNotFound) {
+			return fmt.Errorf("signature verification not found: record_cid=%s", verification.GetRecordCID())
+		}
+
+		if err != nil {
+			return fmt.Errorf("load existing signature verification: %w", err)
+		}
+
+		result := tx.Model(&SignatureVerification{}).
+			Where("record_cid = ? AND signer_key = ?", verification.GetRecordCID(), verification.GetSignerKey()).
+			Updates(map[string]any{
+				"status":        verification.GetStatus(),
+				"error_message": verification.GetErrorMessage(),
+				"updated_at":    now,
+			})
+		if result.Error != nil {
+			return fmt.Errorf("update row: %w", result.Error)
+		}
+
+		// Only the status is compared, rather than the whole projected
+		// signature fact: this writes the status and the error message and
+		// leaves the signer fields as they are, and the error message is not
+		// something a policy reads.
+		if existing.Status == verification.GetStatus() {
+			return nil
+		}
+
+		_, err = supersedePolicyEvaluations(tx, verification.GetRecordCID())
+
+		return err
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update signature verification: %w", err)
 	}
 
 	logger.Debug("Updated signature verification", "record_cid", verification.GetRecordCID(), "status", verification.GetStatus())
@@ -165,10 +195,35 @@ func (d *DB) UpsertSignatureVerification(verification types.SignatureVerificatio
 		UpdatedAt:               now,
 	}
 
-	err := d.gormDB.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "record_cid"}, {Name: "signer_key"}},
-		DoUpdates: clause.AssignmentColumns([]string{"status", "error_message", "signer_type", "signer_issuer", "signer_subject", "signer_certificate_issuer", "signer_public_key", "signer_algorithm", "signature", "content_type", "updated_at"}),
-	}).Create(sv).Error
+	// The write and the verdicts it supersedes share a transaction. A
+	// verification that commits while its invalidation does not leaves a
+	// verdict that is wrong about the record with nothing left to retry it.
+	err := d.gormDB.Transaction(func(tx *gormlib.DB) error {
+		var existing SignatureVerification
+
+		err := tx.Where("record_cid = ? AND signer_key = ?", sv.RecordCID, sv.SignerKey).Take(&existing).Error
+		if err != nil && !errors.Is(err, gormlib.ErrRecordNotFound) {
+			return fmt.Errorf("load existing signature verification: %w", err)
+		}
+
+		existed := err == nil
+
+		err = tx.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "record_cid"}, {Name: "signer_key"}},
+			DoUpdates: clause.AssignmentColumns([]string{"status", "error_message", "signer_type", "signer_issuer", "signer_subject", "signer_certificate_issuer", "signer_public_key", "signer_algorithm", "signature", "content_type", "updated_at"}),
+		}).Create(sv).Error
+		if err != nil {
+			return err
+		}
+
+		if existed && !signatureVerificationFactsChanged(&existing, sv) {
+			return nil
+		}
+
+		_, err = supersedePolicyEvaluations(tx, sv.RecordCID)
+
+		return err
+	})
 	if err != nil {
 		return fmt.Errorf("upsert signature verification: %w", err)
 	}

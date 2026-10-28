@@ -684,20 +684,54 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 
 // SetRecordSigned marks a record as signed.
 // This is called when a signature is attached to a record.
+//
+// A policy reads the flag as the difference between an unsigned record and one
+// whose signature nothing has verified yet, so raising it supersedes the
+// verdicts reached while the record still looked unsigned.
 func (d *DB) SetRecordSigned(recordCID string) error {
-	result := d.gormDB.Model(&Record{}).
-		Where("record_cid = ?", recordCID).
-		Update("signed", true)
+	err := d.gormDB.Transaction(func(tx *gorm.DB) error {
+		// Restricting the update to an unsigned row is what makes
+		// RowsAffected mean "this call raised the flag". Updating
+		// unconditionally reports a row either way, and a signature referrer
+		// arriving twice would then supersede verdicts a second time for a
+		// change that had already happened.
+		result := tx.Model(&Record{}).
+			Where("record_cid = ? AND signed = ?", recordCID, false).
+			Update("signed", true)
+		if result.Error != nil {
+			return fmt.Errorf("raise signed flag: %w", result.Error)
+		}
 
-	if result.Error != nil {
-		return fmt.Errorf("failed to set record as signed: %w", result.Error)
-	}
+		if result.RowsAffected == 0 {
+			return d.confirmRecordExists(tx, recordCID)
+		}
 
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("record not found: %s", recordCID)
+		_, err := supersedePolicyEvaluations(tx, recordCID)
+
+		return err
+	})
+	if err != nil {
+		return fmt.Errorf("failed to set record as signed: %w", err)
 	}
 
 	logger.Debug("Marked record as signed", "record_cid", recordCID)
+
+	return nil
+}
+
+// confirmRecordExists tells an already-signed record apart from a missing one,
+// which the update cannot do on its own: both leave no row affected, and only
+// the second is an error.
+func (d *DB) confirmRecordExists(tx *gorm.DB, recordCID string) error {
+	var count int64
+
+	if err := tx.Model(&Record{}).Where("record_cid = ?", recordCID).Count(&count).Error; err != nil {
+		return fmt.Errorf("failed to look up record: %w", err)
+	}
+
+	if count == 0 {
+		return fmt.Errorf("record not found: %s", recordCID)
+	}
 
 	return nil
 }

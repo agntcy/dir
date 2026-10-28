@@ -87,6 +87,36 @@ func (d *DB) UpsertPolicyEvaluation(eval types.PolicyEvaluationObject) error {
 	return nil
 }
 
+// SupersedePolicyEvaluations marks every verdict recorded for a record as
+// superseded, and reports how many it marked.
+func (d *DB) SupersedePolicyEvaluations(recordCID string) (int64, error) {
+	return supersedePolicyEvaluations(d.gormDB, recordCID)
+}
+
+// supersedePolicyEvaluations does the work on tx, so that a caller writing the
+// metadata a verdict was reached on can mark it in the transaction that wrote
+// it. A write that commits while its invalidation does not leaves a verdict
+// that is wrong with nothing left to retry it.
+//
+// Only the verdicts that currently count are touched. A failed or already
+// superseded row is not a verdict either read path accepts, and the reconciler
+// already re-selects it, so rewriting it would say nothing and would make the
+// returned count mean something other than "verdicts this stopped".
+func supersedePolicyEvaluations(tx *gorm.DB, recordCID string) (int64, error) {
+	result := tx.Model(&PolicyEvaluation{}).
+		Where("record_cid = ? AND status IN ?", recordCID, types.EvaluatedPolicyStatuses()).
+		Updates(map[string]any{
+			"status":     types.PolicyEvalStatusSuperseded,
+			"compliant":  false,
+			"updated_at": time.Now(),
+		})
+	if result.Error != nil {
+		return 0, fmt.Errorf("supersede policy evaluations for %s: %w", recordCID, result.Error)
+	}
+
+	return result.RowsAffected, nil
+}
+
 // GetPolicyEvaluations retrieves every policy verdict recorded for a record.
 func (d *DB) GetPolicyEvaluations(recordCID string) ([]types.PolicyEvaluationObject, error) {
 	var rows []PolicyEvaluation
