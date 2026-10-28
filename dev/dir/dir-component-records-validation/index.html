@@ -1016,6 +1016,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-decision-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Decision Log
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#validation-behavior" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2476,6 +2498,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-decision-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Decision Log
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#validation-behavior" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2762,7 +2806,7 @@
 <p>The Directory enforces validation on all records before accepting them.
 Validation is performed using the <a href="https://docs.agntcy.org/oasf/oasf-sdk/">OASF SDK</a>, which requires an OASF schema server URL for validation.</p>
 <h3 id="configuration">Configuration</h3>
-<p>The Directory server validates records using <code>policy.operations</code> in YAML. Each entry selects a provider, the operations it applies to (<code>push</code>, <code>autosync</code>, <code>index</code>), a <code>name</code>, and that provider's settings. An empty list disables record validation. This list cannot be set via environment variables.</p>
+<p>The Directory server validates records using <code>policy.operations</code> in YAML. Each entry selects a provider, the operations it applies to (<code>push</code>, <code>autosync</code>, <code>index</code>), a <code>name</code>, that provider's settings, and optionally a <code>mode</code>. An empty list disables record validation. This list cannot be set via environment variables.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># server.config.yml</span>
 <span class="nt">listen_address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.0.0.0:8888&quot;</span>
 <span class="nt">policy</span><span class="p">:</span>
@@ -2814,7 +2858,7 @@ unless overridden.</p>
 <tr>
 <td><code>context.source_peer_id</code></td>
 <td>optional string</td>
-<td>The authenticated peer a record is being pulled from, which only autosync has. Nothing populates it yet, so it reads as absent at every operation; a policy tests it with <code>has(context.source_peer_id)</code> rather than comparing it.</td>
+<td>The authenticated peer the record is being pulled from. Set at <code>autosync</code> and absent at <code>push</code> and <code>index</code>, so a policy covering more than one operation tests it with <code>has(context.source_peer_id)</code> before comparing it.</td>
 </tr>
 <tr>
 <td><code>now</code></td>
@@ -2831,6 +2875,47 @@ unless overridden.</p>
 </code></pre></div>
 <p><code>opa</code> is given the same values as its input document: <code>input.record.name</code>, <code>input.record_cid</code>, <code>input.context.operation</code>, <code>input.context.source_peer_id</code>, <code>input.now</code>. Two differences follow from the document being JSON. An enum arrives as its name, so the comparison is <code>input.context.operation == "OPERATION_PUSH"</code> rather than a number. An unset <code>source_peer_id</code> is absent from the document rather than empty, so a policy tests it with <code>not input.context.source_peer_id</code>. <code>now</code> is an RFC 3339 string.</p>
 <p>A policy in this block cannot read <code>meta</code>, the facts about a record that an evaluation policy reads, nor another policy's verdict. Those belong to <code>policy.evaluations</code>, which runs per record rather than per operation; see <a href="../dir-content-policy-enforcement/">Content Policy Enforcement</a>. A <code>cel</code> policy here that names one does not load, and the node reports it at startup rather than letting the policy decide on nothing.</p>
+<h3 id="modes">Modes</h3>
+<p>Each entry carries an optional <code>mode</code>, which decides what happens to its refusals. It applies to that entry alone, so one policy can be tried out while the others keep enforcing.</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enforce</code></td>
+<td>Refuses the record. This is the default: an entry with no <code>mode</code> enforces.</td>
+</tr>
+<tr>
+<td><code>shadow</code></td>
+<td>Decides and logs the decision, but does not refuse the record.</td>
+</tr>
+<tr>
+<td><code>off</code></td>
+<td>Does not run the policy at all.</td>
+</tr>
+</tbody>
+</table>
+<p><code>shadow</code> is how a policy is introduced to a running node: it reports what it would refuse, against real traffic, without turning away a record anyone depended on being accepted.</p>
+<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cel</span>
+<span class="w">  </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;push&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">annotations-are-required</span>
+<span class="w">  </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shadow</span>
+<span class="w">  </span><span class="nt">expressions</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;has(record.annotations)&#39;</span>
+</code></pre></div>
+<h3 id="the-decision-log">The Decision Log</h3>
+<p>An operation policy stores nothing, so the log is the only trace a decision leaves. Each policy that runs writes one line, under the <code>policy</code> component:</p>
+<div class="highlight"><pre><span></span><code>level=INFO msg=&quot;Operation policy refused the record&quot; component=policy
+  operation=OPERATION_PUSH cid=baeareid5t7... policy_id=cel:annotations-are-required
+  mode=enforce decision=refuse reason=&quot;[ERROR: record has no annotations]&quot;
+</code></pre></div>
+<p>A refusal is logged at <code>INFO</code> and an accepted record at <code>DEBUG</code>, since every record pushed, synced or indexed produces one of the latter. <code>peer</code> names the peer a record was synced from, and <code>caller</code> the authenticated identity of a push; each appears only where it is known.</p>
+<p><code>decision</code> is always what the policy decided, and <code>mode</code> says what was done about it. A line reading <code>decision=refuse mode=shadow</code> is a record that was accepted — reported by the message <code>Shadow mode: operation policy would have refused the record</code> — and counting those is how a shadow policy is assessed before it is switched to <code>enforce</code>.</p>
+<p>The Prometheus counters under <code>dir_policy_gate_*</code> are not this. They aggregate reads the <em>evaluation</em> layer excludes, carrying no CID and no policy ID; see <a href="../dir-content-policy-enforcement/">Content Policy Enforcement</a>.</p>
 <h3 id="validation-behavior">Validation Behavior</h3>
 <p>The Directory server uses API-based validation against the configured OASF schema server:</p>
 <ul>
