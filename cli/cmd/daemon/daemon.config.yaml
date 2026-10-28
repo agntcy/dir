@@ -175,8 +175,10 @@ reconciler:
     #   status_cache_ttl: 30s
     #   stale_grace: 24h
     #   clock_skew: 30s
+  # Off by default: requires the mcp-scanner, skill-scanner and a2a-scanner
+  # executables on $PATH, otherwise every scan fails with a warning.
   scan:
-    enabled: true
+    enabled: false
     interval: 1m
     ttl: 168h
     record_timeout: 2m
