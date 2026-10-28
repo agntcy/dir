@@ -1465,6 +1465,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Defining a Policy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-a-policy-can-read" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a Policy Can Read
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2310,6 +2327,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Defining a Policy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-a-policy-can-read" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a Policy Can Read
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2540,6 +2574,59 @@
 <li><strong>Verdict.</strong> The reconciler reads each record from the store and runs the validator on it. A record the policy rejects has what the validator reported as its reason, which the <a href="#auditing-excluded-records">audit service</a> shows. A record that cannot be read, or that the validator cannot judge, counts as failed: it stays excluded and is tried again on the next run.</li>
 </ul>
 <p>A policy is loaded when the reconciler starts. Helm restarts both pods when a policy file or the list changes; otherwise restart the reconciler after an edit.</p>
+<h3 id="what-a-policy-can-read">What a Policy Can Read</h3>
+<p>A policy in <code>policy.evaluations</code> says what this node believes about a record, so it is given the record and what this node has observed about it. A <code>cel</code> policy reads these variables:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Type</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>record</code></td>
+<td>dynamic</td>
+<td>The record's OASF content, read by field name.</td>
+</tr>
+<tr>
+<td><code>record_cid</code></td>
+<td>string</td>
+<td>The record's content identifier.</td>
+</tr>
+<tr>
+<td><code>meta.signature</code></td>
+<td>object</td>
+<td>What is known about the record's signing: <code>status</code>, <code>signer_identity</code>, <code>signer_issuer</code>, <code>verified_at</code>.</td>
+</tr>
+<tr>
+<td><code>meta.scan</code></td>
+<td>object</td>
+<td>What the scanners found: <code>status</code>, <code>is_safe</code>, <code>max_severity</code>, <code>finding_count</code>, <code>scanned_at</code>.</td>
+</tr>
+<tr>
+<td><code>meta.identity</code></td>
+<td>object</td>
+<td><code>meta.identity.identity</code> and <code>meta.identity.owner</code>, each a claim with a <code>status</code> and <code>subject</code>.</td>
+</tr>
+<tr>
+<td><code>indexed_at</code></td>
+<td>optional timestamp</td>
+<td>When this node first indexed the record. Absent for a record that is not indexed, so a policy unwraps it with <code>orValue</code> or <code>hasValue()</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><code>indexed_at</code> is this node's own observation and never the <code>created_at</code> inside the record, which its publisher chose.</p>
+<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cel</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">trusted</span>
+<span class="w">  </span><span class="nt">expressions</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;meta.signature.status</span><span class="nv"> </span><span class="s">==</span><span class="nv"> </span><span class="s">SignatureStatus.SIGNATURE_STATUS_VERIFIED&#39;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;meta.scan.max_severity</span><span class="nv"> </span><span class="s">&lt;</span><span class="nv"> </span><span class="s">Severity.SEVERITY_MEDIUM&#39;</span>
+</code></pre></div>
+<p>Enum literals are named without their package, and <code>Severity</code> is declared ascending, so "medium or worse" is <code>&gt;= Severity.SEVERITY_MEDIUM</code> and a severity added above <code>CRITICAL</code> later is matched without editing the policy. A misspelled field such as <code>meta.signature.statsu</code> fails when the policy is loaded rather than per record.</p>
+<p><code>opa</code> is given the same values as its input document — <code>input.record</code>, <code>input.record_cid</code>, <code>input.meta</code>, <code>input.indexed_at</code> — with the differences that follow from JSON: an enum arrives as its name, so the comparison is <code>input.meta.signature.status == "SIGNATURE_STATUS_VERIFIED"</code>, and <code>indexed_at</code> is absent from the document rather than empty.</p>
+<p>A policy in this block cannot read <code>now</code>, nor another policy's verdict. A verdict is cached and re-run only when the policy or the record changes, and the passage of time is neither, so a rule that depends on the clock belongs in <code>policy.operations</code>, which is evaluated live.</p>
 <h2 id="before-you-start">Before You Start</h2>
 <ul>
 <li><strong>Authorization is on</strong>, with registry credentials restricted to peer nodes. Registry credentials read every record straight from the registry, bypassing every check described here. See <a href="https://github.com/agntcy/dir/blob/main/server/authz/README.md">Methods Granted Only by SPIFFE ID</a>. The server logs a warning when policies are checked while authorization is off.</li>
