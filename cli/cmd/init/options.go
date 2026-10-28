@@ -19,6 +19,7 @@ type options struct {
 	remoteAddr string
 	yes        bool
 	remove     bool
+	scanners   bool
 	agents     []string
 }
 
@@ -35,6 +36,8 @@ func addFlags(cmd *cobra.Command, opts *options) {
 		"Skip prompts and proceed non-interactively (provisions ~89 MB unattended)")
 	flags.BoolVar(&opts.remove, "remove", false,
 		"Remove the provisioned extractor assets and clear the saved config")
+	flags.BoolVar(&opts.scanners, "scanners", false,
+		"Install the security scanner CLIs (mcp-scanner, skill-scanner, a2a-scanner) locally with uv")
 	flags.StringSliceVar(&opts.agents, "agents", []string{agentcfg.AllAgents},
 		fmt.Sprintf("Agents to configure in the skills step: %q (default, all detected) or a comma-separated list (%s)",
 			agentcfg.AllAgents, strings.Join(agentcfg.AgentIDs(), ", ")))

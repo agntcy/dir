@@ -58,7 +58,15 @@ func run(cmd *cobra.Command, opts *options) error {
 		return err
 	}
 
-	return runAgentSetup(cmd, opts)
+	if err := runAgentSetup(cmd, opts); err != nil {
+		return err
+	}
+
+	if opts.scanners {
+		return runScannerInstall(cmd)
+	}
+
+	return nil
 }
 
 // configFromOpts builds the engine config from flags, resolving defaults.
