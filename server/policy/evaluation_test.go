@@ -177,6 +177,46 @@ func TestEvaluator_Evaluate(t *testing.T) {
 		assert.True(t, compliant, "the verdict follows the projected signature, not an empty meta")
 	})
 
+	t.Run("indexed_at is what the node stored", func(t *testing.T) {
+		t.Parallel()
+
+		indexedAt := time.Date(2026, 3, 4, 5, 6, 7, 0, time.UTC)
+		src := &mapSource{records: map[string]*corev1.Record{record.GetCid(): record}}
+		ev := &evaluator{
+			id: "opa:p", version: "v1", records: src,
+			facts: staticFacts{facts: servertypes.PolicyFacts{IndexedAt: indexedAt}},
+			validator: funcValidator(func(state *policyv1.RecordState) (bool, []string, []string, error) {
+				return state.GetIndexedAt().AsTime().Equal(indexedAt), nil, nil, nil
+			}),
+		}
+
+		compliant, _, err := ev.Evaluate(t.Context(), indexed)
+
+		require.NoError(t, err)
+		assert.True(t, compliant)
+	})
+
+	// A record with no row at all is the one case where nothing is known about
+	// it, including when it arrived. Reporting the zero time instead would read
+	// as indexed in 1970, which is older than any date a policy compares to.
+	t.Run("a record that is not indexed leaves indexed_at unset", func(t *testing.T) {
+		t.Parallel()
+
+		src := &mapSource{records: map[string]*corev1.Record{record.GetCid(): record}}
+		ev := &evaluator{
+			id: "opa:p", version: "v1", records: src,
+			facts: staticFacts{facts: servertypes.PolicyFacts{}},
+			validator: funcValidator(func(state *policyv1.RecordState) (bool, []string, []string, error) {
+				return state.GetIndexedAt() == nil, nil, nil, nil
+			}),
+		}
+
+		compliant, _, err := ev.Evaluate(t.Context(), indexed)
+
+		require.NoError(t, err)
+		assert.True(t, compliant)
+	})
+
 	t.Run("facts that cannot be read are an error, not a verdict", func(t *testing.T) {
 		t.Parallel()
 

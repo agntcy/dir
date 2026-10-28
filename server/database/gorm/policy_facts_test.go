@@ -72,4 +72,30 @@ func TestGetPolicyFacts(t *testing.T) {
 	require.Len(t, facts.Claims, 1)
 	assert.Equal(t, types.ClaimRoleIdentity, facts.Claims[0].GetRole())
 	assert.Equal(t, types.ClaimStatusVerified, facts.Claims[0].GetStatus())
+	assert.False(t, facts.IndexedAt.IsZero(), "the row's own created_at")
+}
+
+// When a record was indexed here is this node's observation. The record's OASF
+// created_at is the publisher's, and a policy reading indexed_at must not be
+// given a value its author chose.
+func TestGetPolicyFacts_IndexedAtIsNotTheRecordsOwnCreatedAt(t *testing.T) {
+	gdb, err := gormlib.Open(sqlite.Open("file::memory:"), &gormlib.Config{})
+	require.NoError(t, err)
+
+	db := &DB{gormDB: gdb}
+	require.NoError(t, db.migrate())
+
+	const cid = "bafybeigdyrztpolicyfacts000000000000000000000000000000002"
+
+	require.NoError(t, db.gormDB.Create(&Record{
+		RecordCID:     cid,
+		Name:          "directory.agntcy.org/test/asserted",
+		Version:       "1.0.0",
+		OASFCreatedAt: "1999-01-01T00:00:00Z",
+	}).Error)
+
+	facts, err := db.GetPolicyFacts(cid)
+	require.NoError(t, err)
+	assert.False(t, facts.IndexedAt.IsZero())
+	assert.Greater(t, facts.IndexedAt.Year(), 1999, "not the created_at the record asserts")
 }

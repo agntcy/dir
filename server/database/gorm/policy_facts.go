@@ -31,7 +31,11 @@ func (d *DB) GetPolicyFacts(cid string) (types.PolicyFacts, error) {
 	}
 
 	facts := types.PolicyFacts{
-		Signed:     record.Signed,
+		Signed: record.Signed,
+		// records.created_at, which gorm sets when the row is written, rather
+		// than Record.GetCreatedAt: that prefers the record's own OASF
+		// created_at, which the publisher chose.
+		IndexedAt:  record.CreatedAt,
 		Signatures: make([]types.SignatureVerificationObject, len(record.Signatures)),
 		Scans:      make([]types.ScanReportObject, len(record.ScanReports)),
 		Claims:     make([]types.IdentityClaimObject, len(record.IdentityClaims)),

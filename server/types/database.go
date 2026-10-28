@@ -339,6 +339,15 @@ type PolicyFacts struct {
 	// state from one that was never signed.
 	Signed bool
 
+	// IndexedAt is when this node first indexed the record. Zero when the
+	// record is not indexed, which is the one case where this node has
+	// observed nothing at all about it.
+	//
+	// This node's own observation, never the created_at a publisher put in the
+	// record: when a record was indexed here is not something its author may
+	// assert.
+	IndexedAt time.Time
+
 	Signatures []SignatureVerificationObject
 	Scans      []ScanReportObject
 	Claims     []IdentityClaimObject

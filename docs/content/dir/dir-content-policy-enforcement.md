@@ -33,6 +33,35 @@ The server and the reconciler both read `policy`: Helm copies `config.policy` in
 
 A policy is loaded when the reconciler starts. Helm restarts both pods when a policy file or the list changes; otherwise restart the reconciler after an edit.
 
+### What a Policy Can Read
+
+A policy in `policy.evaluations` says what this node believes about a record, so it is given the record and what this node has observed about it. A `cel` policy reads these variables:
+
+| Variable | Type | Value |
+|---|---|---|
+| `record` | dynamic | The record's OASF content, read by field name. |
+| `record_cid` | string | The record's content identifier. |
+| `meta.signature` | object | What is known about the record's signing: `status`, `signer_identity`, `signer_issuer`, `verified_at`. |
+| `meta.scan` | object | What the scanners found: `status`, `is_safe`, `max_severity`, `finding_count`, `scanned_at`. |
+| `meta.identity` | object | `meta.identity.identity` and `meta.identity.owner`, each a claim with a `status` and `subject`. |
+| `indexed_at` | optional timestamp | When this node first indexed the record. Absent for a record that is not indexed, so a policy unwraps it with `orValue` or `hasValue()`. |
+
+`indexed_at` is this node's own observation and never the `created_at` inside the record, which its publisher chose.
+
+```yaml
+- provider: cel
+  name: trusted
+  expressions:
+    - 'meta.signature.status == SignatureStatus.SIGNATURE_STATUS_VERIFIED'
+    - 'meta.scan.max_severity < Severity.SEVERITY_MEDIUM'
+```
+
+Enum literals are named without their package, and `Severity` is declared ascending, so "medium or worse" is `>= Severity.SEVERITY_MEDIUM` and a severity added above `CRITICAL` later is matched without editing the policy. A misspelled field such as `meta.signature.statsu` fails when the policy is loaded rather than per record.
+
+`opa` is given the same values as its input document — `input.record`, `input.record_cid`, `input.meta`, `input.indexed_at` — with the differences that follow from JSON: an enum arrives as its name, so the comparison is `input.meta.signature.status == "SIGNATURE_STATUS_VERIFIED"`, and `indexed_at` is absent from the document rather than empty.
+
+A policy in this block cannot read `now`, nor another policy's verdict. A verdict is cached and re-run only when the policy or the record changes, and the passage of time is neither, so a rule that depends on the clock belongs in `policy.operations`, which is evaluated live.
+
 ## Before You Start
 
 - **Authorization is on**, with registry credentials restricted to peer nodes. Registry credentials read every record straight from the registry, bypassing every check described here. See [Methods Granted Only by SPIFFE ID](https://github.com/agntcy/dir/blob/main/server/authz/README.md). The server logs a warning when policies are checked while authorization is off.
