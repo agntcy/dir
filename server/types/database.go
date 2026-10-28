@@ -38,6 +38,10 @@ type DatabaseAPI interface {
 	// PolicyEvaluationDatabaseAPI handles persistence of content-policy verdicts.
 	PolicyEvaluationDatabaseAPI
 
+	// PolicyFactDatabaseAPI reads the stored observations an evaluation policy's
+	// meta is projected from.
+	PolicyFactDatabaseAPI
+
 	// CatalogDatabaseAPI handles deterministic browsing of AI Catalog entries.
 	CatalogDatabaseAPI
 
@@ -320,6 +324,31 @@ type ScanReportDatabaseAPI interface {
 	// GetRecordsNeedingScan returns records with no scan result still
 	// suppressing a rescan, bounded by ttl.
 	GetRecordsNeedingScan(ttl time.Duration) ([]coretypes.Record, error)
+}
+
+// PolicyFacts is what this node has stored about one record: the rows an
+// evaluation policy's meta is projected from. A record that is not indexed
+// comes back as the zero value.
+//
+// These are the stored rows, not the policy input. The projection drops the
+// signature bytes, the public key and the individual scan findings, which a
+// policy has no business deciding over.
+type PolicyFacts struct {
+	// Signed is whether a signature referrer is attached. A signed record with
+	// no verification row has not been verified yet, which is a different
+	// state from one that was never signed.
+	Signed bool
+
+	Signatures []SignatureVerificationObject
+	Scans      []ScanReportObject
+	Claims     []IdentityClaimObject
+}
+
+// PolicyFactDatabaseAPI reads the stored observations of one record.
+type PolicyFactDatabaseAPI interface {
+	// GetPolicyFacts returns the stored observations of cid. A CID that is not
+	// indexed returns a zero PolicyFacts and no error.
+	GetPolicyFacts(cid string) (PolicyFacts, error)
 }
 
 // Policy evaluation status values.

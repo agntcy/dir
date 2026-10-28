@@ -48,6 +48,11 @@ type Source struct {
 	// Records reads a record's content from the store.
 	Records policy.RecordSource
 
+	// Facts reads the stored signature, scan and identity observations a policy
+	// sees as meta. Open sets this from the node's database. A dry run that
+	// leaves it unset evaluates as if nothing had been observed.
+	Facts serverpolicy.FactSource
+
 	// Limits are the policy task's limits, so a record that takes too long fails
 	// here as it would there.
 	Limits policy.Config
@@ -96,7 +101,7 @@ func (p *Prepared) Run(ctx context.Context, src Source, out io.Writer) error {
 
 	reports := make([]*policy.DryRunReport, 0, len(p.ids))
 
-	for _, ev := range p.registry.Evaluators(src.Records) {
+	for _, ev := range p.registry.Evaluators(src.Records, src.Facts) {
 		if _, ok := selected[ev.PolicyID()]; !ok {
 			continue
 		}

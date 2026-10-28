@@ -6,10 +6,12 @@ package policy
 import (
 	"context"
 	"testing"
+	"time"
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	policyconfig "github.com/agntcy/dir/server/policy/config"
+	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,7 +37,7 @@ func policiesOf(t *testing.T, dir string, entries ...policyconfig.Evaluation) []
 	reg, err := NewRegistry(context.Background(), entries, nil, dir)
 	require.NoError(t, err)
 
-	return reg.Evaluators(nil)
+	return reg.Evaluators(nil, nil)
 }
 
 type fixedSource struct {
@@ -44,6 +46,16 @@ type fixedSource struct {
 
 func (s fixedSource) Pull(context.Context, *corev1.RecordRef) (*corev1.Record, error) {
 	return s.record, nil
+}
+
+// cidFacts returns the stored observations of one CID. A CID with no entry
+// was looked up and has nothing stored.
+type cidFacts struct {
+	byCID map[string]types.PolicyFacts
+}
+
+func (c cidFacts) Facts(_ context.Context, cid string) (types.PolicyFacts, error) {
+	return c.byCID[cid], nil
 }
 
 func TestRegistryPolicies(t *testing.T) {
@@ -71,7 +83,7 @@ func TestRegistryPolicies(t *testing.T) {
 		require.NoError(t, err)
 
 		named := corev1.New(&typesv1alpha1.Record{Name: "agent"})
-		evs := reg.Evaluators(fixedSource{record: named})
+		evs := reg.Evaluators(fixedSource{record: named}, nil)
 		indexed := indexRecord{cid: named.GetCid()}
 
 		ok, _, err := evs[0].Evaluate(context.Background(), indexed)
@@ -89,7 +101,7 @@ func TestRegistryPolicies_NoneConfigured(t *testing.T) {
 
 	var nilRegistry *Registry
 
-	assert.Empty(t, nilRegistry.Evaluators(nil))
+	assert.Empty(t, nilRegistry.Evaluators(nil, nil))
 
 	// An operation policy is not an evaluation policy: it decides at an
 	// operation and produces no verdict.
@@ -101,9 +113,62 @@ func TestRegistryPolicies_NoneConfigured(t *testing.T) {
 	}}, "")
 	require.NoError(t, err)
 
-	assert.Empty(t, reg.Evaluators(nil), "an operation policy defines no evaluation policy")
+	assert.Empty(t, reg.Evaluators(nil, nil), "an operation policy defines no evaluation policy")
 	assert.Len(t, reg.For(policyconfig.OpPush), 1)
 	assert.Empty(t, policiesOf(t, ""))
+}
+
+// A configured evaluation policy decides on the meta the evaluator projects
+// from stored facts. The expressions are the ones a deployment would write.
+func TestRegistryPolicies_DecidesOnProjectedMeta(t *testing.T) {
+	t.Parallel()
+
+	reg, err := NewRegistry(context.Background(), policyconfig.Evaluations{
+		celPolicy("trusted",
+			`meta.signature.status == SignatureStatus.SIGNATURE_STATUS_VERIFIED`,
+			`meta.signature.source == FactSource.FACT_SOURCE_LOCAL`,
+			`meta.scan.status == ScanStatus.SCAN_STATUS_COMPLETED`,
+			`meta.scan.is_safe`,
+			`meta.identity.identity.status == ClaimStatus.CLAIM_STATUS_VERIFIED`,
+			`meta.identity.owner.status == ClaimStatus.CLAIM_STATUS_UNCLAIMED`,
+		),
+	}, nil, "")
+	require.NoError(t, err)
+
+	verifiedAt := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
+	trusted := annotatedRecord(t, map[string]string{
+		corev1.AnnotationKeyIdentity: "did:web:acme.com",
+	})
+	bare := annotatedRecord(t, nil)
+
+	src := &mapSource{records: map[string]*corev1.Record{
+		trusted.GetCid(): trusted,
+		bare.GetCid():    bare,
+	}}
+	evs := reg.Evaluators(src, cidFacts{byCID: map[string]types.PolicyFacts{
+		trusted.GetCid(): {
+			Signed: true,
+			Signatures: []types.SignatureVerificationObject{
+				sigRow{status: types.SignatureStatusVerified, subject: "did:web:acme.com", issuer: "https://issuer.example", updated: verifiedAt},
+			},
+			Scans: []types.ScanReportObject{
+				scanRow{scanner: "MCP", status: types.ScanStatusCompleted, severity: "NONE", safe: true, updated: verifiedAt},
+			},
+			Claims: []types.IdentityClaimObject{
+				claimRow{role: types.ClaimRoleIdentity, subject: "did:web:acme.com", status: types.ClaimStatusVerified, verified: verifiedAt},
+			},
+		},
+	}})
+	require.Len(t, evs, 1)
+
+	ok, reason, err := evs[0].Evaluate(context.Background(), indexRecord{cid: trusted.GetCid()})
+	require.NoError(t, err)
+	assert.True(t, ok, reason)
+
+	ok, reason, err = evs[0].Evaluate(context.Background(), indexRecord{cid: bare.GetCid()})
+	require.NoError(t, err)
+	assert.False(t, ok)
+	assert.Contains(t, reason, "meta.signature.status == SignatureStatus.SIGNATURE_STATUS_VERIFIED")
 }
 
 // The version follows the policy's content and nothing else, so an edit is

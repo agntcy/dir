@@ -11,6 +11,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/policy"
 	"github.com/agntcy/dir/server/database"
 	dbconfig "github.com/agntcy/dir/server/database/config"
+	serverpolicy "github.com/agntcy/dir/server/policy"
 	"github.com/agntcy/dir/server/store/oci"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 )
@@ -46,5 +47,5 @@ func Open(ctx context.Context, db dbconfig.Config, store ociconfig.Config, limit
 		return Source{}, nil, fmt.Errorf("%w: nothing answers at %s; is the node running?", ErrStoreUnreachable, address)
 	}
 
-	return Source{DB: nodeDB, Records: records, Limits: limits}, nodeDB.Close, nil
+	return Source{DB: nodeDB, Records: records, Facts: serverpolicy.NewFactSource(nodeDB), Limits: limits}, nodeDB.Close, nil
 }
