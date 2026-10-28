@@ -443,6 +443,7 @@ func TestNew_UpgradesPre004ScanReports(t *testing.T) {
 	assert.True(t, report.IsSafe, "the pre-existing verdict must survive")
 	assert.False(t, report.NextAttemptAt.IsZero(), "the row must be scheduled")
 	assert.Empty(t, report.Source, "a row written before source existed must not be guessed as local")
+	assert.Zero(t, report.FindingCount, "a row written before finding_count existed stays at zero")
 
 	// Must keep suppressing rescans, or the first pass after an upgrade
 	// re-scans the entire corpus at once.
@@ -470,6 +471,26 @@ func TestUpsertScanReport_SourceIsReplaced(t *testing.T) {
 		Source: types.ScanSourceLocal,
 	})
 	assert.Equal(t, types.ScanSourceLocal, loadReport(t, db).Source)
+}
+
+// A later verdict replaces the count, including a clean rescan that found nothing.
+func TestUpsertScanReport_FindingCountIsReplaced(t *testing.T) {
+	t.Parallel()
+
+	db := setupScanDB(t)
+
+	upsert(t, db, &ScanReport{
+		RecordCID: scanTestCID, ScannerType: "MCP",
+		IsSafe: false, MaxSeverity: "HIGH", Status: types.ScanStatusCompleted,
+		FindingCount: 2,
+	})
+	assert.Equal(t, 2, loadReport(t, db).FindingCount)
+
+	upsert(t, db, &ScanReport{
+		RecordCID: scanTestCID, ScannerType: "MCP",
+		IsSafe: true, MaxSeverity: "NONE", Status: types.ScanStatusCompleted,
+	})
+	assert.Zero(t, loadReport(t, db).FindingCount)
 }
 
 // A rescan must land on the same row. loadReport uses Take, so a duplicate

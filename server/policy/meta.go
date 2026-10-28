@@ -13,6 +13,7 @@ import (
 	policyv1 "github.com/agntcy/dir/api/policy/v1"
 	securityv1 "github.com/agntcy/dir/api/security/v1"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/conv"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -21,7 +22,7 @@ import (
 //
 // A policy reads conclusions. The signature bytes, the certificate, the
 // public key and the individual findings stay in the database. finding_count
-// stays zero because the summary row does not store a count.
+// is the number of findings on the summary row.
 //
 // Scan source comes from the row. This node's scanner writes local, and
 // ingesting a peer's report writes imported. Rows that disagree, or that
@@ -112,10 +113,11 @@ func scanFacts(rows []types.ScanReportObject) *policyv1.ScanFacts {
 	for _, row := range sorted {
 		status := scanStatusOf(row.GetStatus())
 		result := &policyv1.ScannerResult{
-			ScannerType: scannerTypeOf(row.GetScannerType()),
-			Status:      status,
-			MaxSeverity: severityOf(row.GetMaxSeverity()),
-			ScannedAt:   timestampOf(row.GetUpdatedAt()),
+			ScannerType:  scannerTypeOf(row.GetScannerType()),
+			Status:       status,
+			MaxSeverity:  severityOf(row.GetMaxSeverity()),
+			FindingCount: conv.SafeUint32(row.GetFindingCount()),
+			ScannedAt:    timestampOf(row.GetUpdatedAt()),
 		}
 		facts.Scanners = append(facts.Scanners, result)
 
@@ -128,6 +130,7 @@ func scanFacts(rows []types.ScanReportObject) *policyv1.ScanFacts {
 		if status == policyv1.ScanStatus_SCAN_STATUS_COMPLETED || status == policyv1.ScanStatus_SCAN_STATUS_PARTIAL {
 			sawVerdict = true
 			allSafe = allSafe && row.GetIsSafe()
+			facts.FindingCount += result.GetFindingCount()
 
 			if result.GetMaxSeverity() > facts.GetMaxSeverity() {
 				facts.MaxSeverity = result.GetMaxSeverity()

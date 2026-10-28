@@ -42,12 +42,13 @@ func TestGetPolicyFacts(t *testing.T) {
 		UpdatedAt:     verifiedAt,
 	}))
 	require.NoError(t, db.UpsertScanReport(&ScanReport{
-		RecordCID:   cid,
-		ScannerType: "MCP",
-		IsSafe:      true,
-		MaxSeverity: "NONE",
-		Status:      types.ScanStatusCompleted,
-		Source:      types.ScanSourceLocal,
+		RecordCID:    cid,
+		ScannerType:  "MCP",
+		IsSafe:       true,
+		MaxSeverity:  "NONE",
+		Status:       types.ScanStatusCompleted,
+		Source:       types.ScanSourceLocal,
+		FindingCount: 3,
 	}, types.DefaultScanSchedule()))
 	require.NoError(t, db.UpsertIdentityClaim(&IdentityClaim{
 		RecordCID:  cid,
@@ -71,6 +72,7 @@ func TestGetPolicyFacts(t *testing.T) {
 	assert.Equal(t, "MCP", facts.Scans[0].GetScannerType())
 	assert.True(t, facts.Scans[0].GetIsSafe())
 	assert.Equal(t, types.ScanSourceLocal, facts.Scans[0].GetSource())
+	assert.Equal(t, 3, facts.Scans[0].GetFindingCount())
 	require.Len(t, facts.Claims, 1)
 	assert.Equal(t, types.ClaimRoleIdentity, facts.Claims[0].GetRole())
 	assert.Equal(t, types.ClaimStatusVerified, facts.Claims[0].GetStatus())
