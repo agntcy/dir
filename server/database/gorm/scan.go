@@ -34,6 +34,11 @@ type ScanReport struct {
 	ConsecutiveFailures int       `gorm:"column:consecutive_failures;not null;default:0"`
 	NextAttemptAt       time.Time `gorm:"column:next_attempt_at;not null;index"` // when this row stops suppressing a rescan
 
+	// Source is who produced the row: types.ScanSourceLocal, types.ScanSourceImported,
+	// or empty when the writer did not say. A rescan replaces it, so the value
+	// describes the row as stored, not the first writer.
+	Source string `gorm:"column:source;not null;default:''"`
+
 	CreatedAt time.Time `gorm:"column:created_at;not null"`
 	UpdatedAt time.Time `gorm:"column:updated_at;not null"`
 }
@@ -49,6 +54,7 @@ func (s *ScanReport) GetUpdatedAt() time.Time  { return s.UpdatedAt }
 func (s *ScanReport) GetStatus() string        { return s.Status }
 func (s *ScanReport) GetFailureReason() string { return s.FailureReason }
 func (s *ScanReport) GetFailureDetail() string { return s.FailureDetail }
+func (s *ScanReport) GetSource() string        { return s.Source }
 
 // UpsertScanReport inserts or replaces a scan_reports row keyed by
 // (record_cid, scanner_type), maintaining the failure counter and the retry
@@ -84,6 +90,7 @@ func (d *DB) UpsertScanReport(report types.ScanReportObject, schedule types.Scan
 			Status:        status,
 			FailureReason: report.GetFailureReason(),
 			FailureDetail: report.GetFailureDetail(),
+			Source:        report.GetSource(),
 			CreatedAt:     now,
 			UpdatedAt:     now,
 		}
@@ -106,6 +113,7 @@ func (d *DB) UpsertScanReport(report types.ScanReportObject, schedule types.Scan
 				"failure_detail",
 				"consecutive_failures",
 				"next_attempt_at",
+				"source",
 				"updated_at",
 			}),
 		}).Create(row).Error

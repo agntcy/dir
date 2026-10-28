@@ -149,6 +149,9 @@ func (i *ingestor) applyReferrerDBEffects(recordCID string, referrer *corev1.Rec
 			scannerType: scannerTypeShortName(report.GetScannerType()),
 			isSafe:      report.GetIsSafe(),
 			maxSeverity: report.GetMaxSeverity().ShortName(),
+			// A referrer arrives with the record. This node did not run the
+			// scanner, so the row is the publisher's assertion.
+			source: types.ScanSourceImported,
 		}, types.DefaultScanSchedule()); err != nil {
 			logger.Warn("Failed to upsert scan report summary", "error", err, "cid", recordCID)
 		}
@@ -161,6 +164,7 @@ type scanReportRow struct {
 	scannerType string
 	isSafe      bool
 	maxSeverity string
+	source      string
 }
 
 func (r *scanReportRow) GetRecordCID() string    { return r.recordCID }
@@ -174,6 +178,7 @@ func (r *scanReportRow) GetUpdatedAt() time.Time { return time.Time{} }
 func (r *scanReportRow) GetStatus() string        { return types.ScanStatusCompleted }
 func (r *scanReportRow) GetFailureReason() string { return "" }
 func (r *scanReportRow) GetFailureDetail() string { return "" }
+func (r *scanReportRow) GetSource() string        { return r.source }
 
 // scannerTypeShortName strips the "SCANNER_TYPE_" proto prefix to get the DB column value (e.g. "MCP").
 func scannerTypeShortName(t securityv1.ScannerType) string {

@@ -194,6 +194,9 @@ func (t *Task) recordOutcome(recordCID, runnerName string, result *scanner.ScanR
 		Status:        scanStatus(result),
 		FailureReason: string(result.FailureReason),
 		FailureDetail: result.SkippedReason,
+		// This task ran the scanner. A referrer pushed alongside the row is
+		// this node's report; ingest of a peer's report writes imported instead.
+		Source: types.ScanSourceLocal,
 	}
 
 	if report != nil {

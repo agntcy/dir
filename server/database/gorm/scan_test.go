@@ -442,11 +442,34 @@ func TestNew_UpgradesPre004ScanReports(t *testing.T) {
 	assert.Equal(t, types.ScanStatusCompleted, report.Status)
 	assert.True(t, report.IsSafe, "the pre-existing verdict must survive")
 	assert.False(t, report.NextAttemptAt.IsZero(), "the row must be scheduled")
+	assert.Empty(t, report.Source, "a row written before source existed must not be guessed as local")
 
 	// Must keep suppressing rescans, or the first pass after an upgrade
 	// re-scans the entire corpus at once.
 	seedScanRecord(t, db, scanTestCID)
 	assert.NotContains(t, needsScanCIDs(t, db, 100*time.Hour), scanTestCID)
+}
+
+// Source is part of the row a later write replaces. A local scan that follows
+// an imported report, or the reverse, must not leave the previous writer in place.
+func TestUpsertScanReport_SourceIsReplaced(t *testing.T) {
+	t.Parallel()
+
+	db := setupScanDB(t)
+
+	upsert(t, db, &ScanReport{
+		RecordCID: scanTestCID, ScannerType: "MCP",
+		IsSafe: true, MaxSeverity: "NONE", Status: types.ScanStatusCompleted,
+		Source: types.ScanSourceImported,
+	})
+	assert.Equal(t, types.ScanSourceImported, loadReport(t, db).Source)
+
+	upsert(t, db, &ScanReport{
+		RecordCID: scanTestCID, ScannerType: "MCP",
+		IsSafe: true, MaxSeverity: "NONE", Status: types.ScanStatusCompleted,
+		Source: types.ScanSourceLocal,
+	})
+	assert.Equal(t, types.ScanSourceLocal, loadReport(t, db).Source)
 }
 
 // A rescan must land on the same row. loadReport uses Take, so a duplicate
