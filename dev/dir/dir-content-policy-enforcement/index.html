@@ -1518,6 +1518,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#when-a-records-metadata-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When a Record's Metadata Changes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#metrics" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2380,6 +2391,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#when-a-records-metadata-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When a Record's Metadata Changes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#metrics" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2726,6 +2748,45 @@
 <li><strong>Standalone reconciler.</strong> It listens through the apiserver's events API, over the connection set by <code>server_address</code>. With authorization on, its identity needs a rule that lets it call <code>/agntcy.dir.events.v1.EventService/Listen</code>. Without one it logs once that events are unavailable and the intervals apply; it never gains access it was not given. The daemon listens in-process.</li>
 <li><strong>Nothing is served sooner than it is evaluated.</strong> An event only starts the work; a record is served when it has a passing verdict, as before.</li>
 </ul>
+<h2 id="when-a-records-metadata-changes">When a Record's Metadata Changes</h2>
+<p>A verdict is reached on the metadata as it stood. A policy reading <code>meta.scan</code>, <code>meta.signature</code> or <code>meta.identity</code> answers a question whose inputs keep moving: a scan completes, a signature stops verifying, an ownership claim resolves. The verdict was true when it was written, and afterwards it says nothing about the record.</p>
+<p>So the write that changes the metadata supersedes that record's verdicts, in the same transaction that stores it. A superseded verdict counts as no verdict, which has two effects and needs no configuration:</p>
+<ul>
+<li><strong>The record is withheld until it has been evaluated again</strong>, rather than served on evidence that has moved. It is counted by <code>dir_policy_gate_records_unevaluated</code> while it waits, the same as a record never evaluated, and the policy task picks it up on its next run.</li>
+<li><strong>Enforcement is not lifted.</strong> A policy already being enforced stays enforced; superseding verdicts does not make it pending again, so the records wait rather than being served while they do.</li>
+</ul>
+<p>Which writes count:</p>
+<table>
+<thead>
+<tr>
+<th>Metadata</th>
+<th>A record's verdicts are superseded when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Scan reports</td>
+<td>A scanner's status, maximum severity, safe-or-unsafe conclusion or source changes, or a scanner reports on the record for the first time.</td>
+</tr>
+<tr>
+<td>Signature verifications</td>
+<td>A signer's status, subject or issuer changes, or a signature is verified for the first time. The signature task also marks a signer failed once it stops appearing in a verification run, which counts.</td>
+</tr>
+<tr>
+<td>Identity claims</td>
+<td>A claim's status or resolved subject changes, a claim resolves for the first time, or a stored claim is removed.</td>
+</tr>
+<tr>
+<td>The signed flag</td>
+<td>A signature referrer arrives for a record that was not signed before.</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Only effective changes count.</strong> The reconciler re-reports the same scan result, re-verifies the same signature and re-asserts the same claim on every pass, and none of that supersedes anything. If it did, the verdicts would never settle and most of the catalogue would be hidden most of the time.</li>
+<li><strong>Timestamps do not count.</strong> <code>meta.scan.scanned_at</code>, <code>meta.signature.verified_at</code> and <code>meta.identity.*.resolved_at</code> record when the node last looked, not what it concluded, so they move on every pass whatever the result. A CEL policy cannot depend on them in a way that goes stale, because the evaluation environment declares no clock to compare them against: <code>record</code>, <code>record_cid</code>, <code>indexed_at</code> and <code>meta</code>, and nothing else. A Rego policy can call <code>time.now_ns()</code>, and a verdict that does is wrong as soon as the clock moves, with nothing to recompute it — so keep conditions on the passage of time out of a policy that stores a verdict.</li>
+<li><strong>A record's verdicts are superseded together.</strong> A changed scan report supersedes the verdict of a policy that reads only signature state as well. That policy reaches the same answer again, so the cost is the re-evaluation rather than a wrong result.</li>
+</ul>
 <h2 id="metrics">Metrics</h2>
 <table>
 <thead>
@@ -2737,7 +2798,7 @@
 <tbody>
 <tr>
 <td><code>dir_policy_gate_records_unevaluated{policy_id, version}</code></td>
-<td>Indexed records with no verdict yet under the policy's current version. Enforcing reads hide them. It is the size of the blackout after an edit, and what remains before a new policy is first enforced.</td>
+<td>Indexed records with no verdict yet under the policy's current version, including those whose verdict was <a href="#when-a-records-metadata-changes">superseded by a metadata change</a>. Enforcing reads hide them. It is the size of the blackout after an edit, and what remains before a new policy is first enforced.</td>
 </tr>
 <tr>
 <td><code>dir_policy_gate_search_records_excluded{outcome}</code></td>
