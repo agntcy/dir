@@ -161,6 +161,115 @@ func TestUpsertPolicyEvaluation_DistinctPoliciesOnTheSameRecordCoexist(t *testin
 	require.Len(t, rows, 2)
 }
 
+// --- SupersedePolicyEvaluations ---
+
+// Superseding is one status change that both read paths already answer to: the
+// gate serves only a record with an evaluated verdict, and the reconciler
+// selects only a record without one.
+func TestSupersedePolicyEvaluations_StopsTheVerdictAndAsksForAnother(t *testing.T) {
+	t.Parallel()
+
+	db := setupPolicyEvalDB(t)
+	seedPolicyEvalRecord(t, db, policyTestCID)
+
+	require.NoError(t, db.UpsertPolicyEvaluation(&PolicyEvaluation{
+		RecordCID: policyTestCID, PolicyID: "opa:require-annotation",
+		PolicyVersion: "v1", Compliant: true, Status: types.PolicyEvalStatusEvaluated,
+	}))
+	require.NotContains(t, needsEvalCIDs(t, db, "v1"), policyTestCID, "a current verdict is not re-selected")
+
+	marked, err := db.SupersedePolicyEvaluations(policyTestCID)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), marked)
+
+	row := loadPolicyEval(t, db, policyTestCID, "opa:require-annotation")
+	assert.Equal(t, types.PolicyEvalStatusSuperseded, row.Status)
+	assert.False(t, row.Compliant, "a superseded verdict must not be read as a pass")
+	assert.Contains(t, needsEvalCIDs(t, db, "v1"), policyTestCID, "the record is evaluated again")
+}
+
+// The record is what the metadata changed about, so every policy that reached
+// a verdict on it is superseded. Narrowing that to the policies which read the
+// fact that moved is a separate concern.
+func TestSupersedePolicyEvaluations_CoversEveryPolicyOnTheRecord(t *testing.T) {
+	t.Parallel()
+
+	db := setupPolicyEvalDB(t)
+
+	require.NoError(t, db.UpsertPolicyEvaluation(&PolicyEvaluation{
+		RecordCID: policyTestCID, PolicyID: "opa:require-annotation",
+		PolicyVersion: "v1", Compliant: true, Status: types.PolicyEvalStatusEvaluated,
+	}))
+	require.NoError(t, db.UpsertPolicyEvaluation(&PolicyEvaluation{
+		RecordCID: policyTestCID, PolicyID: "cel:trusted",
+		PolicyVersion: "v1", Compliant: true, Status: types.PolicyEvalStatusEvaluated,
+	}))
+
+	marked, err := db.SupersedePolicyEvaluations(policyTestCID)
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), marked)
+
+	for _, policyID := range []string{"opa:require-annotation", "cel:trusted"} {
+		assert.Equal(t, types.PolicyEvalStatusSuperseded,
+			loadPolicyEval(t, db, policyTestCID, policyID).Status, policyID)
+	}
+}
+
+// A failed verdict is already not a verdict: it fails closed and the reconciler
+// already retries it. Rewriting it would make the count mean something other
+// than how many verdicts this stopped.
+func TestSupersedePolicyEvaluations_LeavesWhatWasNeverCurrent(t *testing.T) {
+	t.Parallel()
+
+	db := setupPolicyEvalDB(t)
+
+	require.NoError(t, db.UpsertPolicyEvaluation(&PolicyEvaluation{
+		RecordCID: policyTestCID, PolicyID: "opa:require-annotation",
+		PolicyVersion: "v1", Status: types.PolicyEvalStatusFailed, Reason: "policy evaluator error",
+	}))
+
+	marked, err := db.SupersedePolicyEvaluations(policyTestCID)
+	require.NoError(t, err)
+	assert.Zero(t, marked)
+	assert.Equal(t, types.PolicyEvalStatusFailed,
+		loadPolicyEval(t, db, policyTestCID, "opa:require-annotation").Status)
+}
+
+// Metadata changes about one record. Superseding another record's verdict would
+// hide it until the reconciler caught up, for no reason at all.
+func TestSupersedePolicyEvaluations_TouchesOnlyThatRecord(t *testing.T) {
+	t.Parallel()
+
+	const otherCID = "baeareitestpolicy0000000000000000000000000000000000000000000002"
+
+	db := setupPolicyEvalDB(t)
+
+	for _, cid := range []string{policyTestCID, otherCID} {
+		require.NoError(t, db.UpsertPolicyEvaluation(&PolicyEvaluation{
+			RecordCID: cid, PolicyID: "opa:require-annotation",
+			PolicyVersion: "v1", Compliant: true, Status: types.PolicyEvalStatusEvaluated,
+		}))
+	}
+
+	marked, err := db.SupersedePolicyEvaluations(policyTestCID)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), marked)
+	assert.Equal(t, types.PolicyEvalStatusEvaluated,
+		loadPolicyEval(t, db, otherCID, "opa:require-annotation").Status)
+}
+
+// A record nobody has evaluated is the common case at the writer sites, since
+// most metadata is written before any policy has run.
+func TestSupersedePolicyEvaluations_NoVerdictsIsNotAnError(t *testing.T) {
+	t.Parallel()
+
+	db := setupPolicyEvalDB(t)
+
+	marked, err := db.SupersedePolicyEvaluations(policyTestCID)
+	require.NoError(t, err)
+	assert.Zero(t, marked)
+}
+
 // --- GetPolicyEvaluations ---
 
 func TestGetPolicyEvaluations_UnknownRecordReturnsEmpty(t *testing.T) {

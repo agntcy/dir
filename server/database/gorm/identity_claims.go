@@ -62,10 +62,37 @@ func (d *DB) UpsertIdentityClaim(claim types.IdentityClaimObject) error {
 		VerifiedAt: verifiedAt,
 	}
 
-	err := d.gormDB.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "record_cid"}, {Name: "role"}},
-		DoUpdates: clause.AssignmentColumns([]string{"subject", "status", "error", "verified_at"}),
-	}).Create(row).Error
+	// The write and the verdicts it supersedes share a transaction. A claim
+	// that commits while its invalidation does not leaves a verdict that is
+	// wrong about the record with nothing left to retry it.
+	err := d.gormDB.Transaction(func(tx *gormlib.DB) error {
+		var existing IdentityClaim
+
+		err := tx.Where("record_cid = ? AND role = ?", row.RecordCID, row.Role).Take(&existing).Error
+		if err != nil && !errors.Is(err, gormlib.ErrRecordNotFound) {
+			return fmt.Errorf("load existing identity claim: %w", err)
+		}
+
+		existed := err == nil
+
+		err = tx.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "record_cid"}, {Name: "role"}},
+			DoUpdates: clause.AssignmentColumns([]string{"subject", "status", "error", "verified_at"}),
+		}).Create(row).Error
+		if err != nil {
+			return err
+		}
+
+		// The identity task re-asserts every claim on every run, so most calls
+		// arrive here having changed nothing.
+		if existed && !identityClaimFactsChanged(&existing, row) {
+			return nil
+		}
+
+		_, err = supersedePolicyEvaluations(tx, row.RecordCID)
+
+		return err
+	})
 	if err != nil {
 		return fmt.Errorf("upsert identity claim: %w", err)
 	}
@@ -91,8 +118,31 @@ func (d *DB) GetIdentityClaimByCID(cid, role string) (types.IdentityClaimObject,
 }
 
 // DeleteIdentityClaim removes the result for a record's claim of the given role.
+//
+// Removing a result is as visible to a policy as writing one: the projection
+// falls back to unverified, or to unclaimed when the record declares no
+// subject for the role, so the verdicts reached while the claim was resolved
+// are superseded.
 func (d *DB) DeleteIdentityClaim(cid, role string) error {
-	if err := d.gormDB.Where("record_cid = ? AND role = ?", cid, role).Delete(&IdentityClaim{}).Error; err != nil {
+	err := d.gormDB.Transaction(func(tx *gormlib.DB) error {
+		result := tx.Where("record_cid = ? AND role = ?", cid, role).Delete(&IdentityClaim{})
+		if result.Error != nil {
+			return fmt.Errorf("delete claim: %w", result.Error)
+		}
+
+		// Deleting a claim that is not stored is not an error here, and it is
+		// also not a change.
+		// Deleting a claim that is not stored is not an error here, and it is
+		// also not a change.
+		if result.RowsAffected == 0 {
+			return nil
+		}
+
+		_, err := supersedePolicyEvaluations(tx, cid)
+
+		return err
+	})
+	if err != nil {
 		return fmt.Errorf("failed to delete identity claim: %w", err)
 	}
 

@@ -315,6 +315,29 @@ func TestPolicyGate_AppliesToEveryRead(t *testing.T) {
 	assert.NotContains(t, gated.tagIDs, catalogv1.SkillTag("*", "skill/bad"), "ListCatalogTags")
 }
 
+// A verdict whose metadata has moved must stop counting the moment it is
+// superseded, not when the reconciler gets round to the record. Otherwise the
+// window between the two is spent serving a record on evidence known to be out
+// of date.
+func TestIsRecordServable_SupersededVerdictIsNotServed(t *testing.T) {
+	t.Parallel()
+
+	db := setupGateDB(t, enforce(policyA))
+	seedGateRecord(t, db, gateOK, "skill/ok")
+	setVerdict(t, db, gateOK, policyA, true)
+
+	servable, err := db.IsRecordServable(gateOK)
+	require.NoError(t, err)
+	require.True(t, servable, "a compliant record is served")
+
+	_, err = db.SupersedePolicyEvaluations(gateOK)
+	require.NoError(t, err)
+
+	servable, err = db.IsRecordServable(gateOK)
+	require.NoError(t, err)
+	assert.False(t, servable, "and is not, once what it was decided on has changed")
+}
+
 // Direct fetches by CID (Pull, Lookup, PullReferrer) ask IsRecordServable.
 // With nothing enforced, a record the database has not indexed yet must stay
 // servable, as it is today; with policies enforced, it must not.

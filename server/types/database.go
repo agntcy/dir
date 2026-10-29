@@ -392,6 +392,12 @@ const (
 	// PolicyEvalStatusFailed means the policy engine errored before reaching
 	// a verdict.
 	PolicyEvalStatusFailed = "failed"
+
+	// PolicyEvalStatusSuperseded means the verdict was reached, and the
+	// metadata it was reached on has since changed. The verdict that is
+	// recorded was true when it was written and says nothing about the record
+	// now, so it counts as no verdict until the record is evaluated again.
+	PolicyEvalStatusSuperseded = "superseded"
 )
 
 // EvaluatedPolicyStatuses are the statuses under which a policy evaluator
@@ -475,6 +481,16 @@ type PolicyEvaluationDatabaseAPI interface {
 	// GetPolicyEvaluations retrieves every policy verdict recorded for a
 	// record.
 	GetPolicyEvaluations(recordCID string) ([]PolicyEvaluationObject, error)
+
+	// SupersedePolicyEvaluations marks every verdict recorded for a record as
+	// superseded, and reports how many it marked. It is what a writer of the
+	// metadata a policy reads calls once that metadata has changed.
+	//
+	// Both read paths key off EvaluatedPolicyStatuses, so one status change
+	// does the whole job: the gate stops serving the record, because it
+	// requires a verdict in that set, and the reconciler evaluates it again,
+	// because it selects the records without one. Neither query changes.
+	SupersedePolicyEvaluations(recordCID string) (int64, error)
 
 	// GetRecordsNeedingPolicyEvaluation returns records with no evaluated
 	// verdict row for policyID at policyVersion — never evaluated against

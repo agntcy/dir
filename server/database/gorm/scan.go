@@ -88,6 +88,8 @@ func (d *DB) UpsertScanReport(report types.ScanReportObject, schedule types.Scan
 			return fmt.Errorf("load existing scan report: %w", err)
 		}
 
+		existed := err == nil
+
 		row := &ScanReport{
 			RecordCID:     report.GetRecordCID(),
 			ScannerType:   report.GetScannerType(),
@@ -110,7 +112,7 @@ func (d *DB) UpsertScanReport(report types.ScanReportObject, schedule types.Scan
 
 		row.NextAttemptAt = schedule.NextAttempt(now, row.ConsecutiveFailures)
 
-		return tx.Clauses(clause.OnConflict{
+		err = tx.Clauses(clause.OnConflict{
 			Columns: []clause.Column{{Name: "record_cid"}, {Name: "scanner_type"}},
 			DoUpdates: clause.AssignmentColumns([]string{
 				"is_safe",
@@ -125,6 +127,17 @@ func (d *DB) UpsertScanReport(report types.ScanReportObject, schedule types.Scan
 				"updated_at",
 			}),
 		}).Create(row).Error
+		if err != nil {
+			return err
+		}
+
+		if existed && !scanFactsChanged(&existing, row) {
+			return nil
+		}
+
+		_, err = supersedePolicyEvaluations(tx, row.RecordCID)
+
+		return err
 	})
 	if err != nil {
 		return fmt.Errorf("upsert scan report: %w", err)
