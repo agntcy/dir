@@ -22,7 +22,7 @@ vars:
   # renovate: datasource=go depName=github.com/spiffe/spire versioning=semver
   SPIRE_VERSION: "1.15.3"
   # renovate: datasource=docker depName=docker.io/bitnami/postgresql
-  POSTGRESQL_VERSION: "latest@sha256:889db6427034525f50071945ddf808fbb77f8a52c2c8d3a7a75d39a167373566"
+  POSTGRESQL_VERSION: "latest@sha256:9834b9d958f73a6c79457af08ebdbb8651fcb51e5efbad22b96636637316c26e"
 
   ## Container images for vulnerability scanning
   VULN_SCAN_IMAGES:
