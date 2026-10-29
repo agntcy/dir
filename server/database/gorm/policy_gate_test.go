@@ -335,7 +335,7 @@ func TestIsRecordServable_SupersededVerdictIsNotServed(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, servable, "a compliant record is served")
 
-	_, err = db.SupersedePolicyEvaluations(gateOK, types.FactGroupScan)
+	_, err = supersedePolicyEvaluations(db.gormDB, gateOK, types.FactGroupScan)
 	require.NoError(t, err)
 
 	servable, err = db.IsRecordServable(gateOK)

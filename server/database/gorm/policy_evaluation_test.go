@@ -161,7 +161,7 @@ func TestUpsertPolicyEvaluation_DistinctPoliciesOnTheSameRecordCoexist(t *testin
 	require.Len(t, rows, 2)
 }
 
-// --- SupersedePolicyEvaluations ---
+// --- supersedePolicyEvaluations ---
 
 // seedCurrentVerdict records a verdict from a policy known to read scan facts.
 //
@@ -201,7 +201,7 @@ func TestSupersedePolicyEvaluations_StopsTheVerdictAndAsksForAnother(t *testing.
 
 	require.NotContains(t, needsEvalCIDs(t, db, "v1"), policyTestCID, "a current verdict is not re-selected")
 
-	marked, err := db.SupersedePolicyEvaluations(policyTestCID, types.FactGroupScan)
+	marked, err := supersedePolicyEvaluations(db.gormDB, policyTestCID, types.FactGroupScan)
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), marked)
 
@@ -223,7 +223,7 @@ func TestSupersedePolicyEvaluations_CoversEveryPolicyReadingTheGroup(t *testing.
 		seedCurrentVerdict(t, db, policyTestCID, policyID)
 	}
 
-	marked, err := db.SupersedePolicyEvaluations(policyTestCID, types.FactGroupScan)
+	marked, err := supersedePolicyEvaluations(db.gormDB, policyTestCID, types.FactGroupScan)
 	require.NoError(t, err)
 	assert.Equal(t, int64(2), marked)
 
@@ -242,7 +242,7 @@ func TestSupersedePolicyEvaluations_LeavesWhatWasNeverCurrent(t *testing.T) {
 	db := setupPolicyEvalDB(t)
 	seedFailedVerdict(t, db, policyTestCID, "opa:require-annotation")
 
-	marked, err := db.SupersedePolicyEvaluations(policyTestCID, types.FactGroupScan)
+	marked, err := supersedePolicyEvaluations(db.gormDB, policyTestCID, types.FactGroupScan)
 	require.NoError(t, err)
 	assert.Zero(t, marked)
 	assert.Equal(t, types.PolicyEvalStatusFailed,
@@ -262,7 +262,7 @@ func TestSupersedePolicyEvaluations_TouchesOnlyThatRecord(t *testing.T) {
 		seedCurrentVerdict(t, db, cid, "opa:require-annotation")
 	}
 
-	marked, err := db.SupersedePolicyEvaluations(policyTestCID, types.FactGroupScan)
+	marked, err := supersedePolicyEvaluations(db.gormDB, policyTestCID, types.FactGroupScan)
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), marked)
 	assert.Equal(t, types.PolicyEvalStatusEvaluated,
@@ -276,7 +276,7 @@ func TestSupersedePolicyEvaluations_NoVerdictsIsNotAnError(t *testing.T) {
 
 	db := setupPolicyEvalDB(t)
 
-	marked, err := db.SupersedePolicyEvaluations(policyTestCID, types.FactGroupScan)
+	marked, err := supersedePolicyEvaluations(db.gormDB, policyTestCID, types.FactGroupScan)
 	require.NoError(t, err)
 	assert.Zero(t, marked)
 }
