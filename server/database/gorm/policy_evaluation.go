@@ -87,10 +87,10 @@ func (d *DB) UpsertPolicyEvaluation(eval types.PolicyEvaluationObject) error {
 	return nil
 }
 
-// SupersedePolicyEvaluations marks every verdict recorded for a record as
-// superseded, and reports how many it marked.
-func (d *DB) SupersedePolicyEvaluations(recordCID string) (int64, error) {
-	return supersedePolicyEvaluations(d.gormDB, recordCID)
+// SupersedePolicyEvaluations marks the verdicts a change to factGroup made
+// stale as superseded, and reports how many it marked.
+func (d *DB) SupersedePolicyEvaluations(recordCID, factGroup string) (int64, error) {
+	return supersedePolicyEvaluations(d.gormDB, recordCID, factGroup)
 }
 
 // supersedePolicyEvaluations does the work on tx, so that a caller writing the
@@ -102,9 +102,15 @@ func (d *DB) SupersedePolicyEvaluations(recordCID string) (int64, error) {
 // superseded row is not a verdict either read path accepts, and the reconciler
 // already re-selects it, so rewriting it would say nothing and would make the
 // returned count mean something other than "verdicts this stopped".
-func supersedePolicyEvaluations(tx *gorm.DB, recordCID string) (int64, error) {
+//
+// Only the policies that read factGroup are touched either. A policy that
+// reads only the record reaches the same verdict however often a scanner
+// reports, and superseding it would hide the record until the policy task came
+// round to say so again.
+func supersedePolicyEvaluations(tx *gorm.DB, recordCID, factGroup string) (int64, error) {
 	result := tx.Model(&PolicyEvaluation{}).
 		Where("record_cid = ? AND status IN ?", recordCID, types.EvaluatedPolicyStatuses()).
+		Where(dependsOnFactGroup, factGroup).
 		Updates(map[string]any{
 			"status":     types.PolicyEvalStatusSuperseded,
 			"compliant":  false,
@@ -116,6 +122,32 @@ func supersedePolicyEvaluations(tx *gorm.DB, recordCID string) (int64, error) {
 
 	return result.RowsAffected, nil
 }
+
+// dependsOnFactGroup keeps the verdicts a change to one fact group can have
+// made stale: those of a policy version recorded as reading that group, and
+// those of a version nothing was recorded for.
+//
+// The second arm is what makes being wrong here safe. A verdict whose version
+// has no dependency row is one this node cannot account for — a policy
+// registered before dependencies were recorded, most likely — and the only
+// answer that cannot serve it on evidence that moved is to treat it as reading
+// everything. It costs a re-evaluation; the alternative costs correctness.
+//
+// A version that reads nothing is recorded too, carrying types.FactGroupNone,
+// which matches no group and so falls through both arms.
+const dependsOnFactGroup = `(
+	EXISTS (
+		SELECT 1 FROM policy_fact_dependencies d
+		WHERE d.policy_id = policy_evaluations.policy_id
+		AND d.policy_version = policy_evaluations.policy_version
+		AND d.fact_group = ?
+	)
+	OR NOT EXISTS (
+		SELECT 1 FROM policy_fact_dependencies known
+		WHERE known.policy_id = policy_evaluations.policy_id
+		AND known.policy_version = policy_evaluations.policy_version
+	)
+)`
 
 // GetPolicyEvaluations retrieves every policy verdict recorded for a record.
 func (d *DB) GetPolicyEvaluations(recordCID string) ([]types.PolicyEvaluationObject, error) {

@@ -24,6 +24,9 @@ type celProgram struct {
 
 	// version is a hash of the expressions, in order.
 	version string
+
+	// factGroups are the metadata groups every expression together reads.
+	factGroups []string
 }
 
 // celValidator evaluates a CEL policy.
@@ -50,13 +53,26 @@ func newCELValidator(exprs []string, l layer) (*celValidator, error) {
 	return &celValidator{celProgram: prog, layer: l}, nil
 }
 
+// compileCEL compiles each expression and keeps the program it produces.
+//
+// The dependencies are read off the AST here and not kept with it, because
+// this is the last point they can be read at all: a program is what is left
+// once compiling is done, and it does not say what it looked at.
 func compileCEL(exprs []string, env *cel.Env) (*celProgram, error) {
+	var groups []string
+
 	rules := make([]celRule, 0, len(exprs))
+
 	for i, expr := range exprs {
 		ast, iss := env.Compile(expr)
 		if iss.Err() != nil {
 			return nil, fmt.Errorf("compile CEL expressions[%d]: %w", i, iss.Err())
 		}
+
+		// A policy reads what any one of its expressions reads: they are
+		// conjoined into one verdict, so a fact that moves any of them moves
+		// the policy.
+		groups = append(groups, celFactGroups(ast)...)
 
 		if ast.OutputType() != cel.BoolType {
 			return nil, fmt.Errorf("CEL expressions[%d] must evaluate to bool, got %s", i, ast.OutputType())
@@ -70,7 +86,11 @@ func compileCEL(exprs []string, env *cel.Env) (*celProgram, error) {
 		rules = append(rules, celRule{expr: expr, prg: prg})
 	}
 
-	return &celProgram{rules: rules, version: contentVersion(exprs...)}, nil
+	return &celProgram{
+		rules:      rules,
+		version:    contentVersion(exprs...),
+		factGroups: normalizeGroups(groups),
+	}, nil
 }
 
 func (v *celValidator) ValidateEvaluation(ctx context.Context, state *policyv1.RecordState) (bool, []string, []string, error) {

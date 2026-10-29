@@ -163,6 +163,32 @@ func TestUpsertPolicyEvaluation_DistinctPoliciesOnTheSameRecordCoexist(t *testin
 
 // --- SupersedePolicyEvaluations ---
 
+// seedCurrentVerdict records a verdict from a policy known to read scan facts.
+//
+// Registering what the policy reads holds the scope of the update constant, so
+// that the tests below vary one thing: which rows it selects. Which policies a
+// change reaches is the invalidation scope tests' subject, and a policy left
+// unregistered would drag that question into these.
+func seedCurrentVerdict(t *testing.T, db *DB, cid, policyID string) {
+	t.Helper()
+
+	require.NoError(t, db.RegisterPolicyVersion(policyID, "v1", []string{types.FactGroupScan}))
+	require.NoError(t, db.UpsertPolicyEvaluation(&PolicyEvaluation{
+		RecordCID: cid, PolicyID: policyID,
+		PolicyVersion: "v1", Compliant: true, Status: types.PolicyEvalStatusEvaluated,
+	}))
+}
+
+func seedFailedVerdict(t *testing.T, db *DB, cid, policyID string) {
+	t.Helper()
+
+	require.NoError(t, db.RegisterPolicyVersion(policyID, "v1", []string{types.FactGroupScan}))
+	require.NoError(t, db.UpsertPolicyEvaluation(&PolicyEvaluation{
+		RecordCID: cid, PolicyID: policyID,
+		PolicyVersion: "v1", Status: types.PolicyEvalStatusFailed, Reason: "policy evaluator error",
+	}))
+}
+
 // Superseding is one status change that both read paths already answer to: the
 // gate serves only a record with an evaluated verdict, and the reconciler
 // selects only a record without one.
@@ -171,14 +197,11 @@ func TestSupersedePolicyEvaluations_StopsTheVerdictAndAsksForAnother(t *testing.
 
 	db := setupPolicyEvalDB(t)
 	seedPolicyEvalRecord(t, db, policyTestCID)
+	seedCurrentVerdict(t, db, policyTestCID, "opa:require-annotation")
 
-	require.NoError(t, db.UpsertPolicyEvaluation(&PolicyEvaluation{
-		RecordCID: policyTestCID, PolicyID: "opa:require-annotation",
-		PolicyVersion: "v1", Compliant: true, Status: types.PolicyEvalStatusEvaluated,
-	}))
 	require.NotContains(t, needsEvalCIDs(t, db, "v1"), policyTestCID, "a current verdict is not re-selected")
 
-	marked, err := db.SupersedePolicyEvaluations(policyTestCID)
+	marked, err := db.SupersedePolicyEvaluations(policyTestCID, types.FactGroupScan)
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), marked)
 
@@ -188,24 +211,19 @@ func TestSupersedePolicyEvaluations_StopsTheVerdictAndAsksForAnother(t *testing.
 	assert.Contains(t, needsEvalCIDs(t, db, "v1"), policyTestCID, "the record is evaluated again")
 }
 
-// The record is what the metadata changed about, so every policy that reached
-// a verdict on it is superseded. Narrowing that to the policies which read the
-// fact that moved is a separate concern.
-func TestSupersedePolicyEvaluations_CoversEveryPolicyOnTheRecord(t *testing.T) {
+// The metadata changed about the record, not about one policy, so every
+// policy reading the group that moved is superseded. Which policies those are
+// is covered by the invalidation scope tests.
+func TestSupersedePolicyEvaluations_CoversEveryPolicyReadingTheGroup(t *testing.T) {
 	t.Parallel()
 
 	db := setupPolicyEvalDB(t)
 
-	require.NoError(t, db.UpsertPolicyEvaluation(&PolicyEvaluation{
-		RecordCID: policyTestCID, PolicyID: "opa:require-annotation",
-		PolicyVersion: "v1", Compliant: true, Status: types.PolicyEvalStatusEvaluated,
-	}))
-	require.NoError(t, db.UpsertPolicyEvaluation(&PolicyEvaluation{
-		RecordCID: policyTestCID, PolicyID: "cel:trusted",
-		PolicyVersion: "v1", Compliant: true, Status: types.PolicyEvalStatusEvaluated,
-	}))
+	for _, policyID := range []string{"opa:require-annotation", "cel:trusted"} {
+		seedCurrentVerdict(t, db, policyTestCID, policyID)
+	}
 
-	marked, err := db.SupersedePolicyEvaluations(policyTestCID)
+	marked, err := db.SupersedePolicyEvaluations(policyTestCID, types.FactGroupScan)
 	require.NoError(t, err)
 	assert.Equal(t, int64(2), marked)
 
@@ -222,13 +240,9 @@ func TestSupersedePolicyEvaluations_LeavesWhatWasNeverCurrent(t *testing.T) {
 	t.Parallel()
 
 	db := setupPolicyEvalDB(t)
+	seedFailedVerdict(t, db, policyTestCID, "opa:require-annotation")
 
-	require.NoError(t, db.UpsertPolicyEvaluation(&PolicyEvaluation{
-		RecordCID: policyTestCID, PolicyID: "opa:require-annotation",
-		PolicyVersion: "v1", Status: types.PolicyEvalStatusFailed, Reason: "policy evaluator error",
-	}))
-
-	marked, err := db.SupersedePolicyEvaluations(policyTestCID)
+	marked, err := db.SupersedePolicyEvaluations(policyTestCID, types.FactGroupScan)
 	require.NoError(t, err)
 	assert.Zero(t, marked)
 	assert.Equal(t, types.PolicyEvalStatusFailed,
@@ -245,13 +259,10 @@ func TestSupersedePolicyEvaluations_TouchesOnlyThatRecord(t *testing.T) {
 	db := setupPolicyEvalDB(t)
 
 	for _, cid := range []string{policyTestCID, otherCID} {
-		require.NoError(t, db.UpsertPolicyEvaluation(&PolicyEvaluation{
-			RecordCID: cid, PolicyID: "opa:require-annotation",
-			PolicyVersion: "v1", Compliant: true, Status: types.PolicyEvalStatusEvaluated,
-		}))
+		seedCurrentVerdict(t, db, cid, "opa:require-annotation")
 	}
 
-	marked, err := db.SupersedePolicyEvaluations(policyTestCID)
+	marked, err := db.SupersedePolicyEvaluations(policyTestCID, types.FactGroupScan)
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), marked)
 	assert.Equal(t, types.PolicyEvalStatusEvaluated,
@@ -265,7 +276,7 @@ func TestSupersedePolicyEvaluations_NoVerdictsIsNotAnError(t *testing.T) {
 
 	db := setupPolicyEvalDB(t)
 
-	marked, err := db.SupersedePolicyEvaluations(policyTestCID)
+	marked, err := db.SupersedePolicyEvaluations(policyTestCID, types.FactGroupScan)
 	require.NoError(t, err)
 	assert.Zero(t, marked)
 }

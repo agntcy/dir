@@ -35,6 +35,16 @@ type Evaluator interface {
 	// due for re-evaluation.
 	PolicyVersion() string
 
+	// FactGroups are the groups of record metadata this version of the policy
+	// reads, which decide which metadata changes make its verdicts stale.
+	// Empty means none: nothing a scanner or verifier writes can change the
+	// answer, so its verdicts stand until the record or the policy does.
+	//
+	// It is reported alongside the version because the two are registered
+	// together: a version recorded without its dependencies would read as
+	// depending on nothing and would never be invalidated.
+	FactGroups() []string
+
 	// Evaluate reports whether record complies with the policy, with a
 	// human-readable reason when it does not.
 	//
@@ -47,11 +57,12 @@ type Evaluator interface {
 // evaluator decides one evaluation policy by reading the record and running
 // its validator. A record complies when the validator accepts it.
 type evaluator struct {
-	id        string
-	version   string
-	validator Validator
-	records   RecordSource
-	facts     FactSource
+	id         string
+	version    string
+	validator  Validator
+	factGroups []string
+	records    RecordSource
+	facts      FactSource
 }
 
 // PolicyID returns the policy's ID.
@@ -59,6 +70,10 @@ func (e *evaluator) PolicyID() string { return e.id }
 
 // PolicyVersion returns the version of the policy as it was loaded.
 func (e *evaluator) PolicyVersion() string { return e.version }
+
+// FactGroups returns the metadata groups the policy reads, as read off its
+// source when it was loaded.
+func (e *evaluator) FactGroups() []string { return e.factGroups }
 
 // Evaluate reads the record from the store and has the validator decide on it.
 // When the record is rejected the reason is what the validator reported. A

@@ -89,7 +89,7 @@ func (d *DB) UpsertIdentityClaim(claim types.IdentityClaimObject) error {
 			return nil
 		}
 
-		_, err = supersedePolicyEvaluations(tx, row.RecordCID)
+		_, err = supersedePolicyEvaluations(tx, row.RecordCID, types.FactGroupIdentity)
 
 		return err
 	})
@@ -138,7 +138,7 @@ func (d *DB) DeleteIdentityClaim(cid, role string) error {
 			return nil
 		}
 
-		_, err := supersedePolicyEvaluations(tx, cid)
+		_, err := supersedePolicyEvaluations(tx, cid, types.FactGroupIdentity)
 
 		return err
 	})

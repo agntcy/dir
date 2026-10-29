@@ -28,6 +28,9 @@ type opaValidator struct {
 
 	// version is a hash of the policy file as it was loaded.
 	version string
+
+	// factGroups are the metadata groups the module reads.
+	factGroups []string
 }
 
 func newOPAValidator(ctx context.Context, policyDir, filename string) (*opaValidator, error) {
@@ -70,9 +73,10 @@ func newOPAValidator(ctx context.Context, policyDir, filename string) (*opaValid
 	}
 
 	return &opaValidator{
-		name:    policyName(mod, filename),
-		version: contentVersion(string(src)),
-		query:   prepared,
+		name:       policyName(mod, filename),
+		version:    contentVersion(string(src)),
+		query:      prepared,
+		factGroups: opaFactGroups(mod),
 	}, nil
 }
 

@@ -125,23 +125,24 @@ The reconciler's `record_events` settings (`RECONCILER_RECORD_EVENTS_*` in the e
 
 A verdict is reached on the metadata as it stood. A policy reading `meta.scan`, `meta.signature` or `meta.identity` answers a question whose inputs keep moving: a scan completes, a signature stops verifying, an ownership claim resolves. The verdict was true when it was written, and afterwards it says nothing about the record.
 
-So the write that changes the metadata supersedes that record's verdicts, in the same transaction that stores it. A superseded verdict counts as no verdict, which has two effects and needs no configuration:
+So the write that changes the metadata supersedes the verdicts it made stale, in the same transaction that stores it. A superseded verdict counts as no verdict, which has two effects and needs no configuration:
 
 - **The record is withheld until it has been evaluated again**, rather than served on evidence that has moved. It is counted by `dir_policy_gate_records_unevaluated` while it waits, the same as a record never evaluated, and the policy task picks it up on its next run.
 - **Enforcement is not lifted.** A policy already being enforced stays enforced; superseding verdicts does not make it pending again, so the records wait rather than being served while they do.
 
-Which writes count:
+Which writes count, and whose verdicts they reach:
 
-| Metadata | A record's verdicts are superseded when |
-|---|---|
-| Scan reports | A scanner's status, maximum severity, safe-or-unsafe conclusion or source changes, or a scanner reports on the record for the first time. |
-| Signature verifications | A signer's status, subject or issuer changes, or a signature is verified for the first time. The signature task also marks a signer failed once it stops appearing in a verification run, which counts. |
-| Identity claims | A claim's status or resolved subject changes, a claim resolves for the first time, or a stored claim is removed. |
-| The signed flag | A signature referrer arrives for a record that was not signed before. |
+| Metadata | Reaches policies reading | Counts as a change when |
+|---|---|---|
+| Scan reports | `meta.scan` | A scanner's status, maximum severity, safe-or-unsafe conclusion, finding count or source changes, or a scanner reports on the record for the first time. |
+| Signature verifications | `meta.signature` | A signer's status, subject or issuer changes, or a signature is verified for the first time. The signature task also marks a signer failed once it stops appearing in a verification run, which counts. |
+| Identity claims | `meta.identity` | A claim's status or resolved subject changes, a claim resolves for the first time, or a stored claim is removed. |
+| The signed flag | `meta.signature` | A signature referrer arrives for a record that was not signed before. |
 
 - **Only effective changes count.** The reconciler re-reports the same scan result, re-verifies the same signature and re-asserts the same claim on every pass, and none of that supersedes anything. If it did, the verdicts would never settle and most of the catalogue would be hidden most of the time.
 - **Timestamps do not count.** `meta.scan.scanned_at`, `meta.signature.verified_at` and `meta.identity.*.resolved_at` record when the node last looked, not what it concluded, so they move on every pass whatever the result. A CEL policy cannot depend on them in a way that goes stale, because the evaluation environment declares no clock to compare them against: `record`, `record_cid`, `indexed_at` and `meta`, and nothing else. A Rego policy can call `time.now_ns()`, and a verdict that does is wrong as soon as the clock moves, with nothing to recompute it — so keep conditions on the passage of time out of a policy that stores a verdict.
-- **A record's verdicts are superseded together.** A changed scan report supersedes the verdict of a policy that reads only signature state as well. That policy reaches the same answer again, so the cost is the re-evaluation rather than a wrong result.
+- **Only the policies that read what changed are superseded.** A changed scan report leaves the verdict of a policy reading only `meta.signature` alone, and leaves a policy reading no metadata at all alone entirely. What a policy reads is taken from the policy itself when it is compiled, and recorded against the version that was read, so a policy that is edited is judged by what the version behind the verdict read. There is nothing to declare and nothing to keep in step.
+- **Being unsure means superseding.** A policy whose dependencies this node has no record of — one evaluated before an upgrade that introduced them, for instance — is superseded by any change, until the reconciler registers it again on its next run. An unnecessary re-evaluation costs the wait; a verdict nothing can invalidate costs correctness.
 
 ## Metrics
 

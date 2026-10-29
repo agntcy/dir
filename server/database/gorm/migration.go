@@ -92,6 +92,7 @@ func (db *DB) migrate() error {
 		ScanReport{},
 		PolicyEvaluation{},
 		PolicyVersion{},
+		PolicyFactDependency{},
 		PolicyBackfill{},
 		RecordUsageMetrics{},
 		IdentityClaim{},
