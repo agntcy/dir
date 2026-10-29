@@ -4,12 +4,40 @@
 package gorm
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// The comparisons in policy_invalidation.go are worth only as much as their
+// agreement with what server/policy/meta.go projects, and both reach a stored
+// row through these interfaces. A getter appearing is how that agreement
+// breaks quietly: finding_count was added to scan reports and projected in the
+// same change, while the comparison went on ignoring it, so a rescan finding
+// more of the same thing superseded nothing.
+//
+// Failing on the count makes that a decision rather than an oversight. When
+// this test fails, add the getter to the matching comparison if a policy can
+// read it, then raise the number here.
+func TestFactGettersAreAccountedFor(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name  string
+		iface reflect.Type
+		want  int
+	}{
+		{"ScanReportObject", reflect.TypeFor[types.ScanReportObject](), 10},
+		{"SignatureVerificationObject", reflect.TypeFor[types.SignatureVerificationObject](), 14},
+		{"IdentityClaimObject", reflect.TypeFor[types.IdentityClaimObject](), 6},
+	} {
+		assert.Equal(t, tc.want, tc.iface.NumMethod(),
+			"%s gained or lost a getter: decide whether a policy reads it, then update the comparison and this count", tc.name)
+	}
+}
 
 // invalidationPolicyID is the verdict every test here watches. Which policy
 // reached it does not matter yet: a metadata write supersedes all of a
@@ -95,6 +123,26 @@ func TestUpsertScanReport_AChangedResultSupersedes(t *testing.T) {
 	seedVerdict(t, db)
 
 	upsertScan(t, db, scanReport(types.ScanStatusCompleted, "HIGH", false))
+
+	assertSuperseded(t, db)
+}
+
+// A rescan can find more of the same thing: the maximum severity and the
+// safe-or-unsafe conclusion both hold while the count moves, and a policy
+// bounding how much a record may carry reads the count.
+func TestUpsertScanReport_AChangedFindingCountSupersedes(t *testing.T) {
+	t.Parallel()
+
+	db := setupInvalidationDB(t)
+
+	first := scanReport(types.ScanStatusCompleted, "HIGH", false)
+	first.FindingCount = 1
+	upsertScan(t, db, first)
+	seedVerdict(t, db)
+
+	more := scanReport(types.ScanStatusCompleted, "HIGH", false)
+	more.FindingCount = 3
+	upsertScan(t, db, more)
 
 	assertSuperseded(t, db)
 }

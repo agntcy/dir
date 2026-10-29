@@ -51,6 +51,7 @@ func scanFactsChanged(before, after *ScanReport) bool {
 	return before.Status != after.Status ||
 		before.MaxSeverity != after.MaxSeverity ||
 		before.IsSafe != after.IsSafe ||
+		before.FindingCount != after.FindingCount ||
 		before.Source != after.Source
 }
 
