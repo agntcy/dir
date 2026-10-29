@@ -37,7 +37,7 @@ services:
   # tests/e2e/daemon/01_daemon_test.go. See issue #1780.
   service-a2a:
     profiles: ["runtime-discovery"]
-    image: nginx:latest@sha256:bc4cad49969aaf95eb4eecec5572846f86e59f1e8332aba36ed64b91aff8b724
+    image: nginx:latest@sha256:600f7cd45e27aa13e9304c834ab7c1b0ff39df85ee1dcc5087955455d77bc83b
     labels:
       - "test.org.agntcy/discover=true"
       - "test.org.agntcy/agent-type=a2a"
