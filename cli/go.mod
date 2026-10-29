@@ -19,7 +19,7 @@ replace (
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261020093159-f1c8d2a654e5.2
 	github.com/agntcy/dir-importer v1.5.5
 	github.com/agntcy/dir-runtime/discovery v1.5.0
 	github.com/agntcy/dir-runtime/server v1.5.0
@@ -38,12 +38,12 @@ require (
 	github.com/multiformats/go-multiaddr v0.16.1
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/rs/zerolog v1.35.1
-	github.com/sigstore/cosign/v3 v3.1.3
-	github.com/sigstore/sigstore v1.11.0
-	github.com/sigstore/sigstore/pkg/signature/kms/aws v1.11.0
-	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.11.0
-	github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.11.0
-	github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.11.0
+	github.com/sigstore/cosign/v3 v3.1.4
+	github.com/sigstore/sigstore v1.11.1
+	github.com/sigstore/sigstore/pkg/signature/kms/aws v1.11.1
+	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.11.1
+	github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.11.1
+	github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.11.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
@@ -56,7 +56,7 @@ require (
 	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v3 v3.0.1
-	oras.land/oras-go/v2 v2.6.2
+	oras.land/oras-go/v2 v2.6.4
 	zotregistry.dev/zot/v2 v2.1.22
 )
 

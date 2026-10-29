@@ -16,12 +16,12 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 v1.6.8
 
 require (
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261020093159-f1c8d2a654e5.2
 	github.com/agntcy/dir/api v1.8.0
 	github.com/agntcy/dir/cli v1.8.0
 	github.com/agntcy/dir/client v1.8.0
 	github.com/opencontainers/go-digest v1.0.0
-	github.com/sigstore/cosign/v3 v3.1.3
+	github.com/sigstore/cosign/v3 v3.1.4
 	google.golang.org/protobuf v1.36.12
 )
 
