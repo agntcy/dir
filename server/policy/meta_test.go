@@ -70,6 +70,7 @@ func (sigRow) GetSignature() string               { return "" }
 type scanRow struct {
 	scanner, status, severity, source string
 	safe                              bool
+	findings                          int
 	updated                           time.Time
 }
 
@@ -82,6 +83,7 @@ func (s scanRow) GetStatus() string       { return s.status }
 func (scanRow) GetFailureReason() string  { return "" }
 func (scanRow) GetFailureDetail() string  { return "" }
 func (s scanRow) GetSource() string       { return s.source }
+func (s scanRow) GetFindingCount() int    { return s.findings }
 
 type claimRow struct {
 	role, subject, status string
@@ -200,18 +202,20 @@ func TestProject_Scan(t *testing.T) {
 		t.Parallel()
 
 		got := project(nil, types.PolicyFacts{Scans: []types.ScanReportObject{
-			scanRow{scanner: "SKILL", status: types.ScanStatusCompleted, severity: "HIGH", safe: false, updated: early},
-			scanRow{scanner: "MCP", status: types.ScanStatusCompleted, severity: "LOW", safe: true, updated: late},
+			scanRow{scanner: "SKILL", status: types.ScanStatusCompleted, severity: "HIGH", safe: false, findings: 2, updated: early},
+			scanRow{scanner: "MCP", status: types.ScanStatusCompleted, severity: "LOW", safe: true, findings: 1, updated: late},
 		}}).GetScan()
 
 		assert.Equal(t, policyv1.ScanStatus_SCAN_STATUS_COMPLETED, got.GetStatus())
 		assert.False(t, got.GetIsSafe())
 		assert.Equal(t, securityv1.Severity_SEVERITY_HIGH, got.GetMaxSeverity())
-		assert.Equal(t, uint32(0), got.GetFindingCount(), "the summary row does not store a finding count")
+		assert.Equal(t, uint32(3), got.GetFindingCount())
 		assert.True(t, got.GetScannedAt().AsTime().Equal(late))
 		require.Len(t, got.GetScanners(), 2)
 		assert.Equal(t, securityv1.ScannerType_SCANNER_TYPE_MCP, got.GetScanners()[0].GetScannerType())
+		assert.Equal(t, uint32(1), got.GetScanners()[0].GetFindingCount())
 		assert.Equal(t, securityv1.ScannerType_SCANNER_TYPE_SKILL, got.GetScanners()[1].GetScannerType())
+		assert.Equal(t, uint32(2), got.GetScanners()[1].GetFindingCount())
 	})
 
 	t.Run("a mix of verdicts is partial", func(t *testing.T) {
@@ -231,15 +235,17 @@ func TestProject_Scan(t *testing.T) {
 		t.Parallel()
 
 		got := project(nil, types.PolicyFacts{Scans: []types.ScanReportObject{
-			scanRow{scanner: "MCP", status: types.ScanStatusFailed, severity: "HIGH", safe: false, updated: late},
+			scanRow{scanner: "MCP", status: types.ScanStatusFailed, severity: "HIGH", safe: false, findings: 4, updated: late},
 		}}).GetScan()
 
 		assert.Equal(t, policyv1.ScanStatus_SCAN_STATUS_FAILED, got.GetStatus())
 		assert.False(t, got.GetIsSafe())
 		assert.Equal(t, securityv1.Severity_SEVERITY_UNSPECIFIED, got.GetMaxSeverity())
+		assert.Equal(t, uint32(0), got.GetFindingCount(), "a failed row is not a verdict, so its count stays off the aggregate")
 		require.Len(t, got.GetScanners(), 1)
 		assert.Equal(t, securityv1.ScannerType_SCANNER_TYPE_MCP, got.GetScanners()[0].GetScannerType())
 		assert.Equal(t, policyv1.ScanStatus_SCAN_STATUS_FAILED, got.GetScanners()[0].GetStatus())
+		assert.Equal(t, uint32(4), got.GetScanners()[0].GetFindingCount())
 	})
 
 	t.Run("one failure among verdicts is partial and ignored for safety", func(t *testing.T) {

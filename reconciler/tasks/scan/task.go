@@ -201,6 +201,7 @@ func (t *Task) recordOutcome(recordCID, runnerName string, result *scanner.ScanR
 
 	if report != nil {
 		row.MaxSeverity = maxSeverityString(report.GetFindings())
+		row.FindingCount = len(report.GetFindings())
 	}
 
 	if err := t.db.UpsertScanReport(row, t.scanSchedule(result.FailureReason)); err != nil {

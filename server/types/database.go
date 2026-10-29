@@ -255,6 +255,11 @@ type ScanReportObject interface {
 	// GetSource is one of the ScanSource* values, or empty when the writer
 	// did not record who produced the row.
 	GetSource() string
+
+	// GetFindingCount is how many findings this scanner reported. Zero when
+	// the writer did not record one, which is what a row stored before the
+	// column existed says.
+	GetFindingCount() int
 }
 
 // ScanSchedule controls when a scan result stops suppressing a rescan.
@@ -356,6 +361,15 @@ type PolicyFacts struct {
 	// no verification row has not been verified yet, which is a different
 	// state from one that was never signed.
 	Signed bool
+
+	// IndexedAt is when this node first indexed the record. Zero when the
+	// record is not indexed, which is the one case where this node has
+	// observed nothing at all about it.
+	//
+	// This node's own observation, never the created_at a publisher put in the
+	// record: when a record was indexed here is not something its author may
+	// assert.
+	IndexedAt time.Time
 
 	Signatures []SignatureVerificationObject
 	Scans      []ScanReportObject

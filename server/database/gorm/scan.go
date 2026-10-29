@@ -39,6 +39,11 @@ type ScanReport struct {
 	// describes the row as stored, not the first writer.
 	Source string `gorm:"column:source;not null;default:''"`
 
+	// FindingCount is how many findings this scanner reported. The finding
+	// payloads stay in the referrer. Zero on a row written before the column
+	// existed, until the next scan or ingest rewrites it.
+	FindingCount int `gorm:"column:finding_count;not null;default:0"`
+
 	CreatedAt time.Time `gorm:"column:created_at;not null"`
 	UpdatedAt time.Time `gorm:"column:updated_at;not null"`
 }
@@ -55,6 +60,7 @@ func (s *ScanReport) GetStatus() string        { return s.Status }
 func (s *ScanReport) GetFailureReason() string { return s.FailureReason }
 func (s *ScanReport) GetFailureDetail() string { return s.FailureDetail }
 func (s *ScanReport) GetSource() string        { return s.Source }
+func (s *ScanReport) GetFindingCount() int     { return s.FindingCount }
 
 // UpsertScanReport inserts or replaces a scan_reports row keyed by
 // (record_cid, scanner_type), maintaining the failure counter and the retry
@@ -93,6 +99,7 @@ func (d *DB) UpsertScanReport(report types.ScanReportObject, schedule types.Scan
 			FailureReason: report.GetFailureReason(),
 			FailureDetail: report.GetFailureDetail(),
 			Source:        report.GetSource(),
+			FindingCount:  report.GetFindingCount(),
 			CreatedAt:     now,
 			UpdatedAt:     now,
 		}
@@ -116,6 +123,7 @@ func (d *DB) UpsertScanReport(report types.ScanReportObject, schedule types.Scan
 				"consecutive_failures",
 				"next_attempt_at",
 				"source",
+				"finding_count",
 				"updated_at",
 			}),
 		}).Create(row).Error
