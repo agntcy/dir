@@ -706,7 +706,7 @@ func (d *DB) SetRecordSigned(recordCID string) error {
 			return d.confirmRecordExists(tx, recordCID)
 		}
 
-		_, err := supersedePolicyEvaluations(tx, recordCID)
+		_, err := supersedePolicyEvaluations(tx, recordCID, types.FactGroupSignature)
 
 		return err
 	})

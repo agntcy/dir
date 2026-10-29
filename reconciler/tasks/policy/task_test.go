@@ -40,7 +40,8 @@ type fakeDB struct {
 
 	selectedVersions map[string]string
 	selections       []selection
-	registered       []string // "policyID@version", in order
+	registered       []string   // "policyID@version", in order
+	registeredGroups [][]string // the fact groups passed with each, in the same order
 	stored           []*gormdb.PolicyEvaluation
 }
 
@@ -86,12 +87,13 @@ func (f *fakeDB) GetRecordsNeedingPolicyEvaluation(policyID, policyVersion, afte
 	return page, nil
 }
 
-func (f *fakeDB) RegisterPolicyVersion(policyID, policyVersion string) error {
+func (f *fakeDB) RegisterPolicyVersion(policyID, policyVersion string, factGroups []string) error {
 	if f.registerErr != nil {
 		return f.registerErr
 	}
 
 	f.registered = append(f.registered, policyID+"@"+policyVersion)
+	f.registeredGroups = append(f.registeredGroups, factGroups)
 
 	return nil
 }
@@ -118,12 +120,14 @@ func (f *fakeDB) UpsertPolicyEvaluation(eval types.PolicyEvaluationObject) error
 type fakeEvaluator struct {
 	id       string
 	version  string
+	groups   []string
 	calls    int
 	evaluate func(context.Context, coretypes.Record) (bool, string, error)
 }
 
 func (e *fakeEvaluator) PolicyID() string      { return e.id }
 func (e *fakeEvaluator) PolicyVersion() string { return e.version }
+func (e *fakeEvaluator) FactGroups() []string  { return e.groups }
 
 func (e *fakeEvaluator) Evaluate(ctx context.Context, record coretypes.Record) (bool, string, error) {
 	e.calls++
@@ -495,6 +499,28 @@ func TestRun_RegistersTheVersionFirst(t *testing.T) {
 
 	assert.Equal(t, []string{"opa:a@v7"}, db.registered)
 	assert.Zero(t, ev.calls)
+}
+
+// The dependencies travel with the version, because a version stored without
+// them would read as a policy that depends on no metadata and would never be
+// invalidated.
+func TestRun_RegistersWhatThePolicyReadsWithTheVersion(t *testing.T) {
+	t.Parallel()
+
+	db := &fakeDB{}
+	ev := &fakeEvaluator{
+		id:       "cel:trusted",
+		version:  "v7",
+		groups:   []string{types.FactGroupScan, types.FactGroupSignature},
+		evaluate: allVerdictsPass,
+	}
+
+	task, err := NewTask(Config{Enabled: true}, db, ev)
+	require.NoError(t, err)
+	require.NoError(t, task.Run(t.Context()))
+
+	require.Len(t, db.registeredGroups, 1)
+	assert.Equal(t, []string{types.FactGroupScan, types.FactGroupSignature}, db.registeredGroups[0])
 }
 
 // If the version cannot be registered the server cannot follow the policy, so

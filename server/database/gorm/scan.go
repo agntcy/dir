@@ -135,7 +135,7 @@ func (d *DB) UpsertScanReport(report types.ScanReportObject, schedule types.Scan
 			return nil
 		}
 
-		_, err = supersedePolicyEvaluations(tx, row.RecordCID)
+		_, err = supersedePolicyEvaluations(tx, row.RecordCID, types.FactGroupScan)
 
 		return err
 	})

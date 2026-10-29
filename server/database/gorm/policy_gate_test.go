@@ -326,11 +326,16 @@ func TestIsRecordServable_SupersededVerdictIsNotServed(t *testing.T) {
 	seedGateRecord(t, db, gateOK, "skill/ok")
 	setVerdict(t, db, gateOK, policyA, true)
 
+	// The policy reads what the test then changes, so this is about what the
+	// gate does with a superseded verdict rather than about which policies a
+	// change reaches.
+	require.NoError(t, db.RegisterPolicyVersion(policyA.ID, policyA.Version, []string{types.FactGroupScan}))
+
 	servable, err := db.IsRecordServable(gateOK)
 	require.NoError(t, err)
 	require.True(t, servable, "a compliant record is served")
 
-	_, err = db.SupersedePolicyEvaluations(gateOK)
+	_, err = db.SupersedePolicyEvaluations(gateOK, types.FactGroupScan)
 	require.NoError(t, err)
 
 	servable, err = db.IsRecordServable(gateOK)

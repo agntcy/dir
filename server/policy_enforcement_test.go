@@ -52,7 +52,7 @@ func TestServedDatabase_CheckedModeServesAGatedView(t *testing.T) {
 	t.Parallel()
 
 	db := newTestDatabase(t)
-	require.NoError(t, db.RegisterPolicyVersion("opa:a", "v1"))
+	require.NoError(t, db.RegisterPolicyVersion("opa:a", "v1", nil))
 
 	metricsServer := metrics.New("127.0.0.1:0")
 

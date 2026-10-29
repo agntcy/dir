@@ -162,7 +162,7 @@ func (d *DB) UpdateSignatureVerification(verification types.SignatureVerificatio
 			return nil
 		}
 
-		_, err = supersedePolicyEvaluations(tx, verification.GetRecordCID())
+		_, err = supersedePolicyEvaluations(tx, verification.GetRecordCID(), types.FactGroupSignature)
 
 		return err
 	})
@@ -220,7 +220,7 @@ func (d *DB) UpsertSignatureVerification(verification types.SignatureVerificatio
 			return nil
 		}
 
-		_, err = supersedePolicyEvaluations(tx, sv.RecordCID)
+		_, err = supersedePolicyEvaluations(tx, sv.RecordCID, types.FactGroupSignature)
 
 		return err
 	})

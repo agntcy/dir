@@ -39,19 +39,24 @@ func TestFactGettersAreAccountedFor(t *testing.T) {
 	}
 }
 
-// invalidationPolicyID is the verdict every test here watches. Which policy
-// reached it does not matter yet: a metadata write supersedes all of a
-// record's verdicts, and narrowing that to the policies that read the fact
-// that moved is a later increment.
-const invalidationPolicyID = "cel:trusted"
+// invalidationPolicyID is the verdict every test here watches. It is
+// registered as reading every fact group, so that a test about one writer is
+// about that writer rather than about which policies the write reaches; the
+// tests that vary the dependencies do so explicitly.
+const (
+	invalidationPolicyID      = "cel:trusted"
+	invalidationPolicyVersion = "v1"
+)
 
 // setupInvalidationDB returns a database holding one indexed record with one
-// current verdict, which is the state a metadata write has to invalidate.
+// current verdict, from a policy known to read everything: the state a
+// metadata write has to invalidate.
 func setupInvalidationDB(t *testing.T) *DB {
 	t.Helper()
 
 	db := setupPolicyEvalDB(t)
 	seedPolicyEvalRecord(t, db, policyTestCID)
+	require.NoError(t, db.RegisterPolicyVersion(invalidationPolicyID, invalidationPolicyVersion, types.FactGroups()))
 	seedVerdict(t, db)
 
 	return db
@@ -63,10 +68,32 @@ func seedVerdict(t *testing.T, db *DB) {
 	require.NoError(t, db.UpsertPolicyEvaluation(&PolicyEvaluation{
 		RecordCID:     policyTestCID,
 		PolicyID:      invalidationPolicyID,
-		PolicyVersion: "v1",
+		PolicyVersion: invalidationPolicyVersion,
 		Status:        types.PolicyEvalStatusEvaluated,
 		Compliant:     true,
 	}))
+}
+
+// seedScopedVerdict records a current verdict from a second policy reading
+// exactly groups, so a test can watch a writer reach one policy and not
+// another. A nil groups registers a policy that reads no metadata.
+func seedScopedVerdict(t *testing.T, db *DB, policyID string, groups ...string) {
+	t.Helper()
+
+	require.NoError(t, db.RegisterPolicyVersion(policyID, invalidationPolicyVersion, groups))
+	require.NoError(t, db.UpsertPolicyEvaluation(&PolicyEvaluation{
+		RecordCID:     policyTestCID,
+		PolicyID:      policyID,
+		PolicyVersion: invalidationPolicyVersion,
+		Status:        types.PolicyEvalStatusEvaluated,
+		Compliant:     true,
+	}))
+}
+
+func verdictStatus(t *testing.T, db *DB, policyID string) string {
+	t.Helper()
+
+	return loadPolicyEval(t, db, policyTestCID, policyID).Status
 }
 
 // assertSuperseded and assertStillCurrent read the same row. They are separate
@@ -100,6 +127,141 @@ func upsertScan(t *testing.T, db *DB, report *ScanReport) {
 	t.Helper()
 
 	require.NoError(t, db.UpsertScanReport(report, types.DefaultScanSchedule()))
+}
+
+// --- which policies a write reaches ---
+
+// The point of recording what a policy reads: a scan report says nothing
+// about a policy that reads only signature state, and superseding its verdict
+// would withhold the record until the policy task next ran, for an answer that
+// cannot have changed.
+func TestInvalidationScope_OnlyThePoliciesReadingTheGroupThatMoved(t *testing.T) {
+	t.Parallel()
+
+	db := setupInvalidationDB(t)
+	seedScopedVerdict(t, db, "cel:scan-clean", types.FactGroupScan)
+	seedScopedVerdict(t, db, "cel:signed", types.FactGroupSignature)
+	seedScopedVerdict(t, db, "opa:require-license")
+
+	upsertScan(t, db, scanReport(types.ScanStatusCompleted, "HIGH", false))
+
+	assert.Equal(t, types.PolicyEvalStatusSuperseded, verdictStatus(t, db, "cel:scan-clean"),
+		"reads the group that moved")
+	assert.Equal(t, types.PolicyEvalStatusEvaluated, verdictStatus(t, db, "cel:signed"),
+		"reads another group")
+	assert.Equal(t, types.PolicyEvalStatusEvaluated, verdictStatus(t, db, "opa:require-license"),
+		"reads no metadata at all")
+}
+
+// Each writer names its own group, so the same record under the same policies
+// is invalidated differently depending on what changed.
+func TestInvalidationScope_EachWriterReachesItsOwnGroup(t *testing.T) {
+	t.Parallel()
+
+	for name, tc := range map[string]struct {
+		write func(*testing.T, *DB)
+		group string
+	}{
+		"a scan report": {
+			write: func(t *testing.T, db *DB) {
+				t.Helper()
+				upsertScan(t, db, scanReport(types.ScanStatusCompleted, "HIGH", false))
+			},
+			group: types.FactGroupScan,
+		},
+		"a signature verification": {
+			write: func(t *testing.T, db *DB) {
+				t.Helper()
+				require.NoError(t, db.UpsertSignatureVerification(
+					signatureVerification(types.SignatureStatusVerified, "dev@example.com")))
+			},
+			group: types.FactGroupSignature,
+		},
+		"the signed flag": {
+			write: func(t *testing.T, db *DB) {
+				t.Helper()
+				require.NoError(t, db.SetRecordSigned(policyTestCID))
+			},
+			group: types.FactGroupSignature,
+		},
+		"an identity claim": {
+			write: func(t *testing.T, db *DB) {
+				t.Helper()
+				require.NoError(t, db.UpsertIdentityClaim(
+					identityClaim(types.ClaimStatusVerified, "example.com")))
+			},
+			group: types.FactGroupIdentity,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			db := setupInvalidationDB(t)
+
+			for _, group := range types.FactGroups() {
+				seedScopedVerdict(t, db, "cel:reads-"+group, group)
+			}
+
+			tc.write(t, db)
+
+			for _, group := range types.FactGroups() {
+				want := types.PolicyEvalStatusEvaluated
+				if group == tc.group {
+					want = types.PolicyEvalStatusSuperseded
+				}
+
+				assert.Equal(t, want, verdictStatus(t, db, "cel:reads-"+group),
+					"policy reading %s after writing %s", group, tc.group)
+			}
+		})
+	}
+}
+
+// A verdict this node cannot account for has to be invalidated by anything:
+// a policy registered before its dependencies were recorded would otherwise
+// keep a verdict that nothing can ever make stale.
+func TestInvalidationScope_AnUnrecordedPolicyIsAlwaysSuperseded(t *testing.T) {
+	t.Parallel()
+
+	db := setupInvalidationDB(t)
+
+	// A verdict with no dependency rows for its version, as an upgraded node
+	// has until the reconciler registers the policy again.
+	require.NoError(t, db.UpsertPolicyEvaluation(&PolicyEvaluation{
+		RecordCID:     policyTestCID,
+		PolicyID:      "opa:unrecorded",
+		PolicyVersion: "v1",
+		Status:        types.PolicyEvalStatusEvaluated,
+		Compliant:     true,
+	}))
+
+	upsertScan(t, db, scanReport(types.ScanStatusCompleted, "HIGH", false))
+
+	assert.Equal(t, types.PolicyEvalStatusSuperseded, verdictStatus(t, db, "opa:unrecorded"))
+}
+
+// A policy's dependencies belong to the version that was read, so a verdict
+// from an older version is judged by what that version read.
+func TestInvalidationScope_DependenciesFollowTheVersionTheVerdictCameFrom(t *testing.T) {
+	t.Parallel()
+
+	db := setupInvalidationDB(t)
+
+	// v1 read scan facts; the policy was edited and v2 reads only signatures.
+	require.NoError(t, db.RegisterPolicyVersion("cel:edited", "v1", []string{types.FactGroupScan}))
+	require.NoError(t, db.RegisterPolicyVersion("cel:edited", "v2", []string{types.FactGroupSignature}))
+	require.NoError(t, db.UpsertPolicyEvaluation(&PolicyEvaluation{
+		RecordCID:     policyTestCID,
+		PolicyID:      "cel:edited",
+		PolicyVersion: "v1",
+		Status:        types.PolicyEvalStatusEvaluated,
+		Compliant:     true,
+	}))
+
+	upsertScan(t, db, scanReport(types.ScanStatusCompleted, "HIGH", false))
+
+	assert.Equal(t, types.PolicyEvalStatusSuperseded, verdictStatus(t, db, "cel:edited"),
+		"the verdict came from the version that reads scan facts")
 }
 
 // --- scan reports ---

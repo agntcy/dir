@@ -131,7 +131,11 @@ func (o *outcomes) total() int { return o.compliant + o.nonCompliant + o.failed 
 func (t *Task) runPolicy(ctx context.Context, ev Evaluator) error {
 	policyID, policyVersion := ev.PolicyID(), ev.PolicyVersion()
 
-	if err := t.db.RegisterPolicyVersion(policyID, policyVersion); err != nil {
+	// The dependencies go with the version, so that a metadata write can tell
+	// whether this policy reads what it changed. Registering first is what
+	// makes that safe: a verdict written below always has its dependencies
+	// recorded, never the other way round.
+	if err := t.db.RegisterPolicyVersion(policyID, policyVersion, ev.FactGroups()); err != nil {
 		return fmt.Errorf("register version of policy %q: %w", policyID, err)
 	}
 

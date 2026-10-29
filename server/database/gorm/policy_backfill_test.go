@@ -67,7 +67,7 @@ func TestPolicyLifecycle(t *testing.T) {
 	seedGateRecord(t, base, gateBad, "skill/bad")
 
 	// The reconciler registers the policy and evaluates the first record.
-	require.NoError(t, base.RegisterPolicyVersion(v1.ID, v1.Version))
+	require.NoError(t, base.RegisterPolicyVersion(v1.ID, v1.Version, nil))
 	setVerdict(t, base, gateOK, v1, true)
 
 	resolver, err := enforcement.NewResolver(policyconfig.EnforcementConfig{
@@ -89,7 +89,7 @@ func TestPolicyLifecycle(t *testing.T) {
 
 	// The policy is edited. It is enforced at once, so nothing the new rule
 	// rejects is served while the records are evaluated under it.
-	require.NoError(t, base.RegisterPolicyVersion(v2.ID, v2.Version))
+	require.NoError(t, base.RegisterPolicyVersion(v2.ID, v2.Version, nil))
 	require.NoError(t, resolver.Refresh())
 	assert.Empty(t, gateCIDs(t, served), "hidden until evaluated under the new rule")
 	assert.Empty(t, servable(t, served, all...))

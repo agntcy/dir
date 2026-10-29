@@ -400,6 +400,50 @@ const (
 	PolicyEvalStatusSuperseded = "superseded"
 )
 
+// Fact groups are the parts of a record's metadata a policy can depend on,
+// named after the RecordMeta fields a policy reads, because those names are
+// what a policy actually writes: meta.scan, input.meta.signature.
+//
+// They are the unit invalidation works in. A write knows which group it
+// changed, a policy's expressions say which groups it reads, and a verdict is
+// superseded only where those meet. The grain is a deliberate compromise: per
+// field would spare a policy reading only max_severity from a changed finding
+// count, at the cost of a dependency set large enough to be worth storing per
+// field, and the groups are what the writers are already divided into.
+const (
+	// FactGroupScan is meta.scan: what the scanners reported.
+	FactGroupScan = "scan"
+
+	// FactGroupSignature is meta.signature: whether the record is signed and
+	// what verifying it concluded. The signed flag belongs here, because it is
+	// the difference the group reports between an unsigned record and one
+	// nothing has verified yet.
+	FactGroupSignature = "signature"
+
+	// FactGroupIdentity is meta.identity: what resolving the record's claims
+	// of identity and ownership concluded.
+	FactGroupIdentity = "identity"
+
+	// FactGroupNone records that a policy version was read and depends on no
+	// metadata at all. It is stored rather than left implicit so that "reads
+	// nothing" can be told apart from "nothing was ever recorded", which has
+	// to be treated as reading everything.
+	//
+	// Without it the two are the same absence, and a node upgrading would
+	// read every policy registered before this existed as depending on
+	// nothing, and quietly stop invalidating their verdicts. It is never a
+	// group a policy can read: the groups come from RecordMeta's fields, and
+	// a name that is not one of those is dropped.
+	FactGroupNone = "none"
+)
+
+// FactGroups are every group a policy can depend on. It is what a policy whose
+// dependencies cannot be read off its source is taken to depend on, so adding
+// a group here widens that fallback rather than leaving it stale.
+func FactGroups() []string {
+	return []string{FactGroupScan, FactGroupSignature, FactGroupIdentity}
+}
+
 // EvaluatedPolicyStatuses are the statuses under which a policy evaluator
 // reached a verdict.
 //
@@ -482,15 +526,22 @@ type PolicyEvaluationDatabaseAPI interface {
 	// record.
 	GetPolicyEvaluations(recordCID string) ([]PolicyEvaluationObject, error)
 
-	// SupersedePolicyEvaluations marks every verdict recorded for a record as
-	// superseded, and reports how many it marked. It is what a writer of the
-	// metadata a policy reads calls once that metadata has changed.
+	// SupersedePolicyEvaluations marks the verdicts that a change to
+	// factGroup made stale as superseded, and reports how many it marked. It
+	// is what a writer of the metadata a policy reads calls once that
+	// metadata has changed, naming the group it changed.
+	//
+	// A policy that does not read the group keeps its verdict: it would reach
+	// the same one again, and superseding it would withhold the record until
+	// the policy task next ran for no reason. A policy whose dependencies
+	// were never recorded is superseded, because nothing here can say it is
+	// unaffected.
 	//
 	// Both read paths key off EvaluatedPolicyStatuses, so one status change
 	// does the whole job: the gate stops serving the record, because it
 	// requires a verdict in that set, and the reconciler evaluates it again,
 	// because it selects the records without one. Neither query changes.
-	SupersedePolicyEvaluations(recordCID string) (int64, error)
+	SupersedePolicyEvaluations(recordCID, factGroup string) (int64, error)
 
 	// GetRecordsNeedingPolicyEvaluation returns records with no evaluated
 	// verdict row for policyID at policyVersion — never evaluated against
@@ -500,8 +551,16 @@ type PolicyEvaluationDatabaseAPI interface {
 	GetRecordsNeedingPolicyEvaluation(policyID, policyVersion, afterCID string, limit int) ([]coretypes.Record, error)
 
 	// RegisterPolicyVersion records that an evaluator is running version of
-	// policyID now, so the server can follow the policy's current version.
-	RegisterPolicyVersion(policyID, policyVersion string) error
+	// policyID now, so the server can follow the policy's current version,
+	// together with the fact groups that version reads.
+	//
+	// The two are one call because they have to be written together. A
+	// version recorded without its groups reads as a policy that depends on
+	// no metadata, which is indistinguishable from one that truly does not
+	// and would mean its verdicts are never invalidated. Empty factGroups
+	// therefore asserts "reads no metadata", and is not the absence of an
+	// answer.
+	RegisterPolicyVersion(policyID, policyVersion string, factGroups []string) error
 
 	// GetCurrentPolicyVersion returns the version of policyID an evaluator
 	// ran most recently, and whether any evaluator has registered it.

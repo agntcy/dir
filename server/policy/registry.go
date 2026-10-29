@@ -40,9 +40,10 @@ type operationPolicy struct {
 // evaluation is one loaded evaluation policy. Evaluators turns it into an
 // Evaluator once it has a source of record content.
 type evaluation struct {
-	id        string
-	version   string
-	validator Validator
+	id         string
+	version    string
+	validator  Validator
+	factGroups []string
 }
 
 // contentVersion is the version of a policy made of parts, in order. Each part
@@ -86,19 +87,27 @@ func NewRegistry(
 			return nil, fmt.Errorf("evaluations[%d]: provider %q cannot define an evaluation policy", i, e.Provider)
 		}
 
-		v, version, err := newValidator(ctx, layerEvaluation, e.Provider,
+		v, version, groups, err := newValidator(ctx, layerEvaluation, e.Provider,
 			provider{file: e.File, expressions: e.Expressions}, policyDir)
 		if err != nil {
 			return nil, fmt.Errorf("evaluations[%d]: %w", i, err)
 		}
 
-		loaded = append(loaded, evaluation{id: e.PolicyID(), version: version, validator: v})
+		loaded = append(loaded, evaluation{
+			id:         e.PolicyID(),
+			version:    version,
+			validator:  v,
+			factGroups: groups,
+		})
 	}
 
 	byOp := make(map[string][]operationPolicy)
 
 	for i, o := range operations {
-		v, _, err := newValidator(ctx, layerOperation, o.Provider,
+		// An operation policy stores no verdict, so nothing caches what it
+		// decided and nothing has to be invalidated: its dependencies are not
+		// asked for.
+		v, _, _, err := newValidator(ctx, layerOperation, o.Provider,
 			provider{schemaURL: o.SchemaURL, file: o.File, expressions: o.Expressions}, policyDir)
 		if err != nil {
 			return nil, fmt.Errorf("operations[%d]: %w", i, err)
@@ -127,37 +136,43 @@ type provider struct {
 	expressions []string
 }
 
-// newValidator builds the validator for one configured provider, and the version
-// of its content when the provider has any. OASF has none.
+// newValidator builds the validator for one configured provider, the version
+// of its content when the provider has any, and the metadata groups its policy
+// reads. OASF has neither: it validates a record against a schema, which says
+// nothing about what this node observed.
+//
+// The groups come from here because this is where the policy's source is read.
+// Nothing downstream has it: a verdict names a policy and a version, and the
+// expressions that reached it are gone by then.
 //
 // l is the layer the policy was configured in. Only CEL needs it today,
 // because it is the only provider that compiles its policy here and so the
 // only one that can reject reading the other layer's inputs at load time.
-func newValidator(ctx context.Context, l layer, name string, p provider, policyDir string) (Validator, string, error) {
+func newValidator(ctx context.Context, l layer, name string, p provider, policyDir string) (Validator, string, []string, error) {
 	switch name {
 	case policyconfig.ProviderOASF:
 		v, err := newOASFValidator(p.schemaURL)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to initialize OASF validator: %w", err)
+			return nil, "", nil, fmt.Errorf("failed to initialize OASF validator: %w", err)
 		}
 
-		return v, "", nil
+		return v, "", nil, nil
 	case policyconfig.ProviderCEL:
 		v, err := newCELValidator(p.expressions, l)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to initialize CEL validator: %w", err)
+			return nil, "", nil, fmt.Errorf("failed to initialize CEL validator: %w", err)
 		}
 
-		return v, v.version, nil
+		return v, v.version, v.factGroups, nil
 	case policyconfig.ProviderOPA:
 		v, err := newOPAValidator(ctx, policyDir, p.file)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to initialize OPA validator: %w", err)
+			return nil, "", nil, fmt.Errorf("failed to initialize OPA validator: %w", err)
 		}
 
-		return v, v.version, nil
+		return v, v.version, v.factGroups, nil
 	default:
-		return nil, "", fmt.Errorf("unsupported provider %q", name)
+		return nil, "", nil, fmt.Errorf("unsupported provider %q", name)
 	}
 }
 
@@ -202,11 +217,12 @@ func (r *Registry) Evaluators(records RecordSource, facts FactSource) []Evaluato
 	out := make([]Evaluator, len(r.evaluations))
 	for i, e := range r.evaluations {
 		out[i] = &evaluator{
-			id:        e.id,
-			version:   e.version,
-			validator: e.validator,
-			records:   records,
-			facts:     facts,
+			id:         e.id,
+			version:    e.version,
+			validator:  e.validator,
+			factGroups: e.factGroups,
+			records:    records,
+			facts:      facts,
 		}
 	}
 
