@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/agntcy/dir/server/config"
+	"github.com/agntcy/dir/server/policy"
 	routingconfig "github.com/agntcy/dir/server/routing/config"
 	"github.com/agntcy/dir/server/store"
 	storeconfig "github.com/agntcy/dir/server/store/config"
@@ -19,11 +20,6 @@ import (
 )
 
 const testLocalPeerID = "local-peer"
-
-// servesEverything is the policy gate with no policy enforced.
-type servesEverything struct{}
-
-func (servesEverything) IsRecordServable(string) (bool, error) { return true, nil }
 
 //nolint:revive
 func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route {
@@ -56,7 +52,8 @@ func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route
 
 	// create example server
 	// Autosync is disabled in these tests, so no ingestion service or validator is required.
-	r, err := New(ctx, s, nil, nil, servesEverything{}, opts)
+	// The gate enforces no verdict and no policy, so every record is served.
+	r, err := New(ctx, s, nil, nil, policy.NewRecordGate(nil, nil), opts)
 	assert.NoError(t, err)
 
 	// check the type assertion

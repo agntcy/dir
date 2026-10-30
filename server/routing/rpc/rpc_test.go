@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	"github.com/agntcy/dir/server/policy"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -72,8 +73,8 @@ type peerGate struct {
 
 func (g peerGate) IsRecordServable(string) (bool, error) { return g.servable, g.err }
 
-func newAPI(store *peerStore, gate peerGate) *RPCAPI {
-	return &RPCAPI{service: &Service{store: store, refStore: store, servability: gate}}
+func newAPI(store *peerStore, servability peerGate) *RPCAPI {
+	return &RPCAPI{service: &Service{store: store, refStore: store, gate: policy.NewRecordGate(servability, nil)}}
 }
 
 // peerCalls runs each RPC a remote peer can make for peerCID once.
@@ -151,9 +152,9 @@ func TestPeerRPC_GateErrorFailsClosed(t *testing.T) {
 }
 
 // The service cannot be built without the gate, so a caller cannot forget it.
-func TestNew_RequiresServability(t *testing.T) {
+func TestNew_RequiresTheGate(t *testing.T) {
 	t.Parallel()
 
 	_, err := New(nil, &peerStore{}, nil)
-	require.ErrorContains(t, err, "servability check is required")
+	require.ErrorContains(t, err, "a record gate is required")
 }

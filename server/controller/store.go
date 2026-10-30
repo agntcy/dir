@@ -32,9 +32,10 @@ type storeCtrl struct {
 	ingestor       ingest.Ingestor
 	eventBus       *events.SafeEventBus
 	policyRegistry *policy.Registry
+	gate           *policy.RecordGate
 }
 
-func NewStoreController(store types.StoreAPI, db types.DatabaseAPI, ingestor ingest.Ingestor, eventBus *events.SafeEventBus, policyRegistry *policy.Registry) storev1.StoreServiceServer {
+func NewStoreController(store types.StoreAPI, db types.DatabaseAPI, ingestor ingest.Ingestor, eventBus *events.SafeEventBus, policyRegistry *policy.Registry, gate *policy.RecordGate) storev1.StoreServiceServer {
 	return &storeCtrl{
 		UnimplementedStoreServiceServer: storev1.UnimplementedStoreServiceServer{},
 		store:                           store,
@@ -42,6 +43,7 @@ func NewStoreController(store types.StoreAPI, db types.DatabaseAPI, ingestor ing
 		ingestor:                        ingestor,
 		eventBus:                        eventBus,
 		policyRegistry:                  policyRegistry,
+		gate:                            gate,
 	}
 }
 
@@ -156,7 +158,7 @@ func (s storeCtrl) Lookup(stream storev1.StoreService_LookupServer) error {
 		// with the status that says so.
 		var recordMeta *corev1.RecordMeta
 
-		err = checkRecordServable(s.db, recordRef.GetCid())
+		err = s.gate.Check(stream.Context(), recordRef.GetCid())
 		if err == nil {
 			recordMeta, err = s.store.Lookup(stream.Context(), recordRef)
 		}
@@ -318,7 +320,7 @@ func (s storeCtrl) PullReferrer(stream storev1.StoreService_PullReferrerServer) 
 		referrerCID := request.GetReferrerRef().GetCid()
 
 		// A record the policy gate excludes fails as it does for Pull and Lookup.
-		if err := checkRecordServable(s.db, recordCID); err != nil {
+		if err := s.gate.Check(stream.Context(), recordCID); err != nil {
 			return err
 		}
 
@@ -379,7 +381,7 @@ func (s storeCtrl) validateRecordRef(recordRef *corev1.RecordRef) error {
 func (s storeCtrl) pullRecordFromStore(ctx context.Context, recordRef *corev1.RecordRef) (*corev1.Record, error) {
 	var record *corev1.Record
 
-	err := checkRecordServable(s.db, recordRef.GetCid())
+	err := s.gate.Check(ctx, recordRef.GetCid())
 	if err == nil {
 		record, err = s.store.Pull(ctx, recordRef)
 	}

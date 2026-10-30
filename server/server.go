@@ -199,11 +199,6 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		opt(&o)
 	}
 
-	policyRegistry, err := policy.NewRegistry(ctx, cfg.Policy.Evaluations, cfg.Policy.Operations, cfg.Policy.Dir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create policy registry: %w", err)
-	}
-
 	// Load options
 	options := types.NewOptions(cfg)
 	serverOpts := []grpc.ServerOption{}
@@ -277,11 +272,24 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		return nil, err
 	}
 
+	// The registry is built after the database because an operation policy at
+	// pull decides on stored verdicts, and needs both them and the versions
+	// currently in force. It reads nothing here; its first use is below.
+	policyRegistry, err := policy.NewRegistry(ctx, cfg.Policy.Evaluations, cfg.Policy.Operations, cfg.Policy.Dir,
+		policy.WithVerdicts(databaseAPI, enforced))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create policy registry: %w", err)
+	}
+
 	// Shared ingestion service: single authoritative path for persisting
 	// records/referrers (content store + search index + referrer DB state).
 	ingestor := ingest.New(storeAPI, databaseAPI)
 
-	routingAPI, err := routing.New(ctx, storeAPI, ingestor, policyRegistry, servedDB, options)
+	// Every read of one record by CID passes the same gate: the verdicts the
+	// search path filters on, and the operation policies configured at pull.
+	recordGate := policy.NewRecordGate(servedDB, policyRegistry)
+
+	routingAPI, err := routing.New(ctx, storeAPI, ingestor, policyRegistry, recordGate, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create routing: %w", err)
 	}
@@ -311,7 +319,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	}
 
 	// Create publication service
-	publicationService, err := publication.New(servedDB, storeAPI, routingAPI, options)
+	publicationService, err := publication.New(servedDB, recordGate, storeAPI, routingAPI, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create publication service: %w", err)
 	}
@@ -324,17 +332,17 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 
 	// Register APIs
 	eventsv1.RegisterEventServiceServer(grpcServer, controller.NewEventsController(eventService))
-	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, servedDB, ingestor, options.EventBus(), policyRegistry))
+	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, servedDB, ingestor, options.EventBus(), policyRegistry, recordGate))
 	routingv1.RegisterRoutingServiceServer(grpcServer, controller.NewRoutingController(routingAPI, storeAPI, publicationService))
 	routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(servedDB, options))
 	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(servedDB, storeAPI))
 	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(servedDB, options))
 	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(servedDB))
-	identityv1.RegisterIdentityServiceServer(grpcServer, controller.NewIdentityController(servedDB))
+	identityv1.RegisterIdentityServiceServer(grpcServer, controller.NewIdentityController(servedDB, recordGate))
 
 	gwExtractor, aiFinderOpts := resolveGatewayExtractor(cfg)
 
-	catalogv1.RegisterAIFinderServiceServer(grpcServer, controller.NewAIFinderController(routingAPI.GetPeerID(), servedDB, cfg.HTTPGateway, storeAPI, aiFinderOpts...))
+	catalogv1.RegisterAIFinderServiceServer(grpcServer, controller.NewAIFinderController(routingAPI.GetPeerID(), servedDB, recordGate, cfg.HTTPGateway, storeAPI, aiFinderOpts...))
 	registerPolicyAudit(grpcServer, cfg.Authz.Enabled, databaseAPI, storeAPI, enforced)
 
 	// Register health service

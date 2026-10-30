@@ -80,7 +80,7 @@ Validation is performed using the [OASF SDK](https://docs.agntcy.org/oasf/oasf-
 
 ### Configuration
 
-The Directory server validates records using `policy.operations` in YAML. Each entry selects a provider, the operations it applies to (`push`, `autosync`, `index`), a `name`, that provider's settings, and optionally a `mode`. An empty list disables record validation. This list cannot be set via environment variables.
+The Directory server validates records using `policy.operations` in YAML. Each entry selects a provider, the operations it applies to (`push`, `autosync`, `index`, `pull`), a `name`, that provider's settings, and optionally a `mode`. An empty list disables record validation. This list cannot be set via environment variables.
 
 ```yaml
 # server.config.yml
@@ -116,7 +116,7 @@ A policy in `policy.operations` decides one operation, so it is given the record
 |---|---|---|
 | `record` | dynamic | The record's OASF content, read by field name. |
 | `record_cid` | string | The record's content identifier. |
-| `context.operation` | enum | Which operation is being decided: `Operation.OPERATION_PUSH`, `Operation.OPERATION_AUTOSYNC` or `Operation.OPERATION_INDEX`. |
+| `context.operation` | enum | Which operation is being decided: `Operation.OPERATION_PUSH`, `Operation.OPERATION_AUTOSYNC`, `Operation.OPERATION_INDEX` or `Operation.OPERATION_PULL`. |
 | `context.source_peer_id` | optional string | The authenticated peer the record is being pulled from. Set at `autosync` and absent at `push` and `index`, so a policy covering more than one operation tests it with `has(context.source_peer_id)` before comparing it. |
 | `now` | timestamp | The instant the operation is being decided at, the same one for every policy deciding it. |
 
@@ -128,9 +128,40 @@ A policy in `policy.operations` decides one operation, so it is given the record
     - 'context.operation != Operation.OPERATION_AUTOSYNC || has(record.locators)'
 ```
 
-`opa` is given the same values as its input document: `input.record.name`, `input.record_cid`, `input.context.operation`, `input.context.source_peer_id`, `input.now`. Two differences follow from the document being JSON. An enum arrives as its name, so the comparison is `input.context.operation == "OPERATION_PUSH"` rather than a number. An unset `source_peer_id` is absent from the document rather than empty, so a policy tests it with `not input.context.source_peer_id`. `now` is an RFC 3339 string.
+`opa` is given the same values as its input document: `input.record.name`, `input.record_cid`, `input.context.operation`, `input.context.source_peer_id`, `input.now`, and `input.verdicts` at `pull`. Two differences follow from the document being JSON. An enum arrives as its name, so the comparison is `input.context.operation == "OPERATION_PUSH"` rather than a number. An unset `source_peer_id` is absent from the document rather than empty, so a policy tests it with `not input.context.source_peer_id`. `now` is an RFC 3339 string.
 
-A policy in this block cannot read `meta`, the facts about a record that an evaluation policy reads, nor another policy's verdict. Those belong to `policy.evaluations`, which runs per record rather than per operation; see [Content Policy Enforcement](dir-content-policy-enforcement.md). A `cel` policy here that names one does not load, and the node reports it at startup rather than letting the policy decide on nothing.
+A policy in this block cannot read `meta`, the facts about a record that an evaluation policy reads. Those belong to `policy.evaluations`, which runs per record rather than per operation; see [Content Policy Enforcement](dir-content-policy-enforcement.md). A `cel` policy here that names one does not load, and the node reports it at startup rather than letting the policy decide on nothing.
+
+#### At `pull`
+
+A policy at `pull` decides whether to serve a record that is already stored, so it reads what this node has concluded about that record rather than the record itself:
+
+| Variable | Type | Value |
+|---|---|---|
+| `verdicts` | map | Each evaluation policy's conclusion, keyed by policy ID. |
+
+| Verdict field | Type | Value |
+|---|---|---|
+| `compliant_and_current` | bool | Whether the record satisfies the policy *and* the verdict was reached under the version in force. This is the field to decide on. A missing, failed, superseded or non-compliant verdict all read `false`. |
+| `status` | enum | How far the evaluation got: `VerdictStatus.VERDICT_STATUS_UNEVALUATED`, `_EVALUATED`, `_FAILED` or `_SUPERSEDED`. |
+| `compliant` | bool | Whether the condition was satisfied, whatever version reached that conclusion. Read as "satisfies this condition", not as "this record is good". |
+| `policy_version` | string | The version the verdict was reached under. Informational; decide on `compliant_and_current`. |
+| `reason` | string | Why the evaluator decided as it did, or why it failed. |
+| `evaluated_at` | optional timestamp | When the verdict was reached. Absent when there is none. |
+
+```yaml
+- provider: cel
+  op: ["pull"]
+  name: serve-checked-records
+  expressions:
+    - 'verdicts["cel:trusted"].compliant_and_current'
+```
+
+A policy at `pull` **cannot read `record`**. A read by CID is decided before the content is fetched, which is what keeps a lookup an index read, so there is no record there to give it. A policy that reads one does not load, and the node says so at startup rather than letting it decide on an empty record. This applies to `oasf` too, which is nothing but a reading of record content.
+
+The restriction costs less than it looks. A record's content cannot change under its CID, so a question about content has one answer forever: ask it in `policy.evaluations`, which sees the whole record, is answered once per record, and leaves a verdict to read here.
+
+Reading verdicts is the other way around: only `pull` has them. Every other operation decides before any verdict exists, so a policy naming `verdicts` at `push`, `autosync` or `index` does not load either.
 
 ### Modes
 

@@ -120,7 +120,7 @@ func newFakeIdentityDB() *fakeIdentityDB {
 }
 
 func TestIdentityGetIdentityStatus_NoClaims(t *testing.T) {
-	ctrl := NewIdentityController(newFakeIdentityDB())
+	ctrl := NewIdentityController(newFakeIdentityDB(), servesEverything())
 
 	resp, err := ctrl.GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
 	require.NoError(t, err)
@@ -140,7 +140,7 @@ func TestIdentityGetIdentityStatus_ReturnsBothClaims(t *testing.T) {
 		Status: types.ClaimStatusFailed, Error: "no key found", VerifiedAt: verifiedAt,
 	}
 
-	resp, err := NewIdentityController(db).GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
+	resp, err := NewIdentityController(db, servesEverything()).GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
 	require.NoError(t, err)
 
 	identity := resp.GetIdentity()
@@ -164,7 +164,7 @@ func TestIdentityGetIdentityStatus_OneClaimOnly(t *testing.T) {
 		RecordCID: "cid-v1", Role: types.ClaimRoleOwner, Subject: "dns:acme.com", Status: types.ClaimStatusVerified,
 	}
 
-	resp, err := NewIdentityController(db).GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
+	resp, err := NewIdentityController(db, servesEverything()).GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
 	require.NoError(t, err)
 	assert.Nil(t, resp.GetIdentity())
 	assert.NotNil(t, resp.GetOwner())
@@ -179,7 +179,7 @@ func TestIdentityGetIdentityStatus_ByName(t *testing.T) {
 		RecordCID: "cid-v1", Role: types.ClaimRoleIdentity, Subject: "first", Status: types.ClaimStatusVerified,
 	}
 
-	ctrl := NewIdentityController(db)
+	ctrl := NewIdentityController(db, servesEverything())
 
 	// Without a version, the latest one is used.
 	resp, err := ctrl.GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{Name: new("acme.com/agent")})
@@ -197,14 +197,14 @@ func TestIdentityGetIdentityStatus_CIDWinsOverName(t *testing.T) {
 		RecordCID: "cid-other", Role: types.ClaimRoleOwner, Subject: "dns:other.com", Status: types.ClaimStatusVerified,
 	}
 
-	resp, err := NewIdentityController(db).GetIdentityStatus(context.Background(),
+	resp, err := NewIdentityController(db, servesEverything()).GetIdentityStatus(context.Background(),
 		&identityv1.GetIdentityStatusRequest{Cid: new("cid-other"), Name: new("acme.com/agent")})
 	require.NoError(t, err)
 	assert.Equal(t, "dns:other.com", resp.GetOwner().GetSubject())
 }
 
 func TestIdentityGetIdentityStatus_Errors(t *testing.T) {
-	ctrl := NewIdentityController(newFakeIdentityDB())
+	ctrl := NewIdentityController(newFakeIdentityDB(), servesEverything())
 
 	_, err := ctrl.GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{})
 	assert.Equal(t, codes.InvalidArgument, status.Code(err))
@@ -222,13 +222,13 @@ func TestIdentityGetIdentityStatus_Errors(t *testing.T) {
 	db := newFakeIdentityDB()
 	db.claimErr = errors.New("database is down")
 
-	_, err = NewIdentityController(db).GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
+	_, err = NewIdentityController(db, servesEverything()).GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
 	assert.Equal(t, codes.Internal, status.Code(err))
 
 	db = newFakeIdentityDB()
 	db.recordsErr = errors.New("database is down")
 
-	_, err = NewIdentityController(db).GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
+	_, err = NewIdentityController(db, servesEverything()).GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
 	assert.Equal(t, codes.Internal, status.Code(err))
 }
 
@@ -239,13 +239,13 @@ func TestIdentityGetIdentityStatus_VerifiedResultHasNoError(t *testing.T) {
 		RecordCID: "cid-v1", Role: types.ClaimRoleOwner, Subject: "dns:acme.com", Status: types.ClaimStatusVerified, Error: "stale",
 	}
 
-	resp, err := NewIdentityController(db).GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
+	resp, err := NewIdentityController(db, servesEverything()).GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
 	require.NoError(t, err)
 	assert.Nil(t, resp.GetOwner().Error)
 }
 
 func TestIdentityResolve(t *testing.T) {
-	ctrl := NewIdentityController(newFakeIdentityDB())
+	ctrl := NewIdentityController(newFakeIdentityDB(), servesEverything())
 
 	// All versions, newest first.
 	resp, err := ctrl.Resolve(context.Background(), &identityv1.ResolveRequest{Name: "acme.com/agent"})
@@ -264,7 +264,7 @@ func TestIdentityResolve(t *testing.T) {
 }
 
 func TestIdentityResolve_Errors(t *testing.T) {
-	ctrl := NewIdentityController(newFakeIdentityDB())
+	ctrl := NewIdentityController(newFakeIdentityDB(), servesEverything())
 
 	_, err := ctrl.Resolve(context.Background(), &identityv1.ResolveRequest{})
 	assert.Equal(t, codes.InvalidArgument, status.Code(err))

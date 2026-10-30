@@ -46,7 +46,7 @@ func entryIDs(entries []*catalogv1.CatalogEntry) []string {
 }
 
 func searchCtrl(db *fakeCatalogDB, ext *fakeExtractor) catalogv1.AIFinderServiceServer {
-	return NewAIFinderController("hostId", db, config.HTTPGatewayConfig{}, nil, WithExtractor(ext))
+	return NewAIFinderController("hostId", db, servesEverything(), config.HTTPGatewayConfig{}, nil, WithExtractor(ext))
 }
 
 func TestSearchAgents_RanksBySignalOverlap(t *testing.T) {
@@ -144,7 +144,7 @@ func TestSearchAgents_EmptyExtractionIsRejected(t *testing.T) {
 }
 
 func TestSearchAgents_NoExtractorUnavailable(t *testing.T) {
-	ctrl := NewAIFinderController("hostId", &fakeCatalogDB{}, config.HTTPGatewayConfig{}, nil)
+	ctrl := NewAIFinderController("hostId", &fakeCatalogDB{}, servesEverything(), config.HTTPGatewayConfig{}, nil)
 
 	_, err := ctrl.SearchAgents(context.Background(), &catalogv1.SearchAgentsRequest{Query: "anything"})
 	require.Error(t, err)

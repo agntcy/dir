@@ -53,7 +53,7 @@ func extractCtrl(ext *fakeExtractor) catalogv1.AIFinderServiceServer {
 		opts = append(opts, WithExtractor(ext))
 	}
 
-	return NewAIFinderController("hostId", &fakeCatalogDB{}, config.HTTPGatewayConfig{}, nil, opts...)
+	return NewAIFinderController("hostId", &fakeCatalogDB{}, servesEverything(), config.HTTPGatewayConfig{}, nil, opts...)
 }
 
 func TestExtractTaxonomy_MapsExtractorResult(t *testing.T) {

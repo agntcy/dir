@@ -99,6 +99,30 @@ Each kind of read has its own mode, so enforcement can be rolled out one kind at
 
 The modes and the policy list are read at startup: restart the server after changing them.
 
+## Deciding Reads With a Policy
+
+The settings above are one rule, fixed in code: a read by CID is served when the record has a compliant, current verdict under *every* enforced policy. A policy at the `pull` operation expresses that rule as configuration instead, which is how it will be expressed from now on:
+
+```yaml
+policy:
+  operations:
+    - provider: cel
+      op: ["pull"]
+      name: serve-checked-records
+      expressions:
+        - 'verdicts["opa:require-license"].compliant_and_current'
+```
+
+The two gates decide alike: a record is served when its verdict is compliant under the version in force, and refused with `PermissionDenied` otherwise. What a policy adds is everything the fixed rule cannot say — enforcing one policy while only reporting on another, or any condition over the verdicts other than their conjunction. See [What a Policy Can Read](dir-component-records-validation.md#at-pull) for the verdict fields, and [Modes](dir-component-records-validation.md#modes) for `shadow` and `off`, which each entry carries for itself.
+
+Both gates apply while `policy.enforcement.fetch` exists, and either can refuse, so a record has to pass both.
+
+!!! note "A new policy refuses nothing until the backfill completes"
+
+    A policy is enforced only once its verdicts cover every indexed record, and a policy at `pull` inherits that: until then it reports what it would refuse and serves the record, whatever its `mode` says. Watch `dir_policy_gate_records_unevaluated` for the policies it reads, as in [Turning Enforcement On](#turning-enforcement-on).
+
+    This also means a verdict that failed, was superseded, or was reached under a since-edited version refuses nothing: none of those covers the record it is for, so the policy is held in backfill by the very record it would have refused. The only verdict that refuses an indexed record is one that evaluated it and found it non-compliant; everything else waits for the reconciler.
+
 ## When a New Record Is Served
 
 A record is withheld until it has been indexed and evaluated, and both happen as soon as it arrives, not at the tasks' next intervals:

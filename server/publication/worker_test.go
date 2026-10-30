@@ -10,6 +10,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
+	"github.com/agntcy/dir/server/policy"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -122,9 +123,9 @@ func TestAnnounceToDHT_ExcludedRecordIsReportedAsExcluded(t *testing.T) {
 	t.Parallel()
 
 	exStore := &announceStore{present: true}
-	exErr := (&Worker{db: &announceGateDB{servable: false}, store: exStore}).announceToDHT(t.Context(), announceCID)
+	exErr := (&Worker{gate: policy.NewRecordGate(&announceGateDB{servable: false}, nil), store: exStore}).announceToDHT(t.Context(), announceCID)
 
-	missErr := (&Worker{db: &announceGateDB{servable: true}, store: &announceStore{present: false}}).announceToDHT(t.Context(), announceCID)
+	missErr := (&Worker{gate: policy.NewRecordGate(&announceGateDB{servable: true}, nil), store: &announceStore{present: false}}).announceToDHT(t.Context(), announceCID)
 
 	require.Error(t, exErr)
 	require.Error(t, missErr)
@@ -140,8 +141,8 @@ func TestAnnounceToDHT_GateErrorAnnouncesNothing(t *testing.T) {
 
 	store := &announceStore{present: true}
 	db := &announceGateDB{servable: true, err: errors.New("database unavailable")}
-	err := (&Worker{db: db, store: store}).announceToDHT(t.Context(), announceCID)
+	err := (&Worker{gate: policy.NewRecordGate(db, nil), store: store}).announceToDHT(t.Context(), announceCID)
 
-	require.ErrorContains(t, err, "check record against enforced policies")
+	assert.Equal(t, codes.Internal, status.Code(err), "a failed check is not an excluded record")
 	assert.Zero(t, store.pulls)
 }

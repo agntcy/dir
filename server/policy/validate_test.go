@@ -5,6 +5,8 @@ package policy
 
 import (
 	"context"
+	"maps"
+	"slices"
 	"testing"
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
@@ -28,6 +30,29 @@ func TestOperationInput_NamesEveryConfigurableOp(t *testing.T) {
 		require.NotNil(t, input)
 		require.NotEqual(t, policyv1.Operation_OPERATION_UNSPECIFIED,
 			input.GetContext().GetOperation(), "op %q has no operation", op)
+	}
+}
+
+// And has to name the right one. Naming some other operation is as wrong as
+// naming none, and reads as deliberate rather than missing, so the mapping is
+// spelled out here instead of being derived from the thing under test.
+func TestOperationInput_NamesTheRightOperation(t *testing.T) {
+	t.Parallel()
+
+	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
+
+	want := map[string]policyv1.Operation{
+		policyconfig.OpPush:     policyv1.Operation_OPERATION_PUSH,
+		policyconfig.OpAutosync: policyv1.Operation_OPERATION_AUTOSYNC,
+		policyconfig.OpIndex:    policyv1.Operation_OPERATION_INDEX,
+		policyconfig.OpPull:     policyv1.Operation_OPERATION_PULL,
+	}
+
+	require.ElementsMatch(t, policyconfig.KnownOps(), slices.Collect(maps.Keys(want)),
+		"an op was added or removed without deciding what operation it names")
+
+	for op, operation := range want {
+		require.Equal(t, operation, operationInput(op, record).GetContext().GetOperation(), op)
 	}
 }
 

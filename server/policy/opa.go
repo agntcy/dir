@@ -31,6 +31,12 @@ type opaValidator struct {
 
 	// factGroups are the metadata groups the module reads.
 	factGroups []string
+
+	// verdicts is what the module says about the verdicts it reads.
+	verdicts verdictRefs
+
+	// readsRecord is whether the module reads the record's content.
+	readsRecord bool
 }
 
 func newOPAValidator(ctx context.Context, policyDir, filename string) (*opaValidator, error) {
@@ -73,10 +79,12 @@ func newOPAValidator(ctx context.Context, policyDir, filename string) (*opaValid
 	}
 
 	return &opaValidator{
-		name:       policyName(mod, filename),
-		version:    contentVersion(string(src)),
-		query:      prepared,
-		factGroups: opaFactGroups(mod),
+		name:        policyName(mod, filename),
+		version:     contentVersion(string(src)),
+		query:       prepared,
+		factGroups:  opaFactGroups(mod),
+		verdicts:    opaVerdictKeys(mod),
+		readsRecord: opaReadsRecord(mod),
 	}, nil
 }
 
@@ -94,7 +102,9 @@ func (v *opaValidator) ValidateEvaluation(ctx context.Context, state *policyv1.R
 }
 
 func (v *opaValidator) ValidateOperation(ctx context.Context, opInput *policyv1.OperationInput) (bool, []string, []string, error) {
-	if opInput.GetRecord() == nil {
+	// Only a policy that reads the record needs one; see the same check in
+	// the CEL validator.
+	if v.readsRecord && opInput.GetRecord() == nil {
 		return false, []string{"record data is required"}, nil, nil
 	}
 
@@ -160,6 +170,28 @@ func stateAsInput(state *policyv1.RecordState) (map[string]any, error) {
 // input.context.operation, and reads it as the enum's name: the string
 // "OPERATION_PUSH", not a number. verdicts and indexed_at stay out for the
 // same reason the operation CEL environment does not declare them.
+// verdictsAsInput encodes the verdict map the way the rest of the input is
+// encoded, so that a Rego policy reads VerdictStatus as its name rather than
+// as a number.
+//
+// An empty map is encoded as an empty map rather than left out: input.verdicts
+// is undefined if it is missing, and a rule reading it would simply not fire,
+// which reads as a passing policy.
+func verdictsAsInput(verdicts map[string]*policyv1.Verdict) (map[string]any, error) {
+	out := make(map[string]any, len(verdicts))
+
+	for id, verdict := range verdicts {
+		encoded, err := protoToMap(verdict)
+		if err != nil {
+			return nil, err
+		}
+
+		out[id] = encoded
+	}
+
+	return out, nil
+}
+
 func operationAsInput(opInput *policyv1.OperationInput) (map[string]any, error) {
 	if err := checkOperationInput(opInput); err != nil {
 		return nil, err
@@ -170,10 +202,16 @@ func operationAsInput(opInput *policyv1.OperationInput) (map[string]any, error) 
 		return nil, err
 	}
 
+	verdicts, err := verdictsAsInput(opInput.GetVerdicts())
+	if err != nil {
+		return nil, err
+	}
+
 	input := map[string]any{
-		"record":  opInput.GetRecord().AsMap(),
-		"context": encodedCtx,
-		"now":     opInput.GetNow().AsTime().UTC().Format(time.RFC3339Nano),
+		"record":   opInput.GetRecord().AsMap(),
+		"verdicts": verdicts,
+		"context":  encodedCtx,
+		"now":      opInput.GetNow().AsTime().UTC().Format(time.RFC3339Nano),
 	}
 
 	if cid := opInput.GetRecordCid(); cid != "" {

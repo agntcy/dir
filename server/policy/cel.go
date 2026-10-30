@@ -27,6 +27,13 @@ type celProgram struct {
 
 	// factGroups are the metadata groups every expression together reads.
 	factGroups []string
+
+	// verdicts is what every expression together says about the verdicts it
+	// reads.
+	verdicts verdictRefs
+
+	// readsRecord is whether any expression reads the record's content.
+	readsRecord bool
 }
 
 // celValidator evaluates a CEL policy.
@@ -59,7 +66,12 @@ func newCELValidator(exprs []string, l layer) (*celValidator, error) {
 // this is the last point they can be read at all: a program is what is left
 // once compiling is done, and it does not say what it looked at.
 func compileCEL(exprs []string, env *cel.Env) (*celProgram, error) {
-	var groups []string
+	var (
+		groups      []string
+		keys        []string
+		allKeys     bool
+		readsRecord bool
+	)
 
 	rules := make([]celRule, 0, len(exprs))
 
@@ -74,6 +86,11 @@ func compileCEL(exprs []string, env *cel.Env) (*celProgram, error) {
 		// the policy.
 		groups = append(groups, celFactGroups(ast)...)
 
+		refs := celVerdictKeys(ast)
+		keys = append(keys, refs.keys...)
+		allKeys = allKeys || refs.all
+		readsRecord = readsRecord || celReadsRecord(ast)
+
 		if ast.OutputType() != cel.BoolType {
 			return nil, fmt.Errorf("CEL expressions[%d] must evaluate to bool, got %s", i, ast.OutputType())
 		}
@@ -87,9 +104,11 @@ func compileCEL(exprs []string, env *cel.Env) (*celProgram, error) {
 	}
 
 	return &celProgram{
-		rules:      rules,
-		version:    contentVersion(exprs...),
-		factGroups: normalizeGroups(groups),
+		rules:       rules,
+		version:     contentVersion(exprs...),
+		factGroups:  normalizeGroups(groups),
+		verdicts:    verdictRefs{keys: sortedSet(keys), all: allKeys},
+		readsRecord: readsRecord,
 	}, nil
 }
 
@@ -118,7 +137,10 @@ func (v *celValidator) ValidateOperation(ctx context.Context, input *policyv1.Op
 		return false, nil, nil, fmt.Errorf("CEL validation canceled: %w", err)
 	}
 
-	if input.GetRecord() == nil {
+	// Only a policy that reads the record needs one. A read by CID decides
+	// before the content is fetched, and a policy configured there was
+	// refused at load time if it reads the record at all.
+	if v.readsRecord && input.GetRecord() == nil {
 		return false, []string{"record data is nil"}, nil, nil
 	}
 
@@ -190,9 +212,19 @@ func operationActivation(input *policyv1.OperationInput) (map[string]any, error)
 		return nil, err
 	}
 
+	// verdicts is bound even when empty, because the map is what the policy
+	// was compiled against: an unbound name fails to resolve and refuses
+	// every record, which is not the same answer as a record no policy has
+	// reached a verdict on.
+	verdicts := input.GetVerdicts()
+	if verdicts == nil {
+		verdicts = map[string]*policyv1.Verdict{}
+	}
+
 	return map[string]any{
 		celVarRecord:    input.GetRecord().AsMap(),
 		celVarRecordCID: input.GetRecordCid(),
+		celVarVerdicts:  verdicts,
 		celVarContext:   input.GetContext(),
 		celVarNow:       types.Timestamp{Time: input.GetNow().AsTime()},
 	}, nil

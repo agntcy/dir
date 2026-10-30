@@ -43,9 +43,9 @@ func (r *route) hasPeersInRoutingTable() bool {
 	return r.remote.server.DHT().RoutingTable().Size() > 0
 }
 
-// New creates the routing API. servability is the policy gate for the peer
+// New creates the routing API. gate is the policy gate for the peer
 // RPC, which serves records to remote peers by CID.
-func New(ctx context.Context, store types.StoreAPI, ingestor ingest.Ingestor, policyRegistry *policy.Registry, servability types.RecordServabilityAPI, opts types.APIOptions) (types.RoutingAPI, error) {
+func New(ctx context.Context, store types.StoreAPI, ingestor ingest.Ingestor, policyRegistry *policy.Registry, gate *policy.RecordGate, opts types.APIOptions) (types.RoutingAPI, error) {
 	// Create main router
 	mainRounter := &route{
 		eventBus: opts.EventBus(),
@@ -63,7 +63,7 @@ func New(ctx context.Context, store types.StoreAPI, ingestor ingest.Ingestor, po
 	}
 
 	// Create remote router first to get the peer ID
-	mainRounter.remote, err = newRemote(ctx, store, ingestor, policyRegistry, servability, dstore, opts)
+	mainRounter.remote, err = newRemote(ctx, store, ingestor, policyRegistry, gate, dstore, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create remote routing: %w", err)
 	}

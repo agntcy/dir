@@ -8,8 +8,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"slices"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	policyv1 "github.com/agntcy/dir/api/policy/v1"
 	policyconfig "github.com/agntcy/dir/server/policy/config"
 )
 
@@ -23,6 +25,31 @@ const versionLength = 16
 type Registry struct {
 	byOp        map[string][]operationPolicy
 	evaluations []evaluation
+
+	// verdicts and enforcement are what a policy deciding on stored verdicts
+	// needs and the registry cannot work out for itself. Both are nil in a
+	// process that serves no record by CID, which is every process but the
+	// apiserver; a policy that would need them is refused at load time there
+	// too, so nothing reaches a decision expecting them.
+	verdicts    VerdictSource
+	enforcement EnforcementSource
+}
+
+// RegistryOption supplies what a registry needs beyond its configuration.
+type RegistryOption func(*Registry)
+
+// WithVerdicts gives the registry the stored verdicts an operation policy can
+// decide on, and the enforcement that says which version of each policy is in
+// force.
+//
+// The two arrive together because neither is usable alone: a verdict without
+// the version in force cannot be told from a conclusion about a rule since
+// edited, which is the one distinction the gate depends on.
+func WithVerdicts(source VerdictSource, enforcement EnforcementSource) RegistryOption {
+	return func(r *Registry) {
+		r.verdicts = source
+		r.enforcement = enforcement
+	}
 }
 
 // operationPolicy is one loaded operation policy: what decides, what it is
@@ -35,6 +62,28 @@ type operationPolicy struct {
 	id        string
 	mode      policyconfig.Mode
 	validator Validator
+
+	// verdicts is what this policy's source says about the verdicts it reads.
+	verdicts verdictRefs
+}
+
+// compiled is what loading one configured provider produced: the validator
+// itself and everything that could only be read while its source was in hand.
+type compiled struct {
+	validator Validator
+
+	// version is the hash of the policy's content, empty for a provider whose
+	// content is not here to hash.
+	version string
+
+	// factGroups are the metadata groups the policy reads.
+	factGroups []string
+
+	// verdicts is what the policy says about the verdicts it reads.
+	verdicts verdictRefs
+
+	// readsRecord is whether the policy reads the record's content.
+	readsRecord bool
 }
 
 // evaluation is one loaded evaluation policy. Evaluators turns it into an
@@ -67,6 +116,7 @@ func NewRegistry(
 	evaluations policyconfig.Evaluations,
 	operations policyconfig.Operations,
 	policyDir string,
+	opts ...RegistryOption,
 ) (*Registry, error) {
 	if err := evaluations.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid policy config: %w", err)
@@ -87,7 +137,7 @@ func NewRegistry(
 			return nil, fmt.Errorf("evaluations[%d]: provider %q cannot define an evaluation policy", i, e.Provider)
 		}
 
-		v, version, groups, err := newValidator(ctx, layerEvaluation, e.Provider,
+		c, err := newValidator(ctx, layerEvaluation, e.Provider,
 			provider{file: e.File, expressions: e.Expressions}, policyDir)
 		if err != nil {
 			return nil, fmt.Errorf("evaluations[%d]: %w", i, err)
@@ -95,9 +145,9 @@ func NewRegistry(
 
 		loaded = append(loaded, evaluation{
 			id:         e.PolicyID(),
-			version:    version,
-			validator:  v,
-			factGroups: groups,
+			version:    c.version,
+			validator:  c.validator,
+			factGroups: c.factGroups,
 		})
 	}
 
@@ -105,11 +155,20 @@ func NewRegistry(
 
 	for i, o := range operations {
 		// An operation policy stores no verdict, so nothing caches what it
-		// decided and nothing has to be invalidated: its dependencies are not
-		// asked for.
-		v, _, _, err := newValidator(ctx, layerOperation, o.Provider,
+		// decided and nothing has to be invalidated: its fact groups are not
+		// asked for. The verdicts it reads are, because they decide when it
+		// may start enforcing.
+		c, err := newValidator(ctx, layerOperation, o.Provider,
 			provider{schemaURL: o.SchemaURL, file: o.File, expressions: o.Expressions}, policyDir)
 		if err != nil {
+			return nil, fmt.Errorf("operations[%d]: %w", i, err)
+		}
+
+		if err := checkVerdictsAreReadable(o.Ops, c.verdicts); err != nil {
+			return nil, fmt.Errorf("operations[%d]: %w", i, err)
+		}
+
+		if err := checkRecordIsReadable(o.Ops, c.readsRecord); err != nil {
 			return nil, fmt.Errorf("operations[%d]: %w", i, err)
 		}
 
@@ -121,11 +180,103 @@ func NewRegistry(
 		}
 
 		for _, op := range o.Ops {
-			byOp[op] = append(byOp[op], operationPolicy{id: o.PolicyID(), mode: mode, validator: v})
+			byOp[op] = append(byOp[op], operationPolicy{
+				id:        o.PolicyID(),
+				mode:      mode,
+				validator: c.validator,
+				verdicts:  c.verdicts,
+			})
 		}
 	}
 
-	return &Registry{byOp: byOp, evaluations: loaded}, nil
+	registry := &Registry{byOp: byOp, evaluations: loaded}
+	for _, opt := range opts {
+		opt(registry)
+	}
+
+	if err := registry.checkVerdictsAreAvailable(); err != nil {
+		return nil, err
+	}
+
+	return registry, nil
+}
+
+// checkVerdictsAreAvailable refuses a policy that reads verdicts in a process
+// that cannot supply them.
+//
+// The op check above says verdicts exist at pull; this says this process can
+// reach them. They fail differently: the first is a mistake in the config and
+// is wrong everywhere, the second is the same config loaded somewhere it does
+// not fit, such as the reconciler. Starting anyway would mean a policy
+// deciding every record on an empty map.
+func (r *Registry) checkVerdictsAreAvailable() error {
+	if r.verdicts != nil && r.enforcement != nil {
+		return nil
+	}
+
+	for op, policies := range r.byOp {
+		for _, p := range policies {
+			if p.verdicts.reads() {
+				return fmt.Errorf("policy %q at op %q reads verdicts, which this process has no source of", p.id, op)
+			}
+		}
+	}
+
+	return nil
+}
+
+// checkVerdictsAreReadable rejects a policy that reads verdicts at an
+// operation where there are none to read.
+//
+// Only pull decides about a record the catalogue already holds, so only pull
+// has verdicts. At push the record is arriving and no evaluation has seen it;
+// at index it is being made searchable, which is what has to happen before an
+// evaluation can run; at autosync it is someone else's record arriving.
+// Reading verdicts at any of those would be reading an empty map, and the
+// policy would refuse everything while appearing to decide.
+//
+// Rejected here, by name, rather than by leaving verdicts out of some
+// environments: a policy may be configured at several operations at once, so
+// there is no one environment to compile it in, and a resolution failure
+// would say only that the variable does not exist.
+func checkVerdictsAreReadable(ops []string, refs verdictRefs) error {
+	if !refs.reads() {
+		return nil
+	}
+
+	for _, op := range ops {
+		if op != policyconfig.OpPull {
+			return fmt.Errorf("reads verdicts, which only op %q has: op %q decides before any verdict exists",
+				policyconfig.OpPull, op)
+		}
+	}
+
+	return nil
+}
+
+// checkRecordIsReadable rejects a policy that reads the record's content at
+// pull, where the decision is reached before the record is.
+//
+// A read by CID is gated before the content is fetched, which is what keeps a
+// lookup an index read. Handing such a policy an empty record would let it
+// decide on nothing while appearing to decide on content.
+//
+// The restriction costs less than it looks. A record's content cannot change
+// under its CID, so a question about content has one answer forever and
+// belongs in an evaluation policy, which sees the whole record, is answered
+// once, and leaves a verdict this can read.
+func checkRecordIsReadable(ops []string, readsRecord bool) error {
+	if !readsRecord {
+		return nil
+	}
+
+	if slices.Contains(ops, policyconfig.OpPull) {
+		return fmt.Errorf("reads the record at op %q, which decides before the record is read: "+
+			"put a rule about record content in an evaluation policy and read its verdict here",
+			policyconfig.OpPull)
+	}
+
+	return nil
 }
 
 // provider is the settings of whichever backend is configured. Config
@@ -148,31 +299,45 @@ type provider struct {
 // l is the layer the policy was configured in. Only CEL needs it today,
 // because it is the only provider that compiles its policy here and so the
 // only one that can reject reading the other layer's inputs at load time.
-func newValidator(ctx context.Context, l layer, name string, p provider, policyDir string) (Validator, string, []string, error) {
+func newValidator(ctx context.Context, l layer, name string, p provider, policyDir string) (compiled, error) {
 	switch name {
 	case policyconfig.ProviderOASF:
 		v, err := newOASFValidator(p.schemaURL)
 		if err != nil {
-			return nil, "", nil, fmt.Errorf("failed to initialize OASF validator: %w", err)
+			return compiled{}, fmt.Errorf("failed to initialize OASF validator: %w", err)
 		}
 
-		return v, "", nil, nil
+		// OASF is nothing but a reading of the record: it checks the content
+		// against a schema. There is no sense in which it reads less.
+		return compiled{validator: v, readsRecord: true}, nil
 	case policyconfig.ProviderCEL:
 		v, err := newCELValidator(p.expressions, l)
 		if err != nil {
-			return nil, "", nil, fmt.Errorf("failed to initialize CEL validator: %w", err)
+			return compiled{}, fmt.Errorf("failed to initialize CEL validator: %w", err)
 		}
 
-		return v, v.version, v.factGroups, nil
+		return compiled{
+			validator:   v,
+			version:     v.version,
+			factGroups:  v.factGroups,
+			verdicts:    v.verdicts,
+			readsRecord: v.readsRecord,
+		}, nil
 	case policyconfig.ProviderOPA:
 		v, err := newOPAValidator(ctx, policyDir, p.file)
 		if err != nil {
-			return nil, "", nil, fmt.Errorf("failed to initialize OPA validator: %w", err)
+			return compiled{}, fmt.Errorf("failed to initialize OPA validator: %w", err)
 		}
 
-		return v, v.version, v.factGroups, nil
+		return compiled{
+			validator:   v,
+			version:     v.version,
+			factGroups:  v.factGroups,
+			verdicts:    v.verdicts,
+			readsRecord: v.readsRecord,
+		}, nil
 	default:
-		return nil, "", nil, fmt.Errorf("unsupported provider %q", name)
+		return compiled{}, fmt.Errorf("unsupported provider %q", name)
 	}
 }
 
@@ -251,28 +416,106 @@ func (r *Registry) Decide(
 		return true, nil, nil
 	}
 
-	var all []string
-
 	input := operationInput(op, record, opts...)
+
+	if r.readsVerdicts(op) {
+		verdicts, err := r.readVerdicts(record.GetCid())
+		if err != nil {
+			return false, nil, err
+		}
+
+		input.Verdicts = verdicts
+	}
+
+	return r.apply(ctx, op, input, func(ctx context.Context, v Validator) (bool, []string, error) {
+		return validateOperation(ctx, record, input, v)
+	})
+}
+
+// DecidePull applies the operation policies at pull to a record known only by
+// its CID, which is all a read by CID has: the gate runs before the content
+// is fetched, so that a lookup stays an index read.
+//
+// A policy that would read the record is refused at load time, so what is
+// missing here is only what nothing configured can ask for.
+func (r *Registry) DecidePull(ctx context.Context, recordCID string) (bool, []string, error) {
+	if r == nil || len(r.byOp[policyconfig.OpPull]) == 0 {
+		return true, nil, nil
+	}
+
+	var verdicts map[string]*policyv1.Verdict
+
+	if r.readsVerdicts(policyconfig.OpPull) {
+		read, err := r.readVerdicts(recordCID)
+		if err != nil {
+			return false, nil, err
+		}
+
+		verdicts = read
+	}
+
+	input := pullInput(recordCID, verdicts)
+
+	return r.apply(ctx, policyconfig.OpPull, input, func(ctx context.Context, v Validator) (bool, []string, error) {
+		return validateOperationByCID(ctx, input, v)
+	})
+}
+
+// apply runs each policy at op and collects what the enforcing ones refused.
+//
+// run is how one policy is evaluated, which differs by what the caller has:
+// a record to measure and time out against, or only a CID.
+func (r *Registry) apply(
+	ctx context.Context,
+	op string,
+	input *policyv1.OperationInput,
+	run func(context.Context, Validator) (bool, []string, error),
+) (bool, []string, error) {
+	var all []string
 
 	for _, p := range r.byOp[op] {
 		if p.validator == nil || p.mode == policyconfig.ModeOff {
 			continue
 		}
 
-		ok, msgs, err := validateOperation(ctx, record, input, p.validator)
+		// Resolved per decision, not at load: a policy held back by the
+		// latch starts enforcing as soon as what it reads has covered the
+		// catalogue, without the server being restarted.
+		mode := p.mode
+		if mode == policyconfig.ModeEnforce && !r.mayEnforce(p.verdicts) {
+			mode = policyconfig.ModeShadow
+		}
+
+		ok, msgs, err := run(ctx, p.validator)
 		if err != nil {
 			return false, nil, fmt.Errorf("decide record with policy %q: %w", p.id, err)
 		}
 
-		logDecision(ctx, p, input, ok, msgs)
+		logDecision(ctx, operationPolicy{id: p.id, mode: mode, validator: p.validator}, input, ok, msgs)
 
-		if !ok && p.mode == policyconfig.ModeEnforce {
+		if !ok && mode == policyconfig.ModeEnforce {
 			all = append(all, msgs...)
 		}
 	}
 
 	return len(all) == 0, all, nil
+}
+
+// readsVerdicts reports whether any policy at op decides on a stored verdict,
+// which is what makes the read worth doing. An op whose policies read none
+// costs no query.
+func (r *Registry) readsVerdicts(op string) bool {
+	if r.verdicts == nil || r.enforcement == nil {
+		return false
+	}
+
+	for _, p := range r.byOp[op] {
+		if p.mode != policyconfig.ModeOff && p.verdicts.reads() {
+			return true
+		}
+	}
+
+	return false
 }
 
 // With returns a registry that runs vs for op, each enforcing, which is what

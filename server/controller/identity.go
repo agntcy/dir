@@ -13,6 +13,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
+	"github.com/agntcy/dir/server/policy"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
@@ -24,18 +25,19 @@ var identityLogger = logging.Logger("controller/identity")
 
 type identityCtrl struct {
 	identityv1.UnimplementedIdentityServiceServer
-	db types.DatabaseAPI
+	db   types.DatabaseAPI
+	gate *policy.RecordGate
 }
 
 // NewIdentityController creates a new identity service controller.
-func NewIdentityController(db types.DatabaseAPI) identityv1.IdentityServiceServer {
-	return &identityCtrl{db: db}
+func NewIdentityController(db types.DatabaseAPI, gate *policy.RecordGate) identityv1.IdentityServiceServer {
+	return &identityCtrl{db: db, gate: gate}
 }
 
 // GetIdentityStatus returns the last verification result of a record's identity
 // and ownership claims. Accepts either a CID directly or a name (with optional
 // version) that is resolved first. A claim with no result is left unset.
-func (c *identityCtrl) GetIdentityStatus(_ context.Context, req *identityv1.GetIdentityStatusRequest) (*identityv1.GetIdentityStatusResponse, error) {
+func (c *identityCtrl) GetIdentityStatus(ctx context.Context, req *identityv1.GetIdentityStatusRequest) (*identityv1.GetIdentityStatusResponse, error) {
 	identityLogger.Debug("GetIdentityStatus request received", "cid", req.GetCid(), "name", req.GetName(), "version", req.GetVersion())
 
 	cid := req.GetCid()
@@ -56,7 +58,7 @@ func (c *identityCtrl) GetIdentityStatus(_ context.Context, req *identityv1.GetI
 
 	// A record the policy gate excludes is refused as on every other read by
 	// CID: its claims are not disclosed either.
-	if err := checkRecordServable(c.db, cid); err != nil {
+	if err := c.gate.Check(ctx, cid); err != nil {
 		return nil, err
 	}
 
