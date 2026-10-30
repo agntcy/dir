@@ -49,8 +49,8 @@ github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERo
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/ProtonMail/go-crypto v1.4.1 h1:9RfcZHqEQUvP8RzecWEUafnZVtEvrBVL9BiF67IQOfM=
 github.com/ProtonMail/go-crypto v1.4.1/go.mod h1:e1OaTyu5SYVrO9gKOEhTc+5UcXtTUa+P3uLudwcgPqo=
-github.com/agentnameservice/ans-sdk-go v0.1.19 h1:NO36m/kwOiYejf4EJtlaWPBfOTEyTpgKHfQTi8cTJg8=
-github.com/agentnameservice/ans-sdk-go v0.1.19/go.mod h1:MCXchxxnwdiISwpbufKqAxeE8oK1puD3tnTDjxb/Jw0=
+github.com/agentnameservice/ans-sdk-go v0.1.20 h1:/ol6aP4B+SHP9J0T+mAV/plFhliD9jJYg7UxU1YGBAA=
+github.com/agentnameservice/ans-sdk-go v0.1.20/go.mod h1:s/zP/m4OuOfJ1wJriWgdCxJS160l2v32uFqY8aCqiNA=
 github.com/agntcy/oasf-sdk/pkg v1.1.0 h1:Z2CfQ+XIjoHvlw2P0jcTRs59nbgVpjdnSVGGxmJTIEo=
 github.com/agntcy/oasf-sdk/pkg v1.1.0/go.mod h1:MAWceG+fNkVjgWbfrQOp64h6f5dbJbd1InP93fiMEiQ=
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 h1:DklsrG3dyBCFEj5IhUbnKptjxatkF07cF2ak3yi77so=
