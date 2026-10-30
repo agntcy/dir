@@ -13,7 +13,7 @@ replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2
-	github.com/agentnameservice/ans-sdk-go v0.1.19
+	github.com/agentnameservice/ans-sdk-go v0.1.20
 	github.com/agntcy/dir/api v1.8.0
 	github.com/agntcy/dir/utils v1.8.0
 	github.com/agntcy/oasf-sdk/pkg v1.1.0

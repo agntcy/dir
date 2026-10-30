@@ -198,8 +198,8 @@ github.com/ProtonMail/go-crypto v1.4.1 h1:9RfcZHqEQUvP8RzecWEUafnZVtEvrBVL9BiF67
 github.com/ProtonMail/go-crypto v1.4.1/go.mod h1:e1OaTyu5SYVrO9gKOEhTc+5UcXtTUa+P3uLudwcgPqo=
 github.com/VividCortex/ewma v1.2.0 h1:f58SaIzcDXrSy3kWaHNvuJgJ3Nmz59Zji6XoJR/q1ow=
 github.com/VividCortex/ewma v1.2.0/go.mod h1:nz4BbCtbLyFDeC9SUHbtcT5644juEuWfUAUnGx7j5l4=
-github.com/agentnameservice/ans-sdk-go v0.1.19 h1:NO36m/kwOiYejf4EJtlaWPBfOTEyTpgKHfQTi8cTJg8=
-github.com/agentnameservice/ans-sdk-go v0.1.19/go.mod h1:MCXchxxnwdiISwpbufKqAxeE8oK1puD3tnTDjxb/Jw0=
+github.com/agentnameservice/ans-sdk-go v0.1.20 h1:/ol6aP4B+SHP9J0T+mAV/plFhliD9jJYg7UxU1YGBAA=
+github.com/agentnameservice/ans-sdk-go v0.1.20/go.mod h1:s/zP/m4OuOfJ1wJriWgdCxJS160l2v32uFqY8aCqiNA=
 github.com/agext/levenshtein v1.2.3 h1:YB2fHEn0UJagG8T1rrWknE3ZQzWM06O8AMAatNn7lmo=
 github.com/agext/levenshtein v1.2.3/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/agnivade/levenshtein v1.2.1 h1:EHBY3UOn1gwdy/VbFwgo4cxecRznFk7fKWN1KOX7eoM=
