@@ -83,7 +83,9 @@ type SearchDatabaseAPI interface {
 	// RemoveRecord removes a record from the search database by CID.
 	RemoveRecord(cid string) error
 
-	// SetRecordSigned marks a record as signed (called when a signature is attached).
+	// SetRecordSigned marks a record as signed (called when a signature is
+	// attached). Raising the flag supersedes the verdicts of the policies
+	// reading signature facts, in the transaction that stores it.
 	SetRecordSigned(recordCID string) error
 }
 
@@ -162,6 +164,12 @@ type UsageMetricsDatabaseAPI interface {
 	GetUsageMetrics(cid string) (UsageMetricsObject, error)
 }
 
+// SignatureVerificationDatabaseAPI persists what verifying a record's
+// signatures concluded, one row per signer.
+//
+// A write here that changes what a policy can read supersedes the verdicts of
+// the policies reading signature facts, in the transaction that stores it.
+// SetRecordSigned counts as one of those writes.
 type SignatureVerificationDatabaseAPI interface {
 	// CreateSignatureVerification creates a new signature verification row (one per signer).
 	CreateSignatureVerification(verification SignatureVerificationObject) error
@@ -184,6 +192,9 @@ type SignatureVerificationDatabaseAPI interface {
 
 // IdentityClaimDatabaseAPI persists the last verification result of a record's
 // identity and ownership claims.
+//
+// A write here that changes what a policy can read supersedes the verdicts of
+// the policies reading identity facts, in the transaction that stores it.
 type IdentityClaimDatabaseAPI interface {
 	// UpsertIdentityClaim inserts or updates the result keyed by (record CID, role).
 	UpsertIdentityClaim(claim IdentityClaimObject) error
@@ -338,6 +349,9 @@ func (s ScanSchedule) NextAttempt(now time.Time, consecutiveFailures int) time.T
 }
 
 // ScanReportDatabaseAPI handles persistence and querying of security scan results.
+//
+// A write here that changes what a policy can read supersedes the verdicts of
+// the policies reading scan facts, in the transaction that stores it.
 type ScanReportDatabaseAPI interface {
 	// UpsertScanReport inserts or updates a scan result row keyed by
 	// (record_cid, scanner_type), maintaining the failure counter and retry
@@ -525,23 +539,6 @@ type PolicyEvaluationDatabaseAPI interface {
 	// GetPolicyEvaluations retrieves every policy verdict recorded for a
 	// record.
 	GetPolicyEvaluations(recordCID string) ([]PolicyEvaluationObject, error)
-
-	// SupersedePolicyEvaluations marks the verdicts that a change to
-	// factGroup made stale as superseded, and reports how many it marked. It
-	// is what a writer of the metadata a policy reads calls once that
-	// metadata has changed, naming the group it changed.
-	//
-	// A policy that does not read the group keeps its verdict: it would reach
-	// the same one again, and superseding it would withhold the record until
-	// the policy task next ran for no reason. A policy whose dependencies
-	// were never recorded is superseded, because nothing here can say it is
-	// unaffected.
-	//
-	// Both read paths key off EvaluatedPolicyStatuses, so one status change
-	// does the whole job: the gate stops serving the record, because it
-	// requires a verdict in that set, and the reconciler evaluates it again,
-	// because it selects the records without one. Neither query changes.
-	SupersedePolicyEvaluations(recordCID, factGroup string) (int64, error)
 
 	// GetRecordsNeedingPolicyEvaluation returns records with no evaluated
 	// verdict row for policyID at policyVersion — never evaluated against

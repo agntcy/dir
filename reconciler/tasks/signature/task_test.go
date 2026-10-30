@@ -316,9 +316,6 @@ func (f *fakeSignatureDB) GetRecordsNeedingScan(time.Duration) ([]coretypes.Reco
 }
 
 func (f *fakeSignatureDB) UpsertPolicyEvaluation(types.PolicyEvaluationObject) error { return nil }
-func (f *fakeSignatureDB) SupersedePolicyEvaluations(string, string) (int64, error) {
-	return 0, nil
-}
 
 func (f *fakeSignatureDB) GetPolicyEvaluations(string) ([]types.PolicyEvaluationObject, error) {
 	return nil, nil

@@ -87,16 +87,20 @@ func (d *DB) UpsertPolicyEvaluation(eval types.PolicyEvaluationObject) error {
 	return nil
 }
 
-// SupersedePolicyEvaluations marks the verdicts a change to factGroup made
+// supersedePolicyEvaluations marks the verdicts a change to factGroup made
 // stale as superseded, and reports how many it marked.
-func (d *DB) SupersedePolicyEvaluations(recordCID, factGroup string) (int64, error) {
-	return supersedePolicyEvaluations(d.gormDB, recordCID, factGroup)
-}
-
-// supersedePolicyEvaluations does the work on tx, so that a caller writing the
-// metadata a verdict was reached on can mark it in the transaction that wrote
-// it. A write that commits while its invalidation does not leaves a verdict
-// that is wrong with nothing left to retry it.
+//
+// It takes tx rather than hanging off DB, so that a caller writing the
+// metadata a verdict was reached on marks it in the transaction that wrote it.
+// A write that commits while its invalidation does not leaves a verdict that
+// is wrong with nothing left to retry it — which is also why this is not on
+// DatabaseAPI: a caller reaching it through the interface would have no
+// transaction to share, and so no way to be atomic with its own write.
+//
+// Both read paths key off EvaluatedPolicyStatuses, so one status change does
+// the whole job: the gate stops serving the record, because it requires a
+// verdict in that set, and the reconciler evaluates it again, because it
+// selects the records without one. Neither query changes.
 //
 // Only the verdicts that currently count are touched. A failed or already
 // superseded row is not a verdict either read path accepts, and the reconciler
