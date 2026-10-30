@@ -125,7 +125,7 @@ func newRemote(parentCtx context.Context,
 	storeAPI types.StoreAPI,
 	ingestor ingest.Ingestor,
 	policyRegistry *policy.Registry,
-	servability types.RecordServabilityAPI,
+	gate *policy.RecordGate,
 	dstore types.Datastore,
 	opts types.APIOptions,
 ) (*routeRemote, error) {
@@ -221,7 +221,7 @@ func newRemote(parentCtx context.Context,
 
 	routeAPI.server = server
 
-	rpcService, err := rpc.New(server.Host(), storeAPI, servability)
+	rpcService, err := rpc.New(server.Host(), storeAPI, gate)
 	if err != nil {
 		defer server.Close()
 

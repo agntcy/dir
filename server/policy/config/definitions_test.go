@@ -79,7 +79,7 @@ func TestOperationsValidate_EvaluateIsNotAnOp(t *testing.T) {
 		Ops:         []string{"evaluate"},
 		Name:        "has-description",
 		Expressions: []string{`record.description != ""`},
-	}}).Validate(), `operations[0]: unsupported op "evaluate", expected "push", "autosync" or "index"`)
+	}}).Validate(), `operations[0]: unsupported op "evaluate", expected one of autosync, index, pull, push`)
 }
 
 func TestOperationsValidate_Ops(t *testing.T) {

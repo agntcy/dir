@@ -26,6 +26,10 @@ const (
 	// celVarMeta is what this node has observed about the record.
 	celVarMeta = "meta"
 
+	// celVarVerdicts is what the evaluation policies concluded about the
+	// record, keyed by policy ID.
+	celVarVerdicts = "verdicts"
+
 	// celVarContext is the circumstances of the operation being decided.
 	celVarContext = "context"
 
@@ -41,6 +45,8 @@ const (
 	recordMetaType = policyContainer + ".RecordMeta"
 
 	operationContextType = policyContainer + ".OperationContext"
+
+	verdictType = policyContainer + ".Verdict"
 )
 
 // celEnumAbbrevs are the enums a policy reads that are declared outside
@@ -80,9 +86,10 @@ func celEnv(l layer) (*cel.Env, error) {
 // indexed_at is optional because a record that has not been indexed has no
 // such time.
 //
-// verdicts, now and context are deliberately absent. An evaluation that could
-// read another policy's verdict, the wall clock, or the caller is what
-// RecordState is shaped to prevent.
+// verdicts, now and context are deliberately absent here, and the absence of
+// verdicts is what keeps the layers acyclic. An evaluation that could read
+// another policy's verdict, the wall clock, or the caller is what RecordState
+// is shaped to prevent.
 func newEvaluationEnv() (*cel.Env, error) {
 	return newEnv(
 		// The facts in meta reach enums declared outside policy_input.proto,
@@ -104,11 +111,19 @@ func newEvaluationEnv() (*cel.Env, error) {
 // they concluded it from, so a policy here that wants a fact has to ask for
 // the verdict that reads it.
 //
-// verdicts and indexed_at are absent because reaching either needs a database
-// read that Decide does not have. Declaring them before they can be answered
-// truthfully would compile policies that silently decide on nothing.
+// verdicts is declared for every operation, though only pull can answer it.
+// An operation that cannot is rejected at load time by name, which says why,
+// rather than by a resolution failure in an environment built per op, which
+// would only say the variable does not exist — and a policy may be configured
+// at several operations at once, so there would be no one environment to
+// build.
+//
+// indexed_at is still absent: nothing reads it yet, and declaring it before
+// it can be answered truthfully would compile policies that decide on
+// nothing.
 func newOperationEnv() (*cel.Env, error) {
 	return newEnv(
+		cel.Variable(celVarVerdicts, cel.MapType(cel.StringType, cel.ObjectType(verdictType))),
 		cel.Variable(celVarContext, cel.ObjectType(operationContextType)),
 		cel.Variable(celVarNow, cel.TimestampType),
 	)

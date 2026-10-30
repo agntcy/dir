@@ -14,6 +14,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/api/exportfmt"
 	"github.com/agntcy/dir/server/config"
+	"github.com/agntcy/dir/server/policy"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/extractor"
 	"github.com/agntcy/dir/utils/logging"
@@ -45,7 +46,6 @@ const (
 type aiFinderDatabaseAPI interface {
 	types.CatalogDatabaseAPI
 	GetRecordCIDs(opts ...types.FilterOption) ([]string, error)
-	IsRecordServable(cid string) (bool, error)
 }
 
 // aiFinderController adapts the AI Finder query language to the catalog query
@@ -55,6 +55,7 @@ type aiFinderController struct {
 
 	hostId string
 	db     aiFinderDatabaseAPI
+	gate   *policy.RecordGate
 	store  types.StoreAPI
 	cfg    config.HTTPGatewayConfig
 	ext    extractor.Extractor
@@ -75,9 +76,10 @@ func WithExtractor(ext extractor.Extractor) AIFinderOption {
 // NewAIFinderController returns an AIFinderServiceServer that serves the AI
 // Catalog AI Finder surface. store may be nil — when omitted the ExportAgent
 // RPC returns UNIMPLEMENTED (HTTP 501). All other RPCs remain functional.
-func NewAIFinderController(hostId string, db aiFinderDatabaseAPI, cfg config.HTTPGatewayConfig, store types.StoreAPI, opts ...AIFinderOption) catalogv1.AIFinderServiceServer {
+func NewAIFinderController(hostId string, db aiFinderDatabaseAPI, gate *policy.RecordGate, cfg config.HTTPGatewayConfig, store types.StoreAPI, opts ...AIFinderOption) catalogv1.AIFinderServiceServer {
 	c := &aiFinderController{
 		db:     db,
+		gate:   gate,
 		store:  store,
 		cfg:    cfg,
 		hostId: hostId,
@@ -293,7 +295,7 @@ func (c *aiFinderController) ExportAgent(ctx context.Context, req *catalogv1.Exp
 	// A record the policy gate excludes fails with the status that says so.
 	var record *corev1.Record
 
-	err = checkRecordServable(c.db, cid)
+	err = c.gate.Check(ctx, cid)
 	if err == nil {
 		record, err = c.store.Pull(ctx, &corev1.RecordRef{Cid: cid})
 	}

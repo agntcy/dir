@@ -43,6 +43,7 @@ var operations = map[string]policyv1.Operation{
 	policyconfig.OpPush:     policyv1.Operation_OPERATION_PUSH,
 	policyconfig.OpAutosync: policyv1.Operation_OPERATION_AUTOSYNC,
 	policyconfig.OpIndex:    policyv1.Operation_OPERATION_INDEX,
+	policyconfig.OpPull:     policyv1.Operation_OPERATION_PULL,
 }
 
 // DecideOption supplies a circumstance of the operation that the op and the
@@ -95,6 +96,42 @@ func operationInput(op string, record *corev1.Record, opts ...DecideOption) *pol
 		Context:   opCtx,
 		Now:       timestamppb.Now(),
 	}
+}
+
+// pullInput is the OperationInput a read by CID sees.
+//
+// There is no record in it, and there cannot be: a read by CID is gated
+// before the content is fetched. A policy that would read it is refused at
+// load time, so nothing here is deciding on an absence it was not told about.
+func pullInput(recordCID string, verdicts map[string]*policyv1.Verdict) *policyv1.OperationInput {
+	return &policyv1.OperationInput{
+		RecordCid: recordCID,
+		Verdicts:  verdicts,
+		Context:   &policyv1.OperationContext{Operation: operations[policyconfig.OpPull]},
+		Now:       timestamppb.Now(),
+	}
+}
+
+// validateOperationByCID runs one operation policy over an input with no
+// record.
+//
+// The size and nil checks validateOperation makes are about a record, so
+// there is nothing here for them to measure. The timeout still applies: a
+// policy is no less able to hang for being given less.
+func validateOperationByCID(ctx context.Context, input *policyv1.OperationInput, v Validator) (bool, []string, error) {
+	if v == nil {
+		return false, []string{"validator is nil"}, nil
+	}
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, corev1.DefaultValidationTimeout)
+	defer cancel()
+
+	valid, errs, warnings, err := v.ValidateOperation(timeoutCtx, input)
+	if err != nil {
+		return false, nil, fmt.Errorf("failed to validate record: %w", err)
+	}
+
+	return valid, prefixMessages(errs, warnings), nil
 }
 
 // recordState is the content and CID of a record. Meta is filled by the

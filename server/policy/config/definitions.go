@@ -46,6 +46,10 @@ const (
 
 	// OpIndex runs on the reconciler indexer.
 	OpIndex = "index"
+
+	// OpPull runs when one record is served by CID, which is the operation
+	// the read gate decides at.
+	OpPull = "pull"
 )
 
 // policyNamePattern is what a policy name may contain. The name ends up in the
@@ -57,17 +61,21 @@ var knownOps = map[string]struct{}{
 	OpPush:     {},
 	OpAutosync: {},
 	OpIndex:    {},
+	OpPull:     {},
 }
 
-// KnownOps returns every op a policy may be configured at, in no order.
+// KnownOps returns every op a policy may be configured at, sorted.
 //
 // Exported so that what the rest of the server derives per op can be checked
-// against this list rather than restating it.
+// against this list rather than restating it. Sorted so that an error naming
+// them reads the same way twice.
 func KnownOps() []string {
 	ops := make([]string, 0, len(knownOps))
 	for op := range knownOps {
 		ops = append(ops, op)
 	}
+
+	slices.Sort(ops)
 
 	return ops
 }
@@ -314,8 +322,8 @@ func (o Operation) validate(index int) error {
 
 	for _, op := range o.Ops {
 		if _, ok := knownOps[op]; !ok {
-			return fmt.Errorf("%s: unsupported op %q, expected %q, %q or %q",
-				where, op, OpPush, OpAutosync, OpIndex)
+			return fmt.Errorf("%s: unsupported op %q, expected one of %s",
+				where, op, strings.Join(KnownOps(), ", "))
 		}
 
 		if seen[op] {

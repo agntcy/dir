@@ -6,7 +6,7 @@ The Directory server supports configuration via environment variables, YAML conf
 
 ### Record validators
 
-Record validation is configured as `policy.operations` in YAML. Each entry names a provider, the operations it runs on (`push`, `autosync`, `index`), a `name`, and that provider's settings. An empty list disables record validation. A second block, `policy.evaluations`, defines the policies that produce a verdict per record rather than checking records on their way in; see [Content Policy Enforcement](../docs/content/dir/dir-content-policy-enforcement.md). Neither list can be set via environment variables.
+Record validation is configured as `policy.operations` in YAML. Each entry names a provider, the operations it runs on (`push`, `autosync`, `index`, `pull`), a `name`, and that provider's settings. An empty list disables record validation. A second block, `policy.evaluations`, defines the policies that produce a verdict per record rather than checking records on their way in; see [Content Policy Enforcement](../docs/content/dir/dir-content-policy-enforcement.md). Neither list can be set via environment variables.
 
 **Example with YAML configuration:**
 ```yaml

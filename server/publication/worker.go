@@ -12,6 +12,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	databaseutils "github.com/agntcy/dir/server/database/utils"
+	"github.com/agntcy/dir/server/policy"
 	publypes "github.com/agntcy/dir/server/publication/types"
 	"github.com/agntcy/dir/server/types"
 )
@@ -20,6 +21,7 @@ import (
 type Worker struct {
 	id        int
 	db        types.DatabaseAPI
+	gate      *policy.RecordGate
 	store     types.StoreAPI
 	routing   types.RoutingAPI
 	workQueue <-chan publypes.WorkItem
@@ -27,10 +29,11 @@ type Worker struct {
 }
 
 // NewWorker creates a new worker instance.
-func NewWorker(id int, db types.DatabaseAPI, store types.StoreAPI, routing types.RoutingAPI, workQueue <-chan publypes.WorkItem, timeout time.Duration) *Worker {
+func NewWorker(id int, db types.DatabaseAPI, gate *policy.RecordGate, store types.StoreAPI, routing types.RoutingAPI, workQueue <-chan publypes.WorkItem, timeout time.Duration) *Worker {
 	return &Worker{
 		id:        id,
 		db:        db,
+		gate:      gate,
 		store:     store,
 		routing:   routing,
 		workQueue: workQueue,
@@ -169,14 +172,10 @@ func (w *Worker) announceToDHT(ctx context.Context, cid string) error {
 		Cid: cid,
 	}
 
-	// A record the policy gate excludes is not announced.
-	servable, err := w.db.IsRecordServable(cid)
-	if err != nil {
-		return fmt.Errorf("check record against enforced policies: %w", err)
-	}
-
-	if !servable {
-		return fmt.Errorf("record not announced: %w", types.RecordExcludedError(cid))
+	// A record the gate would not serve is not announced: an announcement is
+	// a promise to serve, and a peer that took it up would be refused.
+	if err := w.gate.Check(ctx, cid); err != nil {
+		return fmt.Errorf("record not announced: %w", err)
 	}
 
 	// Pull the record from the store

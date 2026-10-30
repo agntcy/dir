@@ -69,7 +69,7 @@ func TestStoreDelete_NotFound(t *testing.T) {
 	}
 	dbMock := &mockDB{}
 
-	ctrl := NewStoreController(storeMock, dbMock, nil, nil, nil)
+	ctrl := NewStoreController(storeMock, dbMock, nil, nil, nil, servesEverything())
 
 	stream := &mockDeleteServer{
 		reqs: []*corev1.RecordRef{{Cid: "test-cid"}},

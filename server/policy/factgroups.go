@@ -81,14 +81,14 @@ func opaFactGroups(mod *opaast.Module) []string {
 	)
 
 	opaast.WalkRefs(mod, func(ref opaast.Ref) bool {
-		group, kind := metaGroupOf(ref)
+		group, kind := inputMemberOf(ref, celVarMeta)
 
 		switch kind {
-		case refGroup:
+		case refMember:
 			groups = append(groups, group)
-		case refWholeMeta:
+		case refWhole:
 			all = true
-		case refNotMeta:
+		case refOther:
 		}
 
 		return false
@@ -104,42 +104,52 @@ func opaFactGroups(mod *opaast.Module) []string {
 type refKind int
 
 const (
-	refNotMeta refKind = iota
-	refWholeMeta
-	refGroup
+	// refOther is a reference to something else entirely.
+	refOther refKind = iota
+
+	// refWhole reaches the field but names no member of it.
+	refWhole
+
+	// refMember names one member of the field.
+	refMember
 )
 
-// A reference a policy writes as input.meta.scan is the terms input, meta and
-// scan, in that order.
+// A reference a policy writes as input.meta.scan, or input.verdicts["cel:x"],
+// is the terms input, the field, and the member, in that order.
 const (
-	refMetaPos  = 1
-	refGroupPos = 2
+	refFieldPos  = 1
+	refMemberPos = 2
 )
 
-// metaGroupOf classifies one reference: input.meta.<group> names a group,
-// input.meta on its own or with a group this cannot read names the whole of
-// meta, and anything else is not about meta at all.
-func metaGroupOf(ref opaast.Ref) (string, refKind) {
-	if len(ref) <= refMetaPos || !ref[0].Equal(opaast.InputRootDocument) {
-		return "", refNotMeta
+// inputMemberOf classifies one reference against one field of input:
+// input.<field>.<member> names a member, input.<field> on its own or with a
+// member this cannot read names the whole field, and anything else is not
+// about the field at all.
+//
+// Both callers read a field whose members are a known set, and both are safe
+// only when a reference they cannot resolve widens the answer rather than
+// narrowing it, which is what refWhole is for.
+func inputMemberOf(ref opaast.Ref, field string) (string, refKind) {
+	if len(ref) <= refFieldPos || !ref[0].Equal(opaast.InputRootDocument) {
+		return "", refOther
 	}
 
-	if name, ok := ref[refMetaPos].Value.(opaast.String); !ok || string(name) != celVarMeta {
-		return "", refNotMeta
+	if name, ok := ref[refFieldPos].Value.(opaast.String); !ok || string(name) != field {
+		return "", refOther
 	}
 
-	if len(ref) <= refGroupPos {
-		return "", refWholeMeta
+	if len(ref) <= refMemberPos {
+		return "", refWhole
 	}
 
-	group, ok := ref[refGroupPos].Value.(opaast.String)
+	member, ok := ref[refMemberPos].Value.(opaast.String)
 	if !ok {
-		// A variable or expression in place of the group, as in
+		// A variable or expression in place of the member, as in
 		// input.meta[g], which is only known while the policy runs.
-		return "", refWholeMeta
+		return "", refWhole
 	}
 
-	return string(group), refGroup
+	return string(member), refMember
 }
 
 // normalizeGroups returns the groups as a sorted set, dropping any name that
