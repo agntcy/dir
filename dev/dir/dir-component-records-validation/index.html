@@ -1013,6 +1013,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="What a Policy Can Read">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#at-pull" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        At pull
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -2495,6 +2512,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="What a Policy Can Read">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#at-pull" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        At pull
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -2806,7 +2840,7 @@
 <p>The Directory enforces validation on all records before accepting them.
 Validation is performed using the <a href="https://docs.agntcy.org/oasf/oasf-sdk/">OASF SDK</a>, which requires an OASF schema server URL for validation.</p>
 <h3 id="configuration">Configuration</h3>
-<p>The Directory server validates records using <code>policy.operations</code> in YAML. Each entry selects a provider, the operations it applies to (<code>push</code>, <code>autosync</code>, <code>index</code>), a <code>name</code>, that provider's settings, and optionally a <code>mode</code>. An empty list disables record validation. This list cannot be set via environment variables.</p>
+<p>The Directory server validates records using <code>policy.operations</code> in YAML. Each entry selects a provider, the operations it applies to (<code>push</code>, <code>autosync</code>, <code>index</code>, <code>pull</code>), a <code>name</code>, that provider's settings, and optionally a <code>mode</code>. An empty list disables record validation. This list cannot be set via environment variables.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># server.config.yml</span>
 <span class="nt">listen_address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.0.0.0:8888&quot;</span>
 <span class="nt">policy</span><span class="p">:</span>
@@ -2853,7 +2887,7 @@ unless overridden.</p>
 <tr>
 <td><code>context.operation</code></td>
 <td>enum</td>
-<td>Which operation is being decided: <code>Operation.OPERATION_PUSH</code>, <code>Operation.OPERATION_AUTOSYNC</code> or <code>Operation.OPERATION_INDEX</code>.</td>
+<td>Which operation is being decided: <code>Operation.OPERATION_PUSH</code>, <code>Operation.OPERATION_AUTOSYNC</code>, <code>Operation.OPERATION_INDEX</code> or <code>Operation.OPERATION_PULL</code>.</td>
 </tr>
 <tr>
 <td><code>context.source_peer_id</code></td>
@@ -2873,8 +2907,76 @@ unless overridden.</p>
 <span class="w">  </span><span class="nt">expressions</span><span class="p">:</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;context.operation</span><span class="nv"> </span><span class="s">!=</span><span class="nv"> </span><span class="s">Operation.OPERATION_AUTOSYNC</span><span class="nv"> </span><span class="s">||</span><span class="nv"> </span><span class="s">has(record.locators)&#39;</span>
 </code></pre></div>
-<p><code>opa</code> is given the same values as its input document: <code>input.record.name</code>, <code>input.record_cid</code>, <code>input.context.operation</code>, <code>input.context.source_peer_id</code>, <code>input.now</code>. Two differences follow from the document being JSON. An enum arrives as its name, so the comparison is <code>input.context.operation == "OPERATION_PUSH"</code> rather than a number. An unset <code>source_peer_id</code> is absent from the document rather than empty, so a policy tests it with <code>not input.context.source_peer_id</code>. <code>now</code> is an RFC 3339 string.</p>
-<p>A policy in this block cannot read <code>meta</code>, the facts about a record that an evaluation policy reads, nor another policy's verdict. Those belong to <code>policy.evaluations</code>, which runs per record rather than per operation; see <a href="../dir-content-policy-enforcement/">Content Policy Enforcement</a>. A <code>cel</code> policy here that names one does not load, and the node reports it at startup rather than letting the policy decide on nothing.</p>
+<p><code>opa</code> is given the same values as its input document: <code>input.record.name</code>, <code>input.record_cid</code>, <code>input.context.operation</code>, <code>input.context.source_peer_id</code>, <code>input.now</code>, and <code>input.verdicts</code> at <code>pull</code>. Two differences follow from the document being JSON. An enum arrives as its name, so the comparison is <code>input.context.operation == "OPERATION_PUSH"</code> rather than a number. An unset <code>source_peer_id</code> is absent from the document rather than empty, so a policy tests it with <code>not input.context.source_peer_id</code>. <code>now</code> is an RFC 3339 string.</p>
+<p>A policy in this block cannot read <code>meta</code>, the facts about a record that an evaluation policy reads. Those belong to <code>policy.evaluations</code>, which runs per record rather than per operation; see <a href="../dir-content-policy-enforcement/">Content Policy Enforcement</a>. A <code>cel</code> policy here that names one does not load, and the node reports it at startup rather than letting the policy decide on nothing.</p>
+<h4 id="at-pull">At <code>pull</code></h4>
+<p>A policy at <code>pull</code> decides whether to serve a record that is already stored, so it reads what this node has concluded about that record rather than the record itself:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Type</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>verdicts</code></td>
+<td>map</td>
+<td>Each evaluation policy's conclusion, keyed by policy ID.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Verdict field</th>
+<th>Type</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>compliant_and_current</code></td>
+<td>bool</td>
+<td>Whether the record satisfies the policy <em>and</em> the verdict was reached under the version in force. This is the field to decide on. A missing, failed, superseded or non-compliant verdict all read <code>false</code>.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>enum</td>
+<td>How far the evaluation got: <code>VerdictStatus.VERDICT_STATUS_UNEVALUATED</code>, <code>_EVALUATED</code>, <code>_FAILED</code> or <code>_SUPERSEDED</code>.</td>
+</tr>
+<tr>
+<td><code>compliant</code></td>
+<td>bool</td>
+<td>Whether the condition was satisfied, whatever version reached that conclusion. Read as "satisfies this condition", not as "this record is good".</td>
+</tr>
+<tr>
+<td><code>policy_version</code></td>
+<td>string</td>
+<td>The version the verdict was reached under. Informational; decide on <code>compliant_and_current</code>.</td>
+</tr>
+<tr>
+<td><code>reason</code></td>
+<td>string</td>
+<td>Why the evaluator decided as it did, or why it failed.</td>
+</tr>
+<tr>
+<td><code>evaluated_at</code></td>
+<td>optional timestamp</td>
+<td>When the verdict was reached. Absent when there is none.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cel</span>
+<span class="w">  </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;pull&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">serve-checked-records</span>
+<span class="w">  </span><span class="nt">expressions</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;verdicts[&quot;cel:trusted&quot;].compliant_and_current&#39;</span>
+</code></pre></div>
+<p>A policy at <code>pull</code> <strong>cannot read <code>record</code></strong>. A read by CID is decided before the content is fetched, which is what keeps a lookup an index read, so there is no record there to give it. A policy that reads one does not load, and the node says so at startup rather than letting it decide on an empty record. This applies to <code>oasf</code> too, which is nothing but a reading of record content.</p>
+<p>The restriction costs less than it looks. A record's content cannot change under its CID, so a question about content has one answer forever: ask it in <code>policy.evaluations</code>, which sees the whole record, is answered once per record, and leaves a verdict to read here.</p>
+<p>Reading verdicts is the other way around: only <code>pull</code> has them. Every other operation decides before any verdict exists, so a policy naming <code>verdicts</code> at <code>push</code>, <code>autosync</code> or <code>index</code> does not load either.</p>
 <h3 id="modes">Modes</h3>
 <p>Each entry carries an optional <code>mode</code>, which decides what happens to its refusals. It applies to that entry alone, so one policy can be tried out while the others keep enforcing.</p>
 <table>

@@ -1507,6 +1507,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#deciding-reads-with-a-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deciding Reads With a Policy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#when-a-new-record-is-served" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2380,6 +2391,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#deciding-reads-with-a-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deciding Reads With a Policy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#when-a-new-record-is-served" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2708,6 +2730,23 @@
 </tbody>
 </table>
 <p>The modes and the policy list are read at startup: restart the server after changing them.</p>
+<h2 id="deciding-reads-with-a-policy">Deciding Reads With a Policy</h2>
+<p>The settings above are one rule, fixed in code: a read by CID is served when the record has a compliant, current verdict under <em>every</em> enforced policy. A policy at the <code>pull</code> operation expresses that rule as configuration instead, which is how it will be expressed from now on:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">policy</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">operations</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cel</span>
+<span class="w">      </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;pull&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">serve-checked-records</span>
+<span class="w">      </span><span class="nt">expressions</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;verdicts[&quot;opa:require-license&quot;].compliant_and_current&#39;</span>
+</code></pre></div>
+<p>The two gates decide alike: a record is served when its verdict is compliant under the version in force, and refused with <code>PermissionDenied</code> otherwise. What a policy adds is everything the fixed rule cannot say — enforcing one policy while only reporting on another, or any condition over the verdicts other than their conjunction. See <a href="../dir-component-records-validation/#at-pull">What a Policy Can Read</a> for the verdict fields, and <a href="../dir-component-records-validation/#modes">Modes</a> for <code>shadow</code> and <code>off</code>, which each entry carries for itself.</p>
+<p>Both gates apply while <code>policy.enforcement.fetch</code> exists, and either can refuse, so a record has to pass both.</p>
+<div class="admonition note">
+<p class="admonition-title">A new policy refuses nothing until the backfill completes</p>
+<p>A policy is enforced only once its verdicts cover every indexed record, and a policy at <code>pull</code> inherits that: until then it reports what it would refuse and serves the record, whatever its <code>mode</code> says. Watch <code>dir_policy_gate_records_unevaluated</code> for the policies it reads, as in <a href="#turning-enforcement-on">Turning Enforcement On</a>.</p>
+<p>This also means a verdict that failed, was superseded, or was reached under a since-edited version refuses nothing: none of those covers the record it is for, so the policy is held in backfill by the very record it would have refused. The only verdict that refuses an indexed record is one that evaluated it and found it non-compliant; everything else waits for the reconciler.</p>
+</div>
 <h2 id="when-a-new-record-is-served">When a New Record Is Served</h2>
 <p>A record is withheld until it has been indexed and evaluated, and both happen as soon as it arrives, not at the tasks' next intervals:</p>
 <ol>
