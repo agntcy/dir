@@ -35,8 +35,8 @@ dependencies:
   # Only installed when explicitly enabled via: oasf.enabled: true
   # Default: disabled (oasf.enabled: false in values.yaml)
   - name: oasf
-    version: v0.5.1
-    repository: oci://ghcr.io/agntcy/oasf/helm-charts
+    version: v2.0.0
+    repository: oci://ghcr.io/agntcy/oasf-server/helm-charts
     condition: oasf.enabled
   # OASF-SDK extractor server subchart (OPTIONAL - opt-in only)
   # Serves the OASF taxonomy extractor over gRPC so the HTTP gateway can turn

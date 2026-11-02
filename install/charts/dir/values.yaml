@@ -512,17 +512,19 @@ apiserver:
     enabled: false
     localDeploy: true # Creates IngressClass resource for ingress controller
 
+    # One oasf-server image serves every schema version. Each version's schema
+    # is mounted from its ghcr.io/agntcy/oasf-schema:<schema> image.
     image:
       repository: ghcr.io/agntcy/oasf-server
-      versions:
-        - server: v0.7.2
-          schema: 0.7.0
-        - server: v0.8.1
-          schema: 0.8.0
-        - server: v1.0.0
-          schema: 1.0.0
-          default: true
+      tag: v2.0.0
       pullPolicy: IfNotPresent
+
+    schema:
+      mount: initContainer # or imageVolume, on Kubernetes 1.35+
+      versions:
+        - schema: 0.8.0
+        - schema: 1.0.0
+          default: true
 
     service:
       type: ClusterIP
