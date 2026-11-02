@@ -260,6 +260,11 @@ of matches and whether another page exists. The default page size is 50; request
 above 100 are capped at 100. To fetch the next page, pass the previous offset
 plus the number of returned records.
 
+Each summary also reports trust and scan status without extra calls:
+`GetTrusted()` is true when a signature passed verification, `GetVerified()`
+when the ownership claim was verified, and `Safe` is nil when no scanner reached
+a verdict, otherwise whether every scanner reported the record safe.
+
 ```go
 import searchv1 "github.com/agntcy/dir/api/search/v1"
 

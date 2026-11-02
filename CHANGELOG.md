@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Search**: `RecordSummary` carries `trusted`, `verified` and an optional `safe`, matching the `TRUSTED`, `VERIFIED` and `SCAN_SAFE` filters and the AI Catalog badges; `safe` is unset when no scanner reached a verdict (#2399)
+
 ### Changed
 - **API**: **BREAKING**: `Workload.addresses` and `Workload.ports` are removed; read endpoints from `locators`. The `DiscoveredWorkload` CRD drops the Addresses and Ports print columns (#2299)
 

@@ -4,8 +4,11 @@
 package server
 
 import (
+	"time"
+
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
+	"github.com/agntcy/dir/server/types"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -53,5 +56,48 @@ var _ = ginkgo.Describe("Search record summaries", func() {
 		gomega.Expect(second.GetRecords()[0].GetModules()).To(gomega.Equal([]string{"integration/mcp"}))
 		gomega.Expect(second.GetHasMore()).To(gomega.BeFalse())
 		gomega.Expect(second.GetTotalCount()).To(gomega.Equal(uint32(2)))
+	})
+
+	ginkgo.It("reports trust and scan status per record", func(ctx ginkgo.SpecContext) {
+		now := time.Now()
+		gomega.Expect(t.db.Create(&gormdb.Record{
+			RecordCID: "summary-trusted", Name: "trusted", Version: "1.0.0",
+			Signatures: []gormdb.SignatureVerification{{
+				SignerKey: "key", Status: "verified", ContentType: "application/vnd.oci.image.manifest.v1+json",
+			}},
+			IdentityClaims: []gormdb.IdentityClaim{{
+				Role: types.ClaimRoleOwner, Subject: "acme.com", Status: types.ClaimStatusVerified, VerifiedAt: now,
+			}},
+			ScanReports: []gormdb.ScanReport{{
+				ScannerType: "MCP", IsSafe: true, MaxSeverity: "NONE", Status: types.ScanStatusCompleted, NextAttemptAt: now,
+			}},
+		}).Error).To(gomega.Succeed())
+		gomega.Expect(t.db.Create(&gormdb.Record{
+			RecordCID: "summary-unscanned", Name: "unscanned", Version: "1.0.0",
+			ScanReports: []gormdb.ScanReport{{
+				ScannerType: "MCP", IsSafe: true, MaxSeverity: "NONE", Status: types.ScanStatusFailed, NextAttemptAt: now,
+			}},
+		}).Error).To(gomega.Succeed())
+
+		resp, err := searchv1.NewSearchServiceClient(t.conn).ListRecordSummaries(ctx, &searchv1.ListRecordSummariesRequest{})
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		byCID := map[string]*searchv1.RecordSummary{}
+		for _, r := range resp.GetRecords() {
+			byCID[r.GetCid()] = r
+		}
+
+		trusted := byCID["summary-trusted"]
+		gomega.Expect(trusted).NotTo(gomega.BeNil())
+		gomega.Expect(trusted.GetTrusted()).To(gomega.BeTrue())
+		gomega.Expect(trusted.GetVerified()).To(gomega.BeTrue())
+		gomega.Expect(trusted.Safe).NotTo(gomega.BeNil())
+		gomega.Expect(trusted.GetSafe()).To(gomega.BeTrue())
+
+		unscanned := byCID["summary-unscanned"]
+		gomega.Expect(unscanned).NotTo(gomega.BeNil())
+		gomega.Expect(unscanned.GetTrusted()).To(gomega.BeFalse())
+		gomega.Expect(unscanned.GetVerified()).To(gomega.BeFalse())
+		gomega.Expect(unscanned.Safe).To(gomega.BeNil())
 	})
 })
