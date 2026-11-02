@@ -28,13 +28,13 @@ var scannerPackages = []scannerPackage{
 		binary: "mcp-scanner",
 		pkg:    "cisco-ai-mcp-scanner",
 		// renovate: datasource=pypi depName=cisco-ai-mcp-scanner versioning=pep440
-		version: "4.8.6",
+		version: "4.8.7",
 	},
 	{
 		binary: "skill-scanner",
 		pkg:    "cisco-ai-skill-scanner",
 		// renovate: datasource=pypi depName=cisco-ai-skill-scanner versioning=pep440
-		version: "2.0.12",
+		version: "2.3.1",
 	},
 	{
 		binary: "a2a-scanner",
