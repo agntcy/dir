@@ -47,12 +47,19 @@ type celValidator struct {
 }
 
 func newCELValidator(exprs []string, l layer) (*celValidator, error) {
+	return newCELValidatorWithIDs(exprs, l, nil)
+}
+
+// newCELValidatorWithIDs compiles exprs for l and checks any verdict key
+// against evaluationIDs, which are the configured evaluation policy IDs in
+// config order. nil means none are configured.
+func newCELValidatorWithIDs(exprs []string, l layer, evaluationIDs []string) (*celValidator, error) {
 	env, err := celEnv(l)
 	if err != nil {
 		return nil, err
 	}
 
-	prog, err := compileCEL(exprs, env)
+	prog, err := compileCEL(exprs, env, evaluationIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +72,8 @@ func newCELValidator(exprs []string, l layer) (*celValidator, error) {
 // The dependencies are read off the AST here and not kept with it, because
 // this is the last point they can be read at all: a program is what is left
 // once compiling is done, and it does not say what it looked at.
-func compileCEL(exprs []string, env *cel.Env) (*celProgram, error) {
+// validateAst runs before that happens.
+func compileCEL(exprs []string, env *cel.Env, evaluationIDs []string) (*celProgram, error) {
 	var (
 		groups      []string
 		keys        []string
@@ -93,6 +101,10 @@ func compileCEL(exprs []string, env *cel.Env) (*celProgram, error) {
 
 		if ast.OutputType() != cel.BoolType {
 			return nil, fmt.Errorf("CEL expressions[%d] must evaluate to bool, got %s", i, ast.OutputType())
+		}
+
+		if err := validateAst(ast, evaluationIDs); err != nil {
+			return nil, fmt.Errorf("CEL expressions[%d]: %w", i, err)
 		}
 
 		prg, err := env.Program(ast)

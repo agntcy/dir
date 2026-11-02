@@ -130,6 +130,10 @@ func NewRegistry(
 		return nil, fmt.Errorf("invalid policy config: %w", err)
 	}
 
+	// Computed before either block is built. Operation policies are checked
+	// against this list while they compile, so it has to exist first.
+	verdictIDs := evaluationPolicyIDs(evaluations)
+
 	var loaded []evaluation
 
 	for i, e := range evaluations {
@@ -138,7 +142,7 @@ func NewRegistry(
 		}
 
 		c, err := newValidator(ctx, layerEvaluation, e.Provider,
-			provider{file: e.File, expressions: e.Expressions}, policyDir)
+			provider{file: e.File, expressions: e.Expressions}, policyDir, verdictIDs)
 		if err != nil {
 			return nil, fmt.Errorf("evaluations[%d]: %w", i, err)
 		}
@@ -159,9 +163,9 @@ func NewRegistry(
 		// asked for. The verdicts it reads are, because they decide when it
 		// may start enforcing.
 		c, err := newValidator(ctx, layerOperation, o.Provider,
-			provider{schemaURL: o.SchemaURL, file: o.File, expressions: o.Expressions}, policyDir)
+			provider{schemaURL: o.SchemaURL, file: o.File, expressions: o.Expressions}, policyDir, verdictIDs)
 		if err != nil {
-			return nil, fmt.Errorf("operations[%d]: %w", i, err)
+			return nil, fmt.Errorf("operations[%d]: policy %q: %w", i, o.PolicyID(), err)
 		}
 
 		if err := checkVerdictsAreReadable(o.Ops, c.verdicts); err != nil {
@@ -287,6 +291,17 @@ type provider struct {
 	expressions []string
 }
 
+// evaluationPolicyIDs returns the evaluation policy IDs in config order.
+// A verdict key is resolved against this list.
+func evaluationPolicyIDs(evaluations policyconfig.Evaluations) []string {
+	ids := make([]string, len(evaluations))
+	for i, e := range evaluations {
+		ids[i] = e.PolicyID()
+	}
+
+	return ids
+}
+
 // newValidator builds the validator for one configured provider, the version
 // of its content when the provider has any, and the metadata groups its policy
 // reads. OASF has neither: it validates a record against a schema, which says
@@ -299,7 +314,8 @@ type provider struct {
 // l is the layer the policy was configured in. Only CEL needs it today,
 // because it is the only provider that compiles its policy here and so the
 // only one that can reject reading the other layer's inputs at load time.
-func newValidator(ctx context.Context, l layer, name string, p provider, policyDir string) (compiled, error) {
+// evaluationIDs are the configured evaluation policies a verdict key may name.
+func newValidator(ctx context.Context, l layer, name string, p provider, policyDir string, evaluationIDs []string) (compiled, error) {
 	switch name {
 	case policyconfig.ProviderOASF:
 		v, err := newOASFValidator(p.schemaURL)
@@ -311,7 +327,7 @@ func newValidator(ctx context.Context, l layer, name string, p provider, policyD
 		// against a schema. There is no sense in which it reads less.
 		return compiled{validator: v, readsRecord: true}, nil
 	case policyconfig.ProviderCEL:
-		v, err := newCELValidator(p.expressions, l)
+		v, err := newCELValidatorWithIDs(p.expressions, l, evaluationIDs)
 		if err != nil {
 			return compiled{}, fmt.Errorf("failed to initialize CEL validator: %w", err)
 		}
