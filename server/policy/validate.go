@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	policyv1 "github.com/agntcy/dir/api/policy/v1"
@@ -47,12 +48,13 @@ var operations = map[string]policyv1.Operation{
 }
 
 // DecideOption supplies a circumstance of the operation that the op and the
-// record do not carry: where the record came from, and in time who is asking.
+// record do not carry: where the record came from, when it was indexed, and in
+// time who is asking.
 //
 // An option rather than a parameter because only one caller has one. The three
 // that do not should not have to name its absence, and the next circumstance
-// to land in OperationContext should not have to touch them either.
-type DecideOption func(*policyv1.OperationContext)
+// to land in OperationInput should not have to touch them either.
+type DecideOption func(*policyv1.OperationInput)
 
 // FromPeer names the authenticated peer the record is being pulled from.
 //
@@ -64,12 +66,30 @@ type DecideOption func(*policyv1.OperationContext)
 // the authenticated peer ID before a record reaches a policy, so this only
 // buys per-peer rules.
 func FromPeer(id string) DecideOption {
-	return func(opCtx *policyv1.OperationContext) {
+	return func(input *policyv1.OperationInput) {
 		if id == "" {
 			return
 		}
 
-		opCtx.SourcePeerId = &id
+		input.Context.SourcePeerId = &id
+	}
+}
+
+// IndexedAt says when this node first indexed the record, for the operations
+// that decide over a row they already hold.
+//
+// A zero time leaves the field unset rather than setting it to 1970, which is
+// what makes it the caller's job to pass one only when it knows it: at index
+// the reconciler reads the row before writing it, and a record it is indexing
+// for the first time has none. A policy then reads an absence it can test for
+// instead of a timestamp that says the record is decades old.
+func IndexedAt(t time.Time) DecideOption {
+	return func(input *policyv1.OperationInput) {
+		if t.IsZero() {
+			return
+		}
+
+		input.IndexedAt = timestamppb.New(t)
 	}
 }
 
@@ -78,24 +98,27 @@ func FromPeer(id string) DecideOption {
 // Built once per decision so that every policy deciding it reads the same
 // instant, which is what the proto's now is for.
 //
-// verdicts and indexed_at stay unset: both need a database read, and this is
-// reached from paths that have none.
+// verdicts stay unset: reading them needs a database lookup, and Decide fills
+// them for the operations that can. indexed_at is set by whoever holds the row
+// and left absent by the rest, so it is a DecideOption rather than something
+// read here.
 func operationInput(op string, record *corev1.Record, opts ...DecideOption) *policyv1.OperationInput {
 	if record == nil {
 		return nil
 	}
 
-	opCtx := &policyv1.OperationContext{Operation: operations[op]}
-	for _, opt := range opts {
-		opt(opCtx)
-	}
-
-	return &policyv1.OperationInput{
+	input := &policyv1.OperationInput{
 		Record:    record.GetData(),
 		RecordCid: record.GetCid(),
-		Context:   opCtx,
+		Context:   &policyv1.OperationContext{Operation: operations[op]},
 		Now:       timestamppb.Now(),
 	}
+
+	for _, opt := range opts {
+		opt(input)
+	}
+
+	return input
 }
 
 // pullInput is the OperationInput a read by CID sees.

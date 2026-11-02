@@ -340,6 +340,28 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
 	return cids, nil
 }
 
+// GetRecordIndexedAt returns when cid was first indexed, which is
+// records.created_at: the row this node wrote, not the created_at the record's
+// publisher chose. A CID that is not indexed returns the zero time and no
+// error, because the caller decides what an unindexed record means.
+//
+// Selected rather than loaded: the row is wanted for one column, and its
+// associations are not.
+func (d *DB) GetRecordIndexedAt(cid string) (time.Time, error) {
+	var record Record
+
+	err := d.gormDB.Select("created_at").Where("record_cid = ?", cid).Take(&record).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return time.Time{}, nil
+	}
+
+	if err != nil {
+		return time.Time{}, fmt.Errorf("get indexed_at of %s: %w", cid, err)
+	}
+
+	return record.CreatedAt, nil
+}
+
 // RemoveRecord removes a record from the search database by CID.
 // Uses CASCADE DELETE to automatically remove related Skills, Locators, and Modules.
 func (d *DB) RemoveRecord(cid string) error {

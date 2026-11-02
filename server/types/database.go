@@ -80,6 +80,11 @@ type SearchDatabaseAPI interface {
 	// GetRecords retrieves full records based on the provided filters.
 	GetRecords(opts ...FilterOption) ([]coretypes.Record, error)
 
+	// GetRecordIndexedAt returns when cid was first indexed, which is the
+	// row's created_at. A CID that is not indexed returns the zero time and no
+	// error.
+	GetRecordIndexedAt(cid string) (time.Time, error)
+
 	// RemoveRecord removes a record from the search database by CID.
 	RemoveRecord(cid string) error
 

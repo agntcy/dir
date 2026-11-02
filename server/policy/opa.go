@@ -168,8 +168,10 @@ func stateAsInput(state *policyv1.RecordState) (map[string]any, error) {
 //
 // context is encoded from the proto with proto field names, so a policy reads
 // input.context.operation, and reads it as the enum's name: the string
-// "OPERATION_PUSH", not a number. verdicts and indexed_at stay out for the
-// same reason the operation CEL environment does not declare them.
+// "OPERATION_PUSH", not a number. verdicts stay out because only pull can
+// answer them, which is the same reason stateAsInput leaves an absent
+// indexed_at out rather than encoding a zero: a rule reading it is undefined
+// rather than comparing against 1970.
 // verdictsAsInput encodes the verdict map the way the rest of the input is
 // encoded, so that a Rego policy reads VerdictStatus as its name rather than
 // as a number.
@@ -216,6 +218,10 @@ func operationAsInput(opInput *policyv1.OperationInput) (map[string]any, error) 
 
 	if cid := opInput.GetRecordCid(); cid != "" {
 		input["record_cid"] = cid
+	}
+
+	if ts := opInput.GetIndexedAt(); ts != nil {
+		input["indexed_at"] = ts.AsTime().UTC().Format(time.RFC3339Nano)
 	}
 
 	return input, nil

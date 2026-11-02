@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -131,6 +132,43 @@ allow if {
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Empty(t, msgs)
+}
+
+// Both providers are given the same values, so a Rego policy reads the index
+// time the same way a CEL one does: present when the caller holds the row, and
+// absent from the document rather than empty when it does not.
+func TestNewRegistry_OPAOperationReadsIndexedAt(t *testing.T) {
+	t.Parallel()
+
+	const src = `
+package dir.policy.indexed_at
+
+default allow := false
+
+allow if {
+	input.indexed_at
+}
+`
+
+	dir := writePolicy(t, "policy.rego", src)
+	reg, err := NewRegistry(context.Background(), nil, policyconfig.Operations{{
+		Provider: policyconfig.ProviderOPA,
+		Ops:      []string{policyconfig.OpIndex},
+		File:     "policy.rego",
+	}}, dir)
+	require.NoError(t, err)
+
+	record := corev1.New(&typesv1alpha1.Record{Name: "test"})
+
+	ok, msgs, err := reg.Decide(context.Background(), policyconfig.OpIndex, record,
+		IndexedAt(time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)))
+	require.NoError(t, err)
+	require.True(t, ok, msgs)
+
+	ok, msgs, err = reg.Decide(context.Background(), policyconfig.OpIndex, record)
+	require.NoError(t, err)
+	require.False(t, ok, "a record with no index time leaves input.indexed_at undefined")
+	require.NotEmpty(t, msgs)
 }
 
 func mustStruct(t *testing.T, fields map[string]any) *structpb.Struct {

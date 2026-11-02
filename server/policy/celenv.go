@@ -118,14 +118,19 @@ func newEvaluationEnv() (*cel.Env, error) {
 // at several operations at once, so there would be no one environment to
 // build.
 //
-// indexed_at is still absent: nothing reads it yet, and declaring it before
-// it can be answered truthfully would compile policies that decide on
-// nothing.
+// indexed_at is declared for every operation for the same reason, and optional
+// because only the index operation answers it: the reconciler reads the row it
+// is about to write. Push and autosync decide from the record alone and never
+// read its row, so they carry no such time even for a record already indexed,
+// and the variable is absent there rather than zero — a policy comparing it
+// against now reads an absence it can test for, rather than a 1970 that looks
+// like a very old record.
 func newOperationEnv() (*cel.Env, error) {
 	return newEnv(
 		cel.Variable(celVarVerdicts, cel.MapType(cel.StringType, cel.ObjectType(verdictType))),
 		cel.Variable(celVarContext, cel.ObjectType(operationContextType)),
 		cel.Variable(celVarNow, cel.TimestampType),
+		cel.Variable(celVarIndexedAt, cel.OptionalType(cel.TimestampType)),
 	)
 }
 
