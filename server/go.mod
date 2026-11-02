@@ -52,7 +52,7 @@ require (
 	google.golang.org/protobuf v1.36.12
 	gorm.io/driver/postgres v1.6.3
 	gorm.io/gorm v1.31.2
-	oras.land/oras-go/v2 v2.6.2
+	oras.land/oras-go/v2 v2.7.0
 )
 
 require (
