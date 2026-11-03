@@ -210,6 +210,16 @@ func TestRun_CollectsFailures(t *testing.T) {
 	require.Equal(t, []string{"ERROR: first", "ERROR: second"}, msgs)
 }
 
+// trustedEvaluation is the evaluation policy the verdict-reading tests name.
+// A key has to name a configured evaluation before the operation check runs.
+func trustedEvaluation() policyconfig.Evaluations {
+	return policyconfig.Evaluations{{
+		Provider:    policyconfig.ProviderCEL,
+		Name:        "trusted",
+		Expressions: []string{`true`},
+	}}
+}
+
 // A policy reading verdicts at an operation that has none would read an empty
 // map and refuse everything while appearing to decide. It is refused at load
 // time instead, by name, so the operator is told which op is the problem.
@@ -217,7 +227,7 @@ func TestNewRegistry_RejectsVerdictsWhereThereAreNone(t *testing.T) {
 	t.Parallel()
 
 	for _, op := range []string{policyconfig.OpPush, policyconfig.OpAutosync, policyconfig.OpIndex} {
-		_, err := NewRegistry(context.Background(), nil, policyconfig.Operations{{
+		_, err := NewRegistry(context.Background(), trustedEvaluation(), policyconfig.Operations{{
 			Provider:    policyconfig.ProviderCEL,
 			Ops:         []string{op},
 			Name:        "serve-checked-records",
@@ -233,7 +243,7 @@ func TestNewRegistry_RejectsVerdictsWhereThereAreNone(t *testing.T) {
 func TestNewRegistry_RejectsVerdictsAtPullPlusAnotherOp(t *testing.T) {
 	t.Parallel()
 
-	_, err := NewRegistry(context.Background(), nil, policyconfig.Operations{{
+	_, err := NewRegistry(context.Background(), trustedEvaluation(), policyconfig.Operations{{
 		Provider:    policyconfig.ProviderCEL,
 		Ops:         []string{policyconfig.OpPull, policyconfig.OpPush},
 		Name:        "serve-checked-records",
@@ -245,7 +255,7 @@ func TestNewRegistry_RejectsVerdictsAtPullPlusAnotherOp(t *testing.T) {
 func TestNewRegistry_AcceptsVerdictsAtPull(t *testing.T) {
 	t.Parallel()
 
-	reg, err := NewRegistry(context.Background(), nil, policyconfig.Operations{{
+	reg, err := NewRegistry(context.Background(), trustedEvaluation(), policyconfig.Operations{{
 		Provider:    policyconfig.ProviderCEL,
 		Ops:         []string{policyconfig.OpPull},
 		Name:        "serve-checked-records",

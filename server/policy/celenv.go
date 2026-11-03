@@ -116,7 +116,8 @@ func newEvaluationEnv() (*cel.Env, error) {
 // rather than by a resolution failure in an environment built per op, which
 // would only say the variable does not exist — and a policy may be configured
 // at several operations at once, so there would be no one environment to
-// build.
+// build. validateAst resolves each literal key against the configured
+// evaluation policies while the expression compiles.
 //
 // indexed_at is still absent: nothing reads it yet, and declaring it before
 // it can be answered truthfully would compile policies that decide on
