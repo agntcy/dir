@@ -16,4 +16,4 @@ tasks:
       COMPOSE_PATH: "{{.ROOT_DIR}}/tests/integration/server/testenv/docker-compose.yml"
     cmds:
       - |
-        docker compose -f {{.COMPOSE_PATH}} down
+        docker compose -f {{.COMPOSE_PATH}} down --volumes
