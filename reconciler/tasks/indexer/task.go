@@ -236,26 +236,25 @@ func (t *Task) detectNewTags(oldSnapshot, newSnapshot *registrySnapshot) []strin
 	return newTags
 }
 
-// indexRecord indexes a single record from the registry into the database.
-// withIndexedAt appends the indexed_at option when an index policy is
+// indexedAtOption is the indexed_at option for cid, when an index policy is
 // configured, so that the lookup is paid for only where it can be read.
 //
 // A store error is returned rather than swallowed: a policy that decides on an
 // age must not silently decide on an absence the lookup failed to fill.
-func (t *Task) withIndexedAt(cid string, opts *[]policy.DecideOption) error {
+func (t *Task) indexedAtOption(cid string) ([]policy.DecideOption, error) {
 	if len(t.policyRegistry.OperationIDs(policyconfig.OpIndex)) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	indexedAt, err := t.db.GetRecordIndexedAt(cid)
 	if err != nil {
-		return fmt.Errorf("failed to read when the record was indexed: %w", err)
+		return nil, fmt.Errorf("failed to read when the record was indexed: %w", err)
 	}
 
-	*opts = append(*opts, policy.IndexedAt(indexedAt))
-
-	return nil
+	return []policy.DecideOption{policy.IndexedAt(indexedAt)}, nil
 }
+
+// indexRecord indexes a single record from the registry into the database.
 
 func (t *Task) indexRecord(ctx context.Context, tag string) error {
 	logger.Debug("Indexing record", "tag", tag)
@@ -276,8 +275,8 @@ func (t *Task) indexRecord(ctx context.Context, tag string) error {
 	//
 	// Only when a policy is configured to decide at index: the lookup costs a
 	// query, and without one the default path has no use for the answer.
-	var opts []policy.DecideOption
-	if err := t.withIndexedAt(record.GetCid(), &opts); err != nil {
+	opts, err := t.indexedAtOption(record.GetCid())
+	if err != nil {
 		return err
 	}
 
