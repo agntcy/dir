@@ -93,8 +93,13 @@ func (o *options) loadConfig(flags *pflag.FlagSet) error {
 	// cannot leak its value into this run and stamp records with the wrong version.
 	o.SchemaVersion = ""
 
-	if o.ConfigFile != "" {
-		fc, err := parseConfigFile(o.ConfigFile)
+	configFile := o.ConfigFile
+	if configFile == "" {
+		configFile = o.implicitConfigFile
+	}
+
+	if configFile != "" {
+		fc, err := parseConfigFile(configFile)
 		if err != nil {
 			return err
 		}
