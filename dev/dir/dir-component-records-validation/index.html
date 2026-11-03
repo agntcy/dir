@@ -1139,10 +1139,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#using-a-locally-built-oasf-image" class="md-nav__link">
+  <a href="#using-a-local-oasf-schema" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using a Locally Built OASF Image
+        Using a Local OASF Schema
       
     </span>
   </a>
@@ -2638,10 +2638,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#using-a-locally-built-oasf-image" class="md-nav__link">
+  <a href="#using-a-local-oasf-schema" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using a Locally Built OASF Image
+        Using a Local OASF Schema
       
     </span>
   </a>
@@ -3124,9 +3124,10 @@ install the Directory Helm chart with the OASF subchart enabled in your <code>va
 </li>
 </ol>
 <p>The OASF instance is deployed as a subchart in the same namespace and automatically configured for multi-version routing via ingress.</p>
-<h4 id="using-a-locally-built-oasf-image">Using a Locally Built OASF Image</h4>
-<p>If you want to deploy with a locally built OASF image (e.g., containing <code>0.9.0-dev</code> schema files), you need to load the image into Kind before deploying.
-Recreating the Kind cluster after loading a custom OASF image will discard it, so create the cluster once and deploy with Helm.</p>
+<h4 id="using-a-local-oasf-schema">Using a Local OASF Schema</h4>
+<p>The OASF subchart runs one <code>oasf-server</code> image for every schema version and mounts each version's schema from a <code>ghcr.io/agntcy/oasf-schema:&lt;version&gt;</code> image.
+To serve a schema that is not released yet (e.g., <code>1.2.0-dev</code> from a checkout of <a href="https://github.com/agntcy/oasf">agntcy/oasf</a>), build it as an <code>oasf-schema</code> image and load the image into Kind before deploying.
+Recreating the Kind cluster after loading the image will discard it, so create the cluster once and deploy with Helm.</p>
 <p>Follow the steps below:</p>
 <ol>
 <li>
@@ -3137,26 +3138,25 @@ task<span class="w"> </span>build
 <p>Build Directory images before deploying. See <a href="../dir-deployment-kubernetes/">Kubernetes Deployment</a> for the full SPIRE and Helm setup.</p>
 </li>
 <li>
-<p>Build your local OASF image with the <code>latest</code> tag</p>
-<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/oasf/server
-task<span class="w"> </span>build
+<p>Build the schema image from your OASF checkout</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/oasf
+task<span class="w"> </span>build:schema<span class="w"> </span><span class="nv">SCHEMA_IMAGE_TAG</span><span class="o">=</span><span class="m">1</span>.2.0-dev
 </code></pre></div>
 </li>
 <li>
-<p>Load the OASF image into Kind</p>
-<div class="highlight"><pre><span></span><code>kind<span class="w"> </span>load<span class="w"> </span>docker-image<span class="w"> </span>ghcr.io/agntcy/oasf-server:latest<span class="w"> </span>--name<span class="w"> </span>agntcy-cluster
+<p>Load the schema image into Kind</p>
+<div class="highlight"><pre><span></span><code>kind<span class="w"> </span>load<span class="w"> </span>docker-image<span class="w"> </span>ghcr.io/agntcy/oasf-schema:1.2.0-dev<span class="w"> </span>--name<span class="w"> </span>agntcy-cluster
 </code></pre></div>
 </li>
 <li>
-<p>Configure <code>values.yaml</code> to use the local image:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">oasf</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">image</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">repository</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ghcr.io/agntcy/oasf-server</span>
-<span class="w">    </span><span class="nt">versions</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">server</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">latest</span>
-<span class="w">        </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.9.0-dev</span>
-<span class="w">        </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<p>Configure <code>values.yaml</code> to serve the local schema:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiserver</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">oasf</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">schema</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">versions</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.2.0-dev</span>
+<span class="w">          </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </code></pre></div>
 </li>
 <li>
@@ -3170,9 +3170,9 @@ task<span class="w"> </span>build
 </ol>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>If you update the local OASF image, reload it into Kind and restart the deployment:</p>
-<div class="highlight"><pre><span></span><code>kind<span class="w"> </span>load<span class="w"> </span>docker-image<span class="w"> </span>ghcr.io/agntcy/oasf-server:latest<span class="w"> </span>--name<span class="w"> </span>agntcy-cluster
-kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/dir-oasf-0-9-0-dev<span class="w"> </span>-n<span class="w"> </span>dir-server
+<p>If you rebuild the schema image, reload it into Kind and restart the deployment:</p>
+<div class="highlight"><pre><span></span><code>kind<span class="w"> </span>load<span class="w"> </span>docker-image<span class="w"> </span>ghcr.io/agntcy/oasf-schema:1.2.0-dev<span class="w"> </span>--name<span class="w"> </span>agntcy-cluster
+kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/dir-oasf-1-2-0-dev<span class="w"> </span>-n<span class="w"> </span>dir-server
 </code></pre></div>
 </div>
 <h3 id="related-documentation">Related Documentation</h3>
