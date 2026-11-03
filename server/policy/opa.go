@@ -172,6 +172,7 @@ func stateAsInput(state *policyv1.RecordState) (map[string]any, error) {
 // answer them, which is the same reason stateAsInput leaves an absent
 // indexed_at out rather than encoding a zero: a rule reading it is undefined
 // rather than comparing against 1970.
+
 // verdictsAsInput encodes the verdict map the way the rest of the input is
 // encoded, so that a Rego policy reads VerdictStatus as its name rather than
 // as a number.

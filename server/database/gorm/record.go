@@ -340,10 +340,12 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
 	return cids, nil
 }
 
-// GetRecordIndexedAt returns when cid was first indexed, which is
-// records.created_at: the row this node wrote, not the created_at the record's
-// publisher chose. A CID that is not indexed returns the zero time and no
-// error, because the caller decides what an unindexed record means.
+// GetRecordIndexedAt returns when cid was indexed, which is records.created_at:
+// the row this node wrote, not the created_at the record's publisher chose. A
+// record that prune removed and the reconciler indexed again gets a fresh row,
+// so this is the current row's time and not necessarily the first one. A CID
+// that is not indexed returns the zero time and no error, because the caller
+// decides what an unindexed record means.
 //
 // Selected rather than loaded: the row is wanted for one column, and its
 // associations are not.
