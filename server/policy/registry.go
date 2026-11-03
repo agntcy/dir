@@ -311,9 +311,8 @@ func evaluationPolicyIDs(evaluations policyconfig.Evaluations) []string {
 // Nothing downstream has it: a verdict names a policy and a version, and the
 // expressions that reached it are gone by then.
 //
-// l is the layer the policy was configured in. Only CEL needs it today,
-// because it is the only provider that compiles its policy here and so the
-// only one that can reject reading the other layer's inputs at load time.
+// l is the layer the policy was configured in. A provider that compiles its
+// policy rejects reading the other layer's inputs at load time.
 // evaluationIDs are the configured evaluation policies a verdict key may name.
 func newValidator(ctx context.Context, l layer, name string, p provider, policyDir string, evaluationIDs []string) (compiled, error) {
 	switch name {
@@ -340,7 +339,7 @@ func newValidator(ctx context.Context, l layer, name string, p provider, policyD
 			readsRecord: v.readsRecord,
 		}, nil
 	case policyconfig.ProviderOPA:
-		v, err := newOPAValidator(ctx, policyDir, p.file)
+		v, err := newOPAValidator(ctx, policyDir, p.file, l, evaluationIDs)
 		if err != nil {
 			return compiled{}, fmt.Errorf("failed to initialize OPA validator: %w", err)
 		}

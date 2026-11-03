@@ -41,7 +41,7 @@ func TestNewOPAValidator_AllowAndDeny(t *testing.T) {
 	t.Parallel()
 
 	dir := writePolicy(t, "require-name.rego", allowIfNamed)
-	v, err := newOPAValidator(context.Background(), dir, "require-name.rego")
+	v, err := newOPAValidator(context.Background(), dir, "require-name.rego", layerEvaluation, nil)
 	require.NoError(t, err)
 
 	ok, msgs, warnings, err := v.ValidateEvaluation(context.Background(), &policyv1.RecordState{Record: mustStruct(t, map[string]any{"name": "agent"})})
@@ -72,7 +72,7 @@ allow if {
 `
 
 	dir := writePolicy(t, "require-state.rego", src)
-	v, err := newOPAValidator(context.Background(), dir, "require-state.rego")
+	v, err := newOPAValidator(context.Background(), dir, "require-state.rego", layerEvaluation, nil)
 	require.NoError(t, err)
 
 	state := &policyv1.RecordState{
@@ -90,14 +90,40 @@ allow if {
 	require.True(t, ok, msgs)
 }
 
+// A policy is loaded for one layer and can only answer for that layer, so
+// asking it the other question fails the validator rather than the record.
+func TestOPAValidator_RejectsWrongLayer(t *testing.T) {
+	t.Parallel()
+
+	dir := writePolicy(t, "allow.rego", allowIfNamed)
+	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
+
+	op, err := newOPAValidator(context.Background(), dir, "allow.rego", layerOperation, nil)
+	require.NoError(t, err)
+
+	ok, msgs, _, err := op.ValidateEvaluation(context.Background(), recordState(record))
+	require.ErrorContains(t, err, "cannot produce a verdict")
+	require.False(t, ok)
+	require.Empty(t, msgs, "a failed validator reports nothing about the record")
+
+	eval, err := newOPAValidator(context.Background(), dir, "allow.rego", layerEvaluation, nil)
+	require.NoError(t, err)
+
+	ok, msgs, _, err = eval.ValidateOperation(context.Background(),
+		operationInput(policyconfig.OpPush, record))
+	require.ErrorContains(t, err, "cannot decide an operation")
+	require.False(t, ok)
+	require.Empty(t, msgs, "a failed validator reports nothing about the record")
+}
+
 func TestNewOPAValidator_RequiresDirAndFile(t *testing.T) {
 	t.Parallel()
 
-	_, err := newOPAValidator(context.Background(), "", "policy.rego")
+	_, err := newOPAValidator(context.Background(), "", "policy.rego", layerEvaluation, nil)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "policy directory is required")
 
-	_, err = newOPAValidator(context.Background(), t.TempDir(), "../x.rego")
+	_, err = newOPAValidator(context.Background(), t.TempDir(), "../x.rego", layerEvaluation, nil)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "must be a filename")
 }
