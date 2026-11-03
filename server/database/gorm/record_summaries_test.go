@@ -5,6 +5,7 @@ package gorm
 
 import (
 	"testing"
+	"time"
 
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	"github.com/agntcy/dir/server/types"
@@ -219,4 +220,132 @@ func TestListRecordSummaries_JoinFilterWithPopularitySort(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, hasMore)
 	assert.Equal(t, []string{recordQueryCID(1)}, summaryCIDs(page))
+}
+
+// seedTrustRecords stores four records covering the trust and scan states:
+// all good; failed signature, non-owner claim and one unsafe scanner; only a
+// failed scan row; and nothing at all.
+func seedTrustRecords(t *testing.T) *DB {
+	t.Helper()
+
+	db := setupPolicyEvalDB(t)
+	now := time.Now()
+
+	signature := func(cid, status string) []SignatureVerification {
+		return []SignatureVerification{{
+			RecordCID:   cid,
+			SignerKey:   "key-" + cid,
+			Status:      status,
+			ContentType: "application/vnd.oci.image.manifest.v1+json",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		}}
+	}
+	claim := func(cid, role string) []IdentityClaim {
+		return []IdentityClaim{{RecordCID: cid, Role: role, Subject: "acme.com", Status: types.ClaimStatusVerified, VerifiedAt: now}}
+	}
+	scan := func(cid, scanner string, safe bool, status string) {
+		require.NoError(t, db.UpsertScanReport(&ScanReport{
+			RecordCID:   cid,
+			ScannerType: scanner,
+			IsSafe:      safe,
+			MaxSeverity: "NONE",
+			Status:      status,
+		}, types.DefaultScanSchedule()))
+	}
+
+	good, mixed, unscannable, bare := recordQueryCID(1), recordQueryCID(2), recordQueryCID(3), recordQueryCID(4)
+
+	require.NoError(t, db.gormDB.Create(&Record{
+		RecordCID: good, Name: "good", Version: "1",
+		Signatures: signature(good, "verified"), IdentityClaims: claim(good, types.ClaimRoleOwner),
+	}).Error)
+	require.NoError(t, db.gormDB.Create(&Record{
+		RecordCID: mixed, Name: "mixed", Version: "1",
+		Signatures: signature(mixed, "failed"), IdentityClaims: claim(mixed, types.ClaimRoleIdentity),
+	}).Error)
+	require.NoError(t, db.gormDB.Create(&Record{RecordCID: unscannable, Name: "unscannable", Version: "1"}).Error)
+	require.NoError(t, db.gormDB.Create(&Record{RecordCID: bare, Name: "bare", Version: "1"}).Error)
+
+	scan(good, "MCP", true, types.ScanStatusCompleted)
+	scan(mixed, "MCP", true, types.ScanStatusCompleted)
+	scan(mixed, "SKILL", false, types.ScanStatusPartial)
+	// A failed row carries is_safe = true (the column is NOT NULL) but is no verdict.
+	scan(unscannable, "MCP", true, types.ScanStatusFailed)
+
+	return db
+}
+
+func TestListRecordSummaries_TrustAndScan(t *testing.T) {
+	db := seedTrustRecords(t)
+
+	summaries, _, err := db.ListRecordSummaries(types.WithLimit(10))
+	require.NoError(t, err)
+	require.Len(t, summaries, 4)
+
+	byName := map[string]*searchv1.RecordSummary{}
+	for _, s := range summaries {
+		byName[s.GetName()] = s
+	}
+
+	tests := []struct {
+		name     string
+		trusted  bool
+		verified bool
+		safe     *bool
+	}{
+		{name: "good", trusted: true, verified: true, safe: new(true)},
+		{name: "mixed", trusted: false, verified: false, safe: new(false)},
+		{name: "unscannable"},
+		{name: "bare"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := byName[tt.name]
+			require.NotNil(t, s)
+			assert.Equal(t, tt.trusted, s.GetTrusted(), "trusted")
+			assert.Equal(t, tt.verified, s.GetVerified(), "verified")
+			assert.Equal(t, tt.safe, s.Safe, "safe")
+		})
+	}
+}
+
+// TestListRecordSummaries_TrustAgreesWithFilters checks that each field
+// selects exactly the records its query filter returns.
+func TestListRecordSummaries_TrustAgreesWithFilters(t *testing.T) {
+	db := seedTrustRecords(t)
+
+	all, _, err := db.ListRecordSummaries(types.WithLimit(10))
+	require.NoError(t, err)
+
+	matching := func(keep func(*searchv1.RecordSummary) bool) []string {
+		var cids []string
+
+		for _, s := range all {
+			if keep(s) {
+				cids = append(cids, s.GetCid())
+			}
+		}
+
+		return cids
+	}
+
+	tests := []struct {
+		name   string
+		filter types.FilterOption
+		keep   func(*searchv1.RecordSummary) bool
+	}{
+		{"trusted", types.WithTrusted(true), func(s *searchv1.RecordSummary) bool { return s.GetTrusted() }},
+		{"not trusted", types.WithTrusted(false), func(s *searchv1.RecordSummary) bool { return !s.GetTrusted() }},
+		{"verified", types.WithVerified(true), func(s *searchv1.RecordSummary) bool { return s.GetVerified() }},
+		{"safe", types.WithScanSafe(true), func(s *searchv1.RecordSummary) bool { return s.Safe != nil && s.GetSafe() }},
+		{"unsafe", types.WithScanSafe(false), func(s *searchv1.RecordSummary) bool { return s.Safe != nil && !s.GetSafe() }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			filtered, _, err := db.ListRecordSummaries(tt.filter, types.WithLimit(10))
+			require.NoError(t, err)
+			assert.ElementsMatch(t, matching(tt.keep), summaryCIDs(filtered))
+		})
+	}
 }
