@@ -72,6 +72,17 @@ func TestFromPeer_EmptyLeavesItUnset(t *testing.T) {
 	require.Nil(t, unset.GetContext().SourcePeerId)
 }
 
+// pullInput builds an input without applying options, so an option has to
+// survive one that carries no Context rather than dereference it.
+func TestFromPeer_NoContextDoesNotPanic(t *testing.T) {
+	t.Parallel()
+
+	input := &policyv1.OperationInput{}
+
+	require.NotPanics(t, func() { FromPeer("12D3KooWSomePeer")(input) })
+	require.Nil(t, input.GetContext())
+}
+
 // A caller that holds no row passes the zero time rather than saying the
 // record was indexed at the epoch, so the policy reads an absence.
 func TestIndexedAt_ZeroLeavesItUnset(t *testing.T) {

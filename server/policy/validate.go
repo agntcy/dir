@@ -71,6 +71,12 @@ func FromPeer(id string) DecideOption {
 			return
 		}
 
+		// Not every input is built through operationInput: pullInput has no
+		// options to apply, so an input without a Context can reach an option.
+		if input.GetContext() == nil {
+			return
+		}
+
 		input.Context.SourcePeerId = &id
 	}
 }
