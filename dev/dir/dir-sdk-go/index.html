@@ -3095,6 +3095,10 @@ each full record from the content store. The response includes the total number
 of matches and whether another page exists. The default page size is 50; requests
 above 100 are capped at 100. To fetch the next page, pass the previous offset
 plus the number of returned records.</p>
+<p>Each summary also reports trust and scan status without extra calls:
+<code>GetTrusted()</code> is true when a signature passed verification, <code>GetVerified()</code>
+when the ownership claim was verified, and <code>Safe</code> is nil when no scanner reached
+a verdict, otherwise whether every scanner reported the record safe.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nx">searchv1</span><span class="w"> </span><span class="s">&quot;github.com/agntcy/dir/api/search/v1&quot;</span>
 
 <span class="nx">limit</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">uint32</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
