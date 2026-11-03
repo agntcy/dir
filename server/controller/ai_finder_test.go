@@ -5,7 +5,9 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/url"
 	"sync"
 	"testing"
 
@@ -20,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // errNotImplemented is returned by fakeStoreAPI stub methods that are not
@@ -32,6 +35,9 @@ type fakeCatalogDB struct {
 	entries []*catalogv1.CatalogEntry
 	tags    []*catalogv1.CatalogTag
 	err     error
+	// listErr fails only GetCatalogEntries, leaving the preceding
+	// CountCatalogEntries call to succeed.
+	listErr error
 	calls   int
 	// recordCIDs is returned by GetRecordCIDs, keyed by the query value the
 	// search fan-out asked for. The "" key answers any unmatched query.
@@ -103,6 +109,10 @@ func (f *fakeCatalogDB) GetCatalogEntries(opts ...types.CatalogQueryOption) ([]*
 		return nil, false, f.err
 	}
 
+	if f.listErr != nil {
+		return nil, false, f.listErr
+	}
+
 	entries := f.entries
 
 	// Honor WithCIDs so hydration tests (and GetAgent) see only the requested
@@ -164,7 +174,7 @@ func (f *fakeCatalogDB) ListCatalogTags() ([]*catalogv1.CatalogTag, error) {
 }
 
 func entry(id string) *catalogv1.CatalogEntry {
-	return &catalogv1.CatalogEntry{Identifier: id, DisplayName: id, MediaType: "application/a2a-agent-card+json"}
+	return &catalogv1.CatalogEntry{Identifier: id, DisplayName: id, Type: "application/a2a-agent-card+json"}
 }
 
 func TestListAgents_DefaultsAndResults(t *testing.T) {
@@ -535,14 +545,147 @@ func TestClampPageSize(t *testing.T) {
 }
 
 func TestWellKnown(t *testing.T) {
-	ctrl := NewAIFinderController("hostId-name", &fakeCatalogDB{}, servesEverything(), config.HTTPGatewayConfig{}, nil)
+	ctrl := NewAIFinderController("hostId-name", &fakeCatalogDB{}, servesEverything(), config.HTTPGatewayConfig{
+		PublicURL: "https://ai-catalog.example",
+	}, nil)
 
 	resp, err := ctrl.GetWellKnownCatalog(t.Context(), nil)
 	require.NoError(t, err)
 
-	assert.Contains(t, resp.GetCatalog().GetHost().GetTrustManifest().GetIdentity(), "hostId-name")
-	assert.Len(t, resp.GetCatalog().GetCollections(), 4)
-	assert.Empty(t, resp.GetCatalog().GetEntries())
+	catalog := resp.GetCatalog()
+	require.NotNil(t, catalog)
+	assert.Equal(t, wellKnownSpecVersion, catalog.GetSpecVersion())
+	assert.Equal(t, wellKnownHostDisplayName, catalog.GetHost().GetDisplayName())
+	assert.Equal(t, "https://ai-catalog.example", catalog.GetHost().GetIdentifier())
+	require.Len(t, catalog.GetEntries(), 4)
+
+	expected := map[string]struct{ filter, identifier string }{
+		"A2A Agents":          {catalogv1.ProtocolA2ACardJsonMediaType, "urn:air:org.agntcy:catalog:a2a"},
+		"MCP Servers":         {catalogv1.ProtocolMCPCardJsonMediaType, "urn:air:org.agntcy:catalog:mcp"},
+		"Agent Skills":        {catalogv1.ProtocolAgentSkillsMdMediaType, "urn:air:org.agntcy:catalog:skill"},
+		"Agent Skill Bundles": {catalogv1.ProtocolAgentSkillsBundleMediaType, "urn:air:org.agntcy:catalog:skill-bundle"},
+	}
+
+	for _, entry := range catalog.GetEntries() {
+		want, ok := expected[entry.GetDisplayName()]
+		require.True(t, ok, "unexpected nested catalog %q", entry.GetDisplayName())
+		assert.Equal(t, catalogv1.CatalogMediaType, entry.GetType())
+		assert.Equal(t, want.identifier, entry.GetIdentifier())
+
+		nestedURL, err := url.Parse(entry.GetUrl())
+		require.NoError(t, err)
+		assert.Equal(t, "/v1/catalog", nestedURL.Path)
+		assert.Equal(t, "type="+want.filter, nestedURL.Query().Get("filter"))
+		delete(expected, entry.GetDisplayName())
+	}
+
+	assert.Empty(t, expected)
+	assertAICatalogWire(t, catalog)
+}
+
+func TestGetCatalog(t *testing.T) {
+	db := &fakeCatalogDB{entries: []*catalogv1.CatalogEntry{entry("a"), entry("b")}}
+	ctrl := NewAIFinderController("hostId", db, servesEverything(), config.HTTPGatewayConfig{
+		PublicURL: "https://ai-catalog.example",
+	}, nil)
+
+	resp, err := ctrl.GetCatalog(context.Background(), &catalogv1.GetCatalogRequest{})
+	require.NoError(t, err)
+
+	catalog := resp.GetCatalog()
+	require.NotNil(t, catalog)
+	assert.Equal(t, wellKnownSpecVersion, catalog.GetSpecVersion())
+	assert.Equal(t, wellKnownHostDisplayName, catalog.GetHost().GetDisplayName())
+	require.Len(t, catalog.GetEntries(), 2)
+	assert.Equal(t, "a", catalog.GetEntries()[0].GetIdentifier())
+	_, hasPaging := catalog.GetExtensions()[catalogv1.CatalogPagingExtensionKey]
+	assert.False(t, hasPaging)
+	assertAICatalogWire(t, catalog)
+}
+
+// GetCatalog is reachable over gRPC with no request message, and over the
+// gateway for a store that has nothing to publish yet; both must still yield
+// a well-formed, empty catalog rather than a nil entries list.
+func TestGetCatalog_NilRequestAndEmptyStore(t *testing.T) {
+	ctrl := NewAIFinderController("hostId", &fakeCatalogDB{}, servesEverything(), config.HTTPGatewayConfig{}, nil)
+
+	resp, err := ctrl.GetCatalog(context.Background(), nil)
+	require.NoError(t, err)
+
+	catalog := resp.GetCatalog()
+	require.NotNil(t, catalog)
+	assert.Equal(t, wellKnownSpecVersion, catalog.GetSpecVersion())
+	assert.NotNil(t, catalog.GetEntries())
+	assert.Empty(t, catalog.GetEntries())
+	assert.Empty(t, catalog.GetExtensions())
+
+	// An empty catalog must still marshal with an entries field present.
+	raw, err := protojson.Marshal(catalog)
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), "specVersion")
+}
+
+func TestGetCatalog_DBError(t *testing.T) {
+	ctrl := NewAIFinderController("hostId", &fakeCatalogDB{err: assert.AnError}, servesEverything(), config.HTTPGatewayConfig{}, nil)
+
+	_, err := ctrl.GetCatalog(context.Background(), &catalogv1.GetCatalogRequest{})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestGetCatalog_ListError(t *testing.T) {
+	db := &fakeCatalogDB{entries: []*catalogv1.CatalogEntry{entry("a")}, listErr: assert.AnError}
+	ctrl := NewAIFinderController("hostId", db, servesEverything(), config.HTTPGatewayConfig{}, nil)
+
+	_, err := ctrl.GetCatalog(context.Background(), &catalogv1.GetCatalogRequest{})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestCatalogEndpoints_CanceledContext(t *testing.T) {
+	ctrl := NewAIFinderController("hostId", &fakeCatalogDB{}, servesEverything(), config.HTTPGatewayConfig{}, nil)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := ctrl.GetWellKnownCatalog(ctx, nil)
+	require.Error(t, err)
+	assert.Equal(t, codes.Canceled, status.Code(err))
+
+	_, err = ctrl.GetCatalog(ctx, &catalogv1.GetCatalogRequest{})
+	require.Error(t, err)
+	assert.Equal(t, codes.Canceled, status.Code(err))
+}
+
+func assertAICatalogWire(t *testing.T, catalog *catalogv1.AICatalog) {
+	t.Helper()
+
+	raw, err := protojson.Marshal(catalog)
+	require.NoError(t, err)
+
+	var doc map[string]any
+	require.NoError(t, json.Unmarshal(raw, &doc))
+	assert.Equal(t, wellKnownSpecVersion, doc["specVersion"])
+	assert.NotEmpty(t, doc["entries"])
+	_, hasCollections := doc["collections"]
+	assert.False(t, hasCollections)
+}
+
+func TestGetCatalog_PagingExtension(t *testing.T) {
+	entries := []*catalogv1.CatalogEntry{entry("a"), entry("b"), entry("c")}
+	db := &fakeCatalogDB{entries: entries}
+	ctrl := NewAIFinderController("hostId", db, servesEverything(), config.HTTPGatewayConfig{}, nil)
+
+	resp, err := ctrl.GetCatalog(context.Background(), &catalogv1.GetCatalogRequest{PageSize: 2})
+	require.NoError(t, err)
+
+	catalog := resp.GetCatalog()
+	require.Len(t, catalog.GetEntries(), 2)
+	paging, hasPaging := catalog.GetExtensions()[catalogv1.CatalogPagingExtensionKey]
+	require.True(t, hasPaging)
+	require.NotNil(t, paging)
+	assert.NotEmpty(t, paging.GetStructValue().AsMap()["nextPageToken"])
+	assertAICatalogWire(t, catalog)
 }
 
 // fakeStoreAPI implements types.StoreAPI for testing.

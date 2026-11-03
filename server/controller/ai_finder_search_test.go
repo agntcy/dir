@@ -230,6 +230,6 @@ func TestSearchAgents_SearchFailureDegradesRatherThanFails(t *testing.T) {
 }
 
 func TestCatalogEntryCID(t *testing.T) {
-	assert.Equal(t, "bafyabc", catalogEntryCID(&catalogv1.CatalogEntry{Identifier: "urn:ai:org.agntcy:cid:bafyabc"}))
+	assert.Equal(t, "bafyabc", catalogEntryCID(&catalogv1.CatalogEntry{Identifier: "urn:air:org.agntcy:cid:bafyabc"}))
 	assert.Equal(t, "bare", catalogEntryCID(&catalogv1.CatalogEntry{Identifier: "bare"}))
 }

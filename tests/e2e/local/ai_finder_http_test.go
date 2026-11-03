@@ -63,7 +63,7 @@ func (r searchResponse) cids() []string {
 }
 
 // entryCID recovers the record CID from a catalog entry identifier URN
-// ("urn:ai:<host>:cid:<cid>"), returning the input unchanged when it is not a URN.
+// ("urn:air:<host>:cid:<cid>"), returning the input unchanged when it is not a URN.
 func entryCID(identifier string) string {
 	if _, after, ok := strings.Cut(identifier, ":cid:"); ok {
 		return after

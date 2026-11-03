@@ -21,13 +21,14 @@ import (
 	httpbodypb "google.golang.org/genproto/googleapis/api/httpbody"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 var aiFinderLogger = logging.Logger("controller/ai-finder")
 
 const (
 	// wellKnownSpecVersion is the AI Catalog spec version embedded in
-	// the served WellKnownCatalog payload.
+	// the served well-known AICatalog payload.
 	wellKnownSpecVersion = "1.0"
 
 	// wellKnownHostDisplayName is the human-readable name for the
@@ -49,7 +50,7 @@ type aiFinderDatabaseAPI interface {
 }
 
 // aiFinderController adapts the AI Finder query language to the catalog query
-// layer. GetWellKnownCatalog is served by the embedded Unimplemented server.
+// layer.
 type aiFinderController struct {
 	catalogv1.UnimplementedAIFinderServiceServer
 
@@ -101,53 +102,9 @@ func (c *aiFinderController) ListAgents(ctx context.Context, req *catalogv1.List
 
 	aiFinderLogger.Debug("ListAgents called", "filter", req.GetFilter(), "order_by", req.GetOrderBy(), "page_size", req.GetPageSize())
 
-	parsedFilter, err := parseAgentFilter(req.GetFilter())
+	entries, nextPageToken, totalCount, err := c.listCatalogPage(ctx, req.GetFilter(), req.GetOrderBy(), req.GetPageSize(), req.GetPageToken())
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid filter: %v", err)
-	}
-
-	// publisherId is part of the grammar but not yet indexed.
-	if len(parsedFilter.PublisherIDs) > 0 {
-		return nil, status.Error(codes.Unimplemented, "publisherId filter is not yet supported") //nolint:wrapcheck
-	}
-
-	order, err := parseOrderBy(req.GetOrderBy())
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid order_by: %v", err)
-	}
-
-	offset, err := decodePageToken(req.GetPageToken())
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid page_token: %v", err)
-	}
-
-	pageSize := int(clampPageSize(req.GetPageSize()))
-
-	opts, ok := buildCatalogFilterOptions(parsedFilter, order, pageSize, offset)
-	if !ok {
-		// type= matched no indexed module: zero rows, not an error.
-		return &catalogv1.ListAgentsResponse{}, nil
-	}
-
-	totalCount, err := c.db.CountCatalogEntries(opts...)
-	if err != nil {
-		aiFinderLogger.Error("failed to count catalog entries", "error", err)
-
-		return nil, status.Error(codes.Internal, "failed to count catalog entries") //nolint:wrapcheck
-	}
-
-	entries, hasMore, err := c.db.GetCatalogEntries(opts...)
-	if err != nil {
-		aiFinderLogger.Error("failed to list catalog entries", "error", err)
-
-		return nil, status.Error(codes.Internal, "failed to list catalog entries") //nolint:wrapcheck
-	}
-
-	var nextPageToken string
-	if hasMore {
-		// Advance by the page size: the number of records consumed,
-		// regardless of how many projected to an entry.
-		nextPageToken = encodePageToken(offset + pageSize)
+		return nil, err
 	}
 
 	return &catalogv1.ListAgentsResponse{
@@ -176,53 +133,70 @@ func (c *aiFinderController) ListTags(ctx context.Context, _ *catalogv1.ListTags
 	return &catalogv1.ListTagsResponse{Tags: tags}, nil
 }
 
-// GetWellKnownCatalog returns a well-known catalog of agents. This is intended to be used
-// for delegated discovery and returns catalog collections rather than catalog entries since
-// there may be many entries.
+// GetWellKnownCatalog returns a well-known catalog of agents. Nested-catalog
+// entries point at filtered GET /v1/catalog documents rather than listing
+// every record inline.
 func (c *aiFinderController) GetWellKnownCatalog(ctx context.Context, _ *catalogv1.GetWellKnownCatalogRequest) (*catalogv1.GetWellKnownCatalogResponse, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, status.Errorf(codes.Canceled, "%v", err)
+	}
+
 	return &catalogv1.GetWellKnownCatalogResponse{
-		Catalog: &catalogv1.WellKnownCatalog{
+		Catalog: &catalogv1.AICatalog{
 			SpecVersion: wellKnownSpecVersion,
-			Host: &catalogv1.HostInfo{
-				DisplayName: wellKnownHostDisplayName,
-				Identifier:  new(c.cfg.PublicURL),
-				TrustManifest: &catalogv1.TrustManifest{
-					Identity:     catalogv1.GetCatalogUrnFor("host", c.hostId),
-					IdentityType: new("did"),
-					TrustSchema: &catalogv1.TrustSchema{
-						Identifier: "https://ai-catalog.io/spec/",
-						Version:    catalogv1.CatalogSpecVersion,
-					},
-				},
-			},
-			Collections: []*catalogv1.CatalogCollection{
-				{
-					DisplayName: "A2A Agents",
-					Url:         c.collectionURL(catalogv1.ProtocolA2ACardJsonMediaType),
-					Description: new("Agents that publish an A2A agent card."),
-					MediaType:   new(catalogv1.ProtocolA2ACardJsonMediaType),
-				},
-				{
-					DisplayName: "MCP Servers",
-					Url:         c.collectionURL(catalogv1.ProtocolMCPCardJsonMediaType),
-					Description: new("Agents that expose an MCP server connection."),
-					MediaType:   new(catalogv1.ProtocolMCPCardJsonMediaType),
-				},
-				{
-					DisplayName: "Agent Skills",
-					Url:         c.collectionURL(catalogv1.ProtocolAgentSkillsMdMediaType),
-					Description: new("Agents that publish a reusable Agent Skill definition as SKILL.md."),
-					MediaType:   new(catalogv1.ProtocolAgentSkillsMdMediaType),
-				},
-				{
-					DisplayName: "Agent Skill Bundles",
-					Url:         c.collectionURL(catalogv1.ProtocolAgentSkillsBundleMediaType),
-					Description: new("Agents that publish an Agent Skill directory bundled as .gzip."),
-					MediaType:   new(catalogv1.ProtocolAgentSkillsBundleMediaType),
-				},
+			Host:        c.catalogHost(),
+			Entries: []*catalogv1.CatalogEntry{
+				c.nestedCatalogEntry("a2a", "A2A Agents",
+					"Agents that publish an A2A agent card.",
+					catalogv1.ProtocolA2ACardJsonMediaType),
+				c.nestedCatalogEntry("mcp", "MCP Servers",
+					"Agents that expose an MCP server connection.",
+					catalogv1.ProtocolMCPCardJsonMediaType),
+				c.nestedCatalogEntry("skill", "Agent Skills",
+					"Agents that publish a reusable Agent Skill definition as SKILL.md.",
+					catalogv1.ProtocolAgentSkillsMdMediaType),
+				c.nestedCatalogEntry("skill-bundle", "Agent Skill Bundles",
+					"Agents that publish an Agent Skill directory bundled as .gzip.",
+					catalogv1.ProtocolAgentSkillsBundleMediaType),
 			},
 		},
 	}, nil
+}
+
+// GetCatalog returns an AI Catalog document for one page of entries matching
+// the same filter, order, and paging arguments as ListAgents.
+func (c *aiFinderController) GetCatalog(ctx context.Context, req *catalogv1.GetCatalogRequest) (*catalogv1.GetCatalogResponse, error) {
+	if req == nil {
+		req = &catalogv1.GetCatalogRequest{}
+	}
+
+	aiFinderLogger.Debug("GetCatalog called", "filter", req.GetFilter(), "order_by", req.GetOrderBy(), "page_size", req.GetPageSize())
+
+	entries, nextPageToken, _, err := c.listCatalogPage(ctx, req.GetFilter(), req.GetOrderBy(), req.GetPageSize(), req.GetPageToken())
+	if err != nil {
+		return nil, err
+	}
+
+	if entries == nil {
+		entries = []*catalogv1.CatalogEntry{}
+	}
+
+	catalog := &catalogv1.AICatalog{
+		SpecVersion: wellKnownSpecVersion,
+		Host:        c.catalogHost(),
+		Entries:     entries,
+		Extensions:  map[string]*structpb.Value{},
+	}
+
+	if nextPageToken != "" {
+		catalog.Extensions[catalogv1.CatalogPagingExtensionKey] = structpb.NewStructValue(&structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"nextPageToken": structpb.NewStringValue(nextPageToken),
+			},
+		})
+	}
+
+	return &catalogv1.GetCatalogResponse{Catalog: catalog}, nil
 }
 
 // GetAgent returns a single CatalogEntry by CID.
@@ -337,8 +311,34 @@ func (c *aiFinderController) ExportAgent(ctx context.Context, req *catalogv1.Exp
 	}, nil
 }
 
-// collectionURL builds an absolute URL pointing at GET /v1/agents
-// constrained to a single AI Catalog media type. The filter value is
+// catalogHost identifies the directory operator on served AI Catalog documents.
+func (c *aiFinderController) catalogHost() *catalogv1.HostInfo {
+	identifier := c.cfg.PublicURL
+	if identifier == "" {
+		identifier = catalogv1.GetCatalogUrnFor("host", c.hostId)
+	}
+
+	return &catalogv1.HostInfo{
+		DisplayName: wellKnownHostDisplayName,
+		Identifier:  &identifier,
+	}
+}
+
+// nestedCatalogEntry is a well-known pointer at a filtered GET /v1/catalog document.
+func (c *aiFinderController) nestedCatalogEntry(name, displayName, description, mediaType string) *catalogv1.CatalogEntry {
+	return &catalogv1.CatalogEntry{
+		Identifier:  catalogv1.GetCatalogUrnFor("catalog", name),
+		DisplayName: displayName,
+		Type:        catalogv1.CatalogMediaType,
+		Description: new(description),
+		Artifact: &catalogv1.CatalogEntry_Url{
+			Url: c.collectionURL(mediaType),
+		},
+	}
+}
+
+// collectionURL builds an absolute URL pointing at GET /v1/catalog
+// constrained to a single AI Catalog type. The filter value is
 // percent-encoded so the URL is safe to embed verbatim in JSON.
 func (c *aiFinderController) collectionURL(mediaType string) string {
 	base := strings.TrimRight(c.cfg.PublicURL, "/")
@@ -346,5 +346,64 @@ func (c *aiFinderController) collectionURL(mediaType string) string {
 	v := url.Values{}
 	v.Set("filter", "type="+mediaType)
 
-	return fmt.Sprintf("%s/v1/agents?%s", base, v.Encode())
+	return fmt.Sprintf("%s/v1/catalog?%s", base, v.Encode())
+}
+
+// listCatalogPage applies the AI Finder browsing grammar and returns one page
+// of catalog entries. A type= filter that matches no indexed module yields an
+// empty page rather than an error.
+func (c *aiFinderController) listCatalogPage(ctx context.Context, filter, orderBy string, pageSize uint32, pageToken string) ([]*catalogv1.CatalogEntry, string, uint32, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, "", 0, status.Errorf(codes.Canceled, "%v", err)
+	}
+
+	parsedFilter, err := parseAgentFilter(filter)
+	if err != nil {
+		return nil, "", 0, status.Errorf(codes.InvalidArgument, "invalid filter: %v", err)
+	}
+
+	// publisherId is part of the grammar but not yet indexed.
+	if len(parsedFilter.PublisherIDs) > 0 {
+		return nil, "", 0, status.Error(codes.Unimplemented, "publisherId filter is not yet supported") //nolint:wrapcheck
+	}
+
+	order, err := parseOrderBy(orderBy)
+	if err != nil {
+		return nil, "", 0, status.Errorf(codes.InvalidArgument, "invalid order_by: %v", err)
+	}
+
+	offset, err := decodePageToken(pageToken)
+	if err != nil {
+		return nil, "", 0, status.Errorf(codes.InvalidArgument, "invalid page_token: %v", err)
+	}
+
+	limit := int(clampPageSize(pageSize))
+
+	opts, ok := buildCatalogFilterOptions(parsedFilter, order, limit, offset)
+	if !ok {
+		return nil, "", 0, nil
+	}
+
+	totalCount, err := c.db.CountCatalogEntries(opts...)
+	if err != nil {
+		aiFinderLogger.Error("failed to count catalog entries", "error", err)
+
+		return nil, "", 0, status.Error(codes.Internal, "failed to count catalog entries") //nolint:wrapcheck
+	}
+
+	entries, hasMore, err := c.db.GetCatalogEntries(opts...)
+	if err != nil {
+		aiFinderLogger.Error("failed to list catalog entries", "error", err)
+
+		return nil, "", 0, status.Error(codes.Internal, "failed to list catalog entries") //nolint:wrapcheck
+	}
+
+	var nextPageToken string
+	if hasMore {
+		// Advance by the page size: the number of records consumed,
+		// regardless of how many projected to an entry.
+		nextPageToken = encodePageToken(offset + limit)
+	}
+
+	return entries, nextPageToken, totalCount, nil
 }

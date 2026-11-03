@@ -141,7 +141,7 @@ var _ = ginkgo.Describe("AI Finder SearchAgents HTTP API", func() {
 			// returning raw CIDs would still satisfy the assertions above.
 			for _, entry := range resp.Results {
 				gomega.Expect(entry.Identifier).To(gomega.ContainSubstring(":cid:"),
-					"entry identifier should be a urn:ai:<host>:cid:<cid> URN")
+					"entry identifier should be a urn:air:<host>:cid:<cid> URN")
 				gomega.Expect(entry.DisplayName).NotTo(gomega.BeEmpty())
 			}
 		})

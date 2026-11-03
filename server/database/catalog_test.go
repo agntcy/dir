@@ -113,8 +113,8 @@ func TestGetCatalogEntries_LeafProjection(t *testing.T) {
 	require.Len(t, entries, 1)
 
 	entry := entries[0]
-	assert.Equal(t, catalogv1.ProtocolA2ACardJsonMediaType, entry.GetMediaType())
-	assert.Equal(t, "urn:ai:org.agntcy:cid:cid-a2a", entry.GetIdentifier())
+	assert.Equal(t, catalogv1.ProtocolA2ACardJsonMediaType, entry.GetType())
+	assert.Equal(t, "urn:air:org.agntcy:cid:cid-a2a", entry.GetIdentifier())
 	assert.Equal(t, "alpha", entry.GetDisplayName())
 	assert.Equal(t, "a alpha agent", entry.GetDescription())
 	assert.NotNil(t, entry.GetData(), "leaf entry should embed module data")
@@ -130,8 +130,8 @@ func TestGetCatalogEntries_ContainerProjection(t *testing.T) {
 	require.Len(t, entries, 1)
 
 	entry := entries[0]
-	assert.Equal(t, catalogv1.CatalogMediaType, entry.GetMediaType())
-	assert.Equal(t, "urn:ai:org.agntcy:cid:cid-both", entry.GetIdentifier())
+	assert.Equal(t, catalogv1.CatalogMediaType, entry.GetType())
+	assert.Equal(t, "urn:air:org.agntcy:cid:cid-both", entry.GetIdentifier())
 	assert.NotNil(t, entry.GetData(), "container entry should embed a nested catalog")
 }
 
@@ -144,7 +144,7 @@ func TestGetCatalogEntries_SkipsUnprojectable(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, hasMore)
 	require.Len(t, entries, 1)
-	assert.Equal(t, "urn:ai:org.agntcy:cid:cid-a2a", entries[0].GetIdentifier())
+	assert.Equal(t, "urn:air:org.agntcy:cid:cid-a2a", entries[0].GetIdentifier())
 }
 
 func TestGetCatalogEntries_Pagination(t *testing.T) {
@@ -342,7 +342,7 @@ func TestGetCatalogEntries_TrustStatusMetadata(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, entries, 1)
 
-	status := entries[0].GetMetadata()[catalogv1.TrustStatusMetadataKey].GetStructValue().AsMap()
+	status := entries[0].GetExtensions()[catalogv1.TrustStatusMetadataKey].GetStructValue().AsMap()
 	assert.Equal(t, true, status["trusted"])
 	assert.Equal(t, true, status["verified"])
 }
@@ -351,7 +351,7 @@ func TestGetCatalogEntries_TrustStatusMetadata(t *testing.T) {
 // it. A failed row leaves the key absent, so the badge stays hidden as it did
 // before failures were persisted; an unsafe verdict must still be shown.
 func TestGetCatalogEntries_ScanManifestExcludesFailedReports(t *testing.T) {
-	const scanResultKey = "agntcy.dir.security.v1.ScanResult"
+	const scanResultKey = catalogv1.ScanResultExtensionKey
 
 	tests := []struct {
 		name        string
@@ -403,7 +403,7 @@ func TestGetCatalogEntries_ScanManifestExcludesFailedReports(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, entries, 1)
 
-			manifest, ok := entries[0].GetMetadata()[scanResultKey]
+			manifest, ok := entries[0].GetExtensions()[scanResultKey]
 			if !tt.wantPresent {
 				assert.False(t, ok, "a failed scan must not render a badge")
 

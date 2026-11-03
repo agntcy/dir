@@ -27,6 +27,7 @@ const (
 	AIFinderService_GetAgent_FullMethodName            = "/agntcy.dir.catalog.v1.AIFinderService/GetAgent"
 	AIFinderService_ExportAgent_FullMethodName         = "/agntcy.dir.catalog.v1.AIFinderService/ExportAgent"
 	AIFinderService_GetWellKnownCatalog_FullMethodName = "/agntcy.dir.catalog.v1.AIFinderService/GetWellKnownCatalog"
+	AIFinderService_GetCatalog_FullMethodName          = "/agntcy.dir.catalog.v1.AIFinderService/GetCatalog"
 	AIFinderService_ListTags_FullMethodName            = "/agntcy.dir.catalog.v1.AIFinderService/ListTags"
 	AIFinderService_ExtractTaxonomy_FullMethodName     = "/agntcy.dir.catalog.v1.AIFinderService/ExtractTaxonomy"
 	AIFinderService_SearchAgents_FullMethodName        = "/agntcy.dir.catalog.v1.AIFinderService/SearchAgents"
@@ -51,9 +52,13 @@ type AIFinderServiceClient interface {
 	// directly into the response body via google.api.HttpBody with an appropriate
 	// Content-Type.
 	ExportAgent(ctx context.Context, in *ExportAgentRequest, opts ...grpc.CallOption) (*httpbody.HttpBody, error)
-	// GetWellKnownCatalog returns the AI Catalog well-known document (host
-	// descriptor, published entries, and dynamic collections) at the RFC 8615 URI.
+	// GetWellKnownCatalog returns the AI Catalog well-known document at the
+	// RFC 8615 URI. The well-known URI serves an ordinary AICatalog.
 	GetWellKnownCatalog(ctx context.Context, in *GetWellKnownCatalogRequest, opts ...grpc.CallOption) (*GetWellKnownCatalogResponse, error)
+	// GetCatalog returns an AI Catalog document for a filtered page of entries.
+	// Nested-catalog entries in the well-known document point here so that
+	// fetching their url yields a document with specVersion and entries.
+	GetCatalog(ctx context.Context, in *GetCatalogRequest, opts ...grpc.CallOption) (*GetCatalogResponse, error)
 	// ListTags returns the distinct catalog tags derived from OASF skills, domains,
 	// and record annotations across the registry.
 	ListTags(ctx context.Context, in *ListTagsRequest, opts ...grpc.CallOption) (*ListTagsResponse, error)
@@ -127,6 +132,16 @@ func (c *aIFinderServiceClient) GetWellKnownCatalog(ctx context.Context, in *Get
 	return out, nil
 }
 
+func (c *aIFinderServiceClient) GetCatalog(ctx context.Context, in *GetCatalogRequest, opts ...grpc.CallOption) (*GetCatalogResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCatalogResponse)
+	err := c.cc.Invoke(ctx, AIFinderService_GetCatalog_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *aIFinderServiceClient) ListTags(ctx context.Context, in *ListTagsRequest, opts ...grpc.CallOption) (*ListTagsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListTagsResponse)
@@ -176,9 +191,13 @@ type AIFinderServiceServer interface {
 	// directly into the response body via google.api.HttpBody with an appropriate
 	// Content-Type.
 	ExportAgent(context.Context, *ExportAgentRequest) (*httpbody.HttpBody, error)
-	// GetWellKnownCatalog returns the AI Catalog well-known document (host
-	// descriptor, published entries, and dynamic collections) at the RFC 8615 URI.
+	// GetWellKnownCatalog returns the AI Catalog well-known document at the
+	// RFC 8615 URI. The well-known URI serves an ordinary AICatalog.
 	GetWellKnownCatalog(context.Context, *GetWellKnownCatalogRequest) (*GetWellKnownCatalogResponse, error)
+	// GetCatalog returns an AI Catalog document for a filtered page of entries.
+	// Nested-catalog entries in the well-known document point here so that
+	// fetching their url yields a document with specVersion and entries.
+	GetCatalog(context.Context, *GetCatalogRequest) (*GetCatalogResponse, error)
 	// ListTags returns the distinct catalog tags derived from OASF skills, domains,
 	// and record annotations across the registry.
 	ListTags(context.Context, *ListTagsRequest) (*ListTagsResponse, error)
@@ -222,6 +241,9 @@ func (UnimplementedAIFinderServiceServer) ExportAgent(context.Context, *ExportAg
 }
 func (UnimplementedAIFinderServiceServer) GetWellKnownCatalog(context.Context, *GetWellKnownCatalogRequest) (*GetWellKnownCatalogResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetWellKnownCatalog not implemented")
+}
+func (UnimplementedAIFinderServiceServer) GetCatalog(context.Context, *GetCatalogRequest) (*GetCatalogResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCatalog not implemented")
 }
 func (UnimplementedAIFinderServiceServer) ListTags(context.Context, *ListTagsRequest) (*ListTagsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListTags not implemented")
@@ -324,6 +346,24 @@ func _AIFinderService_GetWellKnownCatalog_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AIFinderService_GetCatalog_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCatalogRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AIFinderServiceServer).GetCatalog(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AIFinderService_GetCatalog_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AIFinderServiceServer).GetCatalog(ctx, req.(*GetCatalogRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AIFinderService_ListTags_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListTagsRequest)
 	if err := dec(in); err != nil {
@@ -400,6 +440,10 @@ var AIFinderService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetWellKnownCatalog",
 			Handler:    _AIFinderService_GetWellKnownCatalog_Handler,
+		},
+		{
+			MethodName: "GetCatalog",
+			Handler:    _AIFinderService_GetCatalog_Handler,
 		},
 		{
 			MethodName: "ListTags",

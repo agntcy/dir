@@ -25,7 +25,7 @@ const (
 	CatalogMediaType = "application/ai-catalog+json"
 
 	// CatalogHostURN is the authority segment used in entry URNs
-	// ("urn:ai:<host>:cid:<cid>[:<suffix>]").
+	// ("urn:air:<host>:cid:<cid>[:<suffix>]").
 	CatalogHostURN = "org.agntcy"
 
 	// CatalogSpecVersion is the AI Catalog spec version.
@@ -40,7 +40,10 @@ const (
 	// OASF module names.
 	AgentSkillsModuleName = "core/language_model/agentskills"
 
-	TrustStatusMetadataKey = "agntcy.dir.trust.v1.Status"
+	TrustStatusMetadataKey    = "org.agntcy.dir.trust.v1.Status"
+	ScanResultExtensionKey    = "org.agntcy.dir.security.v1.ScanResult"
+	UsageMetricsExtensionKey  = "org.agntcy.dir.usage.v1.Metrics"
+	CatalogPagingExtensionKey = "org.agntcy.dir.catalog.v1.Paging"
 
 	verificationStatusVerified = "verified"
 )
@@ -119,14 +122,14 @@ func WithSignatures(signatures []coretypes.ObjectSignature) ConvertOption {
 	}
 }
 
-// WithScanReports embeds scan report summaries as metadata["scanManifest"] in the entry.
+// WithScanReports embeds scan report summaries as extensions[ScanResultExtensionKey] in the entry.
 func WithScanReports(reports []ScanReportSummary) ConvertOption {
 	return func(opts *convertOptions) {
 		opts.scanReports = reports
 	}
 }
 
-// WithUsageMetrics embeds usage counters as metadata["agntcy.dir.usage.v1.Metrics"] in the entry.
+// WithUsageMetrics embeds usage counters as extensions[UsageMetricsExtensionKey] in the entry.
 func WithUsageMetrics(metrics UsageMetricsData) ConvertOption {
 	return func(opts *convertOptions) {
 		opts.usageMetrics = metrics
@@ -211,8 +214,7 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 			Version:       new(record.GetVersion()),
 			Description:   new(record.GetDescription()),
 			UpdatedAt:     new(record.GetCreatedAt()),
-			MediaType:     entry.GetMediaType(),
-			Type:          entry.GetMediaType(),
+			Type:          entry.GetType(),
 			Artifact:      entry.GetArtifact(),
 			Tags:          append(catalogTags(record), entry.GetTags()...),
 			TrustManifest: trustManifest,
@@ -241,8 +243,7 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 		entries = append(entries, &CatalogEntry{
 			Identifier:  catalogURN(recordCid, suffix),
 			DisplayName: fmt.Sprintf("%s - %s", recordName, projection.Label),
-			MediaType:   entry.GetMediaType(),
-			Type:        entry.GetMediaType(),
+			Type:        entry.GetType(),
 			Artifact:    entry.GetArtifact(),
 			Tags:        entry.GetTags(),
 		})
@@ -268,7 +269,6 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 		Description: new(record.GetDescription()),
 		Version:     new(record.GetVersion()),
 		UpdatedAt:   new(record.GetCreatedAt()),
-		MediaType:   CatalogMediaType,
 		Type:        CatalogMediaType,
 		Tags:        catalogTags(record),
 		Artifact: &CatalogEntry_Data{
@@ -299,8 +299,7 @@ func moduleToCatalogEntry(module coretypes.Module) *CatalogEntry {
 	}
 
 	return &CatalogEntry{
-		MediaType: getModuleMediaType(module, proj),
-		Type:      getModuleMediaType(module, proj),
+		Type: getModuleMediaType(module, proj),
 		Artifact: &CatalogEntry_Data{
 			Data: structpb.NewStructValue(data),
 		},
@@ -418,10 +417,10 @@ func formatLabel(name string) string {
 	return strings.Join(parts, " ")
 }
 
-// catalogURN builds "urn:ai:<host>:cid:<cid>" with an optional ":<suffix>"
+// catalogURN builds "urn:air:<host>:cid:<cid>" with an optional ":<suffix>"
 // used to disambiguate nested entries inside a container.
 func catalogURN(cid, suffix string) string {
-	base := fmt.Sprintf("urn:ai:%s:cid:%s", CatalogHostURN, cid)
+	base := fmt.Sprintf("urn:air:%s:cid:%s", CatalogHostURN, cid)
 	if suffix == "" {
 		return base
 	}
@@ -430,7 +429,7 @@ func catalogURN(cid, suffix string) string {
 }
 
 func GetCatalogUrnFor(values ...string) string {
-	return fmt.Sprintf("urn:ai:%s:%s", CatalogHostURN, strings.Join(values, ":"))
+	return fmt.Sprintf("urn:air:%s:%s", CatalogHostURN, strings.Join(values, ":"))
 }
 
 func catalogSignatures(cid string, signatures []coretypes.ObjectSignature) *TrustManifest {
@@ -450,7 +449,7 @@ func catalogSignatures(cid string, signatures []coretypes.ObjectSignature) *Trus
 		}
 
 		sigDigest := ocidigest.FromBytes(signatureBytes).String()
-		signer := fmt.Sprintf("urn:ai:%s:signer:%s", CatalogHostURN, getSignatureIdentifier(sig))
+		signer := fmt.Sprintf("urn:air:%s:signer:%s", CatalogHostURN, getSignatureIdentifier(sig))
 
 		mediaType := sig.GetContentType()
 		if mediaType == "" {
@@ -466,7 +465,6 @@ func catalogSignatures(cid string, signatures []coretypes.ObjectSignature) *Trus
 		attestations = append(attestations, &Attestation{
 			Type:        "publisher-identity",
 			Uri:         fmt.Sprintf("data:%s;base64,%s", mediaType, base64.StdEncoding.EncodeToString(signatureBytes)),
-			MediaType:   mediaType,
 			Digest:      &sigDigest,
 			Size:        new(uint64(len(signatureBytes))),
 			Description: new(fmt.Sprintf("Verified signature by %s", signer)),
@@ -524,11 +522,11 @@ func injectScanManifest(entry *CatalogEntry, reports []ScanReportSummary) {
 		return
 	}
 
-	if entry.Metadata == nil {
-		entry.Metadata = make(map[string]*structpb.Value)
+	if entry.Extensions == nil {
+		entry.Extensions = make(map[string]*structpb.Value)
 	}
 
-	entry.Metadata["agntcy.dir.security.v1.ScanResult"] = val
+	entry.Extensions[ScanResultExtensionKey] = val
 }
 
 func injectUsageMetrics(entry *CatalogEntry, metrics UsageMetricsData) {
@@ -545,11 +543,11 @@ func injectUsageMetrics(entry *CatalogEntry, metrics UsageMetricsData) {
 		return
 	}
 
-	if entry.Metadata == nil {
-		entry.Metadata = make(map[string]*structpb.Value)
+	if entry.Extensions == nil {
+		entry.Extensions = make(map[string]*structpb.Value)
 	}
 
-	entry.Metadata["agntcy.dir.usage.v1.Metrics"] = val
+	entry.Extensions[UsageMetricsExtensionKey] = val
 }
 
 func injectTrustStatus(entry *CatalogEntry, status *TrustStatus) {
@@ -565,11 +563,11 @@ func injectTrustStatus(entry *CatalogEntry, status *TrustStatus) {
 		return
 	}
 
-	if entry.Metadata == nil {
-		entry.Metadata = make(map[string]*structpb.Value)
+	if entry.Extensions == nil {
+		entry.Extensions = make(map[string]*structpb.Value)
 	}
 
-	entry.Metadata[TrustStatusMetadataKey] = val
+	entry.Extensions[TrustStatusMetadataKey] = val
 }
 
 func objectToStruct(goObj proto.Message) (*structpb.Struct, error) {

@@ -37,11 +37,21 @@ service AIFinderService {
     option (google.api.http) = {get: "/v1/agents/{cid}/export"};
   }
 
-  // GetWellKnownCatalog returns the AI Catalog well-known document (host
-  // descriptor, published entries, and dynamic collections) at the RFC 8615 URI.
+  // GetWellKnownCatalog returns the AI Catalog well-known document at the
+  // RFC 8615 URI. The well-known URI serves an ordinary AICatalog.
   rpc GetWellKnownCatalog(GetWellKnownCatalogRequest) returns (GetWellKnownCatalogResponse) {
     option (google.api.http) = {
       get: "/.well-known/ai-catalog.json"
+      response_body: "catalog"
+    };
+  }
+
+  // GetCatalog returns an AI Catalog document for a filtered page of entries.
+  // Nested-catalog entries in the well-known document point here so that
+  // fetching their url yields a document with specVersion and entries.
+  rpc GetCatalog(GetCatalogRequest) returns (GetCatalogResponse) {
+    option (google.api.http) = {
+      get: "/v1/catalog"
       response_body: "catalog"
     };
   }
@@ -191,10 +201,37 @@ message ExportAgentRequest {
 message GetWellKnownCatalogRequest {}
 
 // GetWellKnownCatalogResponse wraps the document in a named field (buf
-// RPC_RESPONSE_STANDARD_NAME); the gateway emits the bare WellKnownCatalog.
+// RPC_RESPONSE_STANDARD_NAME); the gateway emits the bare AICatalog.
 message GetWellKnownCatalogResponse {
   // The well-known AI Catalog document.
-  WellKnownCatalog catalog = 1 [(buf.validate.field).required = true];
+  AICatalog catalog = 1 [(buf.validate.field).required = true];
+}
+
+// GetCatalogRequest carries the same browsing parameters as ListAgentsRequest.
+// All fields are optional; an empty request returns the first page with
+// server defaults.
+message GetCatalogRequest {
+  // Filter expression: "field=value" clauses joined by AND; comma-separated
+  // values within a field are OR-combined.
+  string filter = 1 [(buf.validate.field).string.max_len = 2048];
+
+  // Sort fields, comma-separated, each optionally suffixed "ASC"/"DESC"
+  // (default ASC), e.g. "created_at DESC, display_name ASC".
+  string order_by = 2 [(buf.validate.field).string.max_len = 256];
+
+  // Maximum entries to return. Default 20, clamped to 100.
+  uint32 page_size = 3 [(buf.validate.field).uint32.lte = 100];
+
+  // Opaque continuation token from a previous call.
+  string page_token = 4 [(buf.validate.field).string.max_len = 1024];
+}
+
+// GetCatalogResponse wraps an AICatalog. The HTTP gateway extracts the
+// "catalog" field via response_body so REST consumers receive the bare
+// AICatalog JSON.
+message GetCatalogResponse {
+  // AI Catalog document for this page of entries.
+  AICatalog catalog = 1 [(buf.validate.field).required = true];
 }
 
 message ListTagsRequest {}

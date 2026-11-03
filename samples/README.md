@@ -48,7 +48,7 @@ $ cd samples/ard-over-ads
 # Run the example application
 $ DIRECTORY_LOGGER_LOG_LEVEL=error go run main.go
 
-Warning: identity verification failed for CID urn:ai:org.agntcy:cid:baeareih4otyowwzp7lao4y6eatxzlxdy734azaekx66r7sgq22dnqbnfo4: error_message:"no verification found"
-Discovered and verified entry: urn:ai:org.agntcy:cid:baeareih4otyowwzp7lao4y6eatxzlxdy734azaekx66r7sgq22dnqbnfo4
-Invoking Agent Skill: urn:ai:org.agntcy:cid:baeareih4otyowwzp7lao4y6eatxzlxdy734azaekx66r7sgq22dnqbnfo4
+Warning: identity verification failed for CID urn:air:org.agntcy:cid:baeareih4otyowwzp7lao4y6eatxzlxdy734azaekx66r7sgq22dnqbnfo4: error_message:"no verification found"
+Discovered and verified entry: urn:air:org.agntcy:cid:baeareih4otyowwzp7lao4y6eatxzlxdy734azaekx66r7sgq22dnqbnfo4
+Invoking Agent Skill: urn:air:org.agntcy:cid:baeareih4otyowwzp7lao4y6eatxzlxdy734azaekx66r7sgq22dnqbnfo4
 ```

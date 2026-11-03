@@ -197,7 +197,7 @@ func (c *aiFinderController) hydrateInRankOrder(cids []string) ([]*catalogv1.Cat
 }
 
 // catalogEntryCID recovers the record CID from a catalog entry's identifier URN
-// ("urn:ai:<host>:cid:<cid>"). Identifiers that are not URNs (e.g. bare CIDs in
+// ("urn:air:<host>:cid:<cid>"). Identifiers that are not URNs (e.g. bare CIDs in
 // tests) are returned unchanged.
 func catalogEntryCID(entry *catalogv1.CatalogEntry) string {
 	id := entry.GetIdentifier()
