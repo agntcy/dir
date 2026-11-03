@@ -65,9 +65,9 @@ To test with a local OASF instance deployed alongside the directory server:
 
 The OASF instance will be deployed as a subchart in the same namespace and automatically configured for multi-version routing via ingress.
 
-#### Using a Locally Built OASF Image
+#### Using a Local OASF Schema
 
-If you want to deploy with a locally built OASF image (e.g., containing `0.9.0-dev` schema files), you need to load the image into Kind **before** deploying. Recreating the Kind cluster after loading a custom OASF image will discard it. Follow these steps:
+The OASF subchart runs one `oasf-server` image for every schema version and mounts each version's schema from a `ghcr.io/agntcy/oasf-schema:<version>` image. To serve a schema that is not released yet (e.g., `1.2.0-dev` from a checkout of [agntcy/oasf](https://github.com/agntcy/oasf)), build it as an `oasf-schema` image and load the image into Kind **before** deploying. Recreating the Kind cluster after loading the image will discard it. Follow these steps:
 
 1. **Create the Kind cluster first**:
    ```bash
@@ -75,27 +75,26 @@ If you want to deploy with a locally built OASF image (e.g., containing `0.9.0-d
    task build
    ```
 
-2. **Build and tag your local OASF image**:
+2. **Build the schema image from your OASF checkout**:
    ```bash
-   cd /path/to/oasf/server
-   docker build -t ghcr.io/agntcy/oasf-server:latest .
+   cd /path/to/oasf
+   task build:schema SCHEMA_IMAGE_TAG=1.2.0-dev
    ```
 
-3. **Load the OASF image into Kind**:
+3. **Load the schema image into Kind**:
    ```bash
-   kind load docker-image ghcr.io/agntcy/oasf-server:latest --name agntcy-cluster
+   kind load docker-image ghcr.io/agntcy/oasf-schema:1.2.0-dev --name agntcy-cluster
    ```
 
-4. **Configure values.yaml** to use the local image:
+4. **Configure values.yaml** to serve the local schema:
    ```yaml
-   oasf:
-     enabled: true
-     image:
-       repository: ghcr.io/agntcy/oasf-server
-       versions:
-         - server: latest
-           schema: 0.9.0-dev
-           default: true
+   apiserver:
+     oasf:
+       enabled: true
+       schema:
+         versions:
+           - schema: 1.2.0-dev
+             default: true
    ```
 
 5. **Deploy with Helm** (without recreating the cluster):
@@ -105,10 +104,10 @@ If you want to deploy with a locally built OASF image (e.g., containing `0.9.0-d
      -n dir-server --create-namespace
    ```
 
-**Note**: If you update the local OASF image, reload it into Kind and restart the deployment:
+**Note**: If you rebuild the schema image, reload it into Kind and restart the deployment:
 ```bash
-kind load docker-image ghcr.io/agntcy/oasf-server:latest --name agntcy-cluster
-kubectl rollout restart deployment/dir-oasf-0-9-0-dev -n dir-server
+kind load docker-image ghcr.io/agntcy/oasf-schema:1.2.0-dev --name agntcy-cluster
+kubectl rollout restart deployment/dir-oasf-1-2-0-dev -n dir-server
 ```
 
 ### Other Configuration Options
