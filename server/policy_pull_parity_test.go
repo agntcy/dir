@@ -75,8 +75,8 @@ func (n parityNode) verdict(t *testing.T, evalStatus string, compliant bool, ver
 func (n parityNode) sqlGate(t *testing.T, mode policyconfig.Mode, cid string) bool {
 	t.Helper()
 
-	served, _, err := servedDatabase(n.db,
-		policyconfig.EnforcementConfig{Fetch: mode, Policies: []string{parityPolicy}}, true, nil)
+	served, _, _, err := wirePolicies(t.Context(),
+		enforcementConfig(policyconfig.EnforcementConfig{Fetch: mode, Policies: []string{parityPolicy}}), n.db, nil)
 	require.NoError(t, err)
 
 	ok, err := served.IsRecordServable(cid)
@@ -93,8 +93,10 @@ func (n parityNode) sqlGate(t *testing.T, mode policyconfig.Mode, cid string) bo
 func (n parityNode) policyGate(t *testing.T, mode policyconfig.Mode, cid string) bool {
 	t.Helper()
 
-	_, enforced, err := servedDatabase(n.db,
-		policyconfig.EnforcementConfig{Fetch: policyconfig.ModeEnforce, Policies: []string{parityPolicy}}, true, nil)
+	_, _, enforced, err := wirePolicies(t.Context(),
+		enforcementConfig(policyconfig.EnforcementConfig{
+			Fetch: policyconfig.ModeEnforce, Policies: []string{parityPolicy},
+		}), n.db, nil)
 	require.NoError(t, err)
 
 	registry, err := policy.NewRegistry(t.Context(),

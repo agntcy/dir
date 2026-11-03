@@ -76,8 +76,17 @@ type GetRecordResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The record.
 	Record *v1.Record `protobuf:"bytes,1,opt,name=record,proto3" json:"record,omitempty"`
-	// Whether the record fails an enforced policy at the version in force, so
-	// that reads enforcing the policies exclude it.
+	// Whether a search leaves the record out: it fails a content policy at the
+	// version in force, whether that policy is the enforcement block or one
+	// configured at op "search".
+	//
+	// Searches, not every read. A search policy decides what a query returns
+	// and says nothing about fetching a record by CID, so a record may be
+	// excluded here and still readable by anyone holding its CID.
+	//
+	// Reported whatever mode each policy is in, so that a policy can be
+	// reviewed before it is turned on. A policy in shadow mode excludes
+	// nothing yet.
 	Excluded bool `protobuf:"varint,2,opt,name=excluded,proto3" json:"excluded,omitempty"`
 	// Every verdict recorded for the record.
 	Evaluations   []*PolicyEvaluation `protobuf:"bytes,3,rep,name=evaluations,proto3" json:"evaluations,omitempty"`

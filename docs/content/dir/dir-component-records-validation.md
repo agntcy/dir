@@ -80,7 +80,7 @@ Validation is performed using the [OASF SDK](https://docs.agntcy.org/oasf/oasf-
 
 ### Configuration
 
-The Directory server validates records using `policy.operations` in YAML. Each entry selects a provider, the operations it applies to (`push`, `autosync`, `index`, `pull`), a `name`, that provider's settings, and optionally a `mode`. An empty list disables record validation. This list cannot be set via environment variables.
+The Directory server validates records using `policy.operations` in YAML. Each entry selects a provider, the operations it applies to (`push`, `autosync`, `index`, `pull`, `search`), a `name`, that provider's settings, and optionally a `mode`. An empty list disables record validation. This list cannot be set via environment variables.
 
 ```yaml
 # server.config.yml
@@ -116,7 +116,7 @@ A policy in `policy.operations` decides one operation, so it is given the record
 |---|---|---|
 | `record` | dynamic | The record's OASF content, read by field name. |
 | `record_cid` | string | The record's content identifier. |
-| `context.operation` | enum | Which operation is being decided: `Operation.OPERATION_PUSH`, `Operation.OPERATION_AUTOSYNC`, `Operation.OPERATION_INDEX` or `Operation.OPERATION_PULL`. |
+| `context.operation` | enum | Which operation is being decided: `Operation.OPERATION_PUSH`, `Operation.OPERATION_AUTOSYNC`, `Operation.OPERATION_INDEX` or `Operation.OPERATION_PULL`. A policy at [`search`](#at-search) reads neither `context` nor `now`, because it is compiled into a query rather than run on an operation. |
 | `context.source_peer_id` | optional string | The authenticated peer the record is being pulled from. Set at `autosync` and absent at `push` and `index`, so a policy covering more than one operation tests it with `has(context.source_peer_id)` before comparing it. |
 | `now` | timestamp | The instant the operation is being decided at, the same one for every policy deciding it. |
 
@@ -161,7 +161,39 @@ A policy at `pull` **cannot read `record`**. A read by CID is decided before the
 
 The restriction costs less than it looks. A record's content cannot change under its CID, so a question about content has one answer forever: ask it in `policy.evaluations`, which sees the whole record, is answered once per record, and leaves a verdict to read here.
 
-Reading verdicts is the other way around: only `pull` has them. Every other operation decides before any verdict exists, so a policy naming `verdicts` at `push`, `autosync` or `index` does not load either.
+Reading verdicts is the other way around: only `pull` and `search` have them. Every other operation decides before any verdict exists, so a policy naming `verdicts` at `push`, `autosync` or `index` does not load either.
+
+#### At `search`
+
+A policy at `search` decides which records a query returns. It reads the same `verdicts` map as `pull` and, like `pull`, cannot read `record`:
+
+```yaml
+- provider: cel
+  op: ["search"]
+  name: serve-checked-records
+  expressions:
+    - 'verdicts["cel:trusted"].compliant_and_current'
+```
+
+Everything else about it follows from one fact: **a search policy is never evaluated.** Every other policy is handed a record and asked about it, but a search has no record to be asked about — the decision has to be known before any row is selected, or the node would have to read the whole index to return one page. So a search policy is *compiled into the query* instead, and the only expressions it accepts are the ones that can be compiled:
+
+one verdict's `compliant_and_current`, and those combined with `&&` and `||`, nested freely.
+
+```text
+verdicts["cel:trusted"].compliant_and_current
+verdicts["a"].compliant_and_current && verdicts["b"].compliant_and_current
+verdicts["a"].compliant_and_current && (verdicts["b"].compliant_and_current || verdicts["c"].compliant_and_current)
+```
+
+Everything else is refused when the policy is loaded, and the node names the expression it could not take. That includes negation (`!`), the other verdict fields (`status`, `compliant`, `reason`, `policy_version`, `evaluated_at`), `record_cid`, `now`, `context`, comparisons, constants, `has()`, and anything that iterates. Several of these could be compiled, and may be later; they are refused now because a refusal at startup costs an operator one error message, while a widening that turns out to mean something different in SQL than it did in CEL costs them records they never decided to hide.
+
+Negation is the one worth understanding rather than just avoiding. The gate requires a *positive* verdict rather than excluding negative ones, so a record nobody has evaluated yet is already excluded. `!verdicts["x"].compliant_and_current` reads naturally as "records that failed x", but it would also match every record not yet evaluated, every record whose verdict was superseded by a metadata change, and every record whose evaluation errored — which is the opposite of a policy that hides unsafe records. Write the condition you want served, not the one you want hidden.
+
+!!! note "`search` accepts `cel` only"
+
+    `opa` cannot be used at `search`, and the node refuses the configuration at startup. The compilable subset is small enough that a Rego policy here would be a `.rego` file forbidden from using almost any Rego: no `not`, no comprehensions, no helper rules, no built-ins. Supporting it would mean maintaining a second frontend whose only legal programs are a transliteration of the CEL ones. An `opa` policy at any other operation is unaffected.
+
+A search policy is enforced only once every evaluation policy it reads has verdicts covering all indexed records, the same [backfill latch](dir-content-policy-enforcement.md#deciding-reads-with-a-policy) as elsewhere. Unlike the flat policy list, the terms of a search policy cannot be dropped one at a time while they wait: dropping a term from a `&&` would serve records the policy excludes, and dropping one from a `||` would hide records it allows. There is no safe direction, so the whole policy waits.
 
 ### Modes
 
@@ -197,6 +229,8 @@ level=INFO msg="Operation policy refused the record" component=policy
 A refusal is logged at `INFO` and an accepted record at `DEBUG`, since every record pushed, synced or indexed produces one of the latter. `peer` names the peer a record was synced from, and `caller` the authenticated identity of a push; each appears only where it is known.
 
 `decision` is always what the policy decided, and `mode` says what was done about it. A line reading `decision=refuse mode=shadow` is a record that was accepted — reported by the message `Shadow mode: operation policy would have refused the record` — and counting those is how a shadow policy is assessed before it is switched to `enforce`.
+
+A policy at [`search`](#at-search) writes no line. It is never run on a record, so there is no per-record decision to log; one query would produce a line per row it did not return. What it excludes is reported as a count instead, by `dir_policy_gate_search_records_excluded`, and the records themselves can be listed through the [audit service](dir-content-policy-enforcement.md#auditing-excluded-records).
 
 The Prometheus counters under `dir_policy_gate_*` are not this. They aggregate reads the *evaluation* layer excludes, carrying no CID and no policy ID; see [Content Policy Enforcement](dir-content-policy-enforcement.md).
 

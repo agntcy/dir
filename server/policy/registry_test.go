@@ -233,7 +233,7 @@ func TestNewRegistry_RejectsVerdictsWhereThereAreNone(t *testing.T) {
 			Name:        "serve-checked-records",
 			Expressions: []string{`verdicts["cel:trusted"].compliant_and_current`},
 		}}, "")
-		require.ErrorContains(t, err, `reads verdicts, which only op "pull" has`, op)
+		require.ErrorContains(t, err, `reads verdicts, which only ops "pull" and "search" have`, op)
 		require.ErrorContains(t, err, op)
 	}
 }

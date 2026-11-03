@@ -13,6 +13,7 @@ import (
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	policyconfig "github.com/agntcy/dir/server/policy/config"
+	"github.com/agntcy/dir/server/policy/predicate"
 )
 
 //nolint:interfacebloat // one embedded API per persisted concern.
@@ -480,6 +481,33 @@ type EnforcedPolicy struct {
 	Version string
 }
 
+// SearchPolicy is a policy configured at op search: one compiled into a
+// condition the query carries, rather than a decision reached per record.
+//
+// It is the only kind of policy a database applies as SQL, which is why it
+// arrives here as a predicate instead of a validator.
+type SearchPolicy struct {
+	// ID names the policy, so that a query it cannot be applied to says
+	// which policy could not be applied.
+	ID string
+
+	// Mode is how this policy's own block says to apply it. A policy in
+	// shadow mode reaches here so that it can be counted and audited; what
+	// keeps it out of queries is the gate, not its absence.
+	Mode policyconfig.Mode
+
+	// Predicate is what the policy's expressions compiled to.
+	Predicate predicate.Node
+
+	// Reads are the evaluation policies the predicate names, at the versions
+	// in force.
+	//
+	// Carried with the policy rather than read from Policies because the two
+	// are different mechanisms: Policies comes from the policy.enforcement
+	// block, and a search policy must not depend on it.
+	Reads []EnforcedPolicy
+}
+
 // PolicyEnforcement is what the server's reads must satisfy: the enforced
 // policies, and how each kind of read applies them. See
 // policyconfig.EnforcementConfig for which reads each mode covers.
@@ -488,10 +516,32 @@ type PolicyEnforcement struct {
 	Search   policyconfig.Mode
 	Fetch    policyconfig.Mode
 
+	// SearchPolicies are every search policy being checked, whatever Search
+	// says: they are policies in their own right, with their own modes, and
+	// the modes above belong to the policy.enforcement block alone.
+	//
+	// Checked, not applied: a policy in shadow mode is here to be counted.
+	// EnforcingSearchPolicies is the subset a query carries.
+	SearchPolicies []SearchPolicy
+
 	// Pending are the configured policies not enforced yet: no evaluator has
 	// registered them (Version is empty), or their verdicts do not yet cover
 	// the records and never did.
 	Pending []EnforcedPolicy
+}
+
+// EnforcingSearchPolicies are the search policies a query actually carries:
+// those whose own mode says to enforce, not merely to report.
+func (e PolicyEnforcement) EnforcingSearchPolicies() []SearchPolicy {
+	var enforcing []SearchPolicy
+
+	for _, policy := range e.SearchPolicies {
+		if policy.Mode == policyconfig.ModeEnforce {
+			enforcing = append(enforcing, policy)
+		}
+	}
+
+	return enforcing
 }
 
 // PolicyGateObserver is told about each record a read by CID excluded, or in

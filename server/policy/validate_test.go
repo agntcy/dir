@@ -46,6 +46,7 @@ func TestOperationInput_NamesTheRightOperation(t *testing.T) {
 		policyconfig.OpAutosync: policyv1.Operation_OPERATION_AUTOSYNC,
 		policyconfig.OpIndex:    policyv1.Operation_OPERATION_INDEX,
 		policyconfig.OpPull:     policyv1.Operation_OPERATION_PULL,
+		policyconfig.OpSearch:   policyv1.Operation_OPERATION_SEARCH,
 	}
 
 	require.ElementsMatch(t, policyconfig.KnownOps(), slices.Collect(maps.Keys(want)),

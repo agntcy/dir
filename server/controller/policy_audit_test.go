@@ -13,6 +13,7 @@ import (
 
 	policyv1 "github.com/agntcy/dir/api/policy/v1"
 	"github.com/agntcy/dir/server/authn"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
 	"github.com/stretchr/testify/assert"
@@ -50,9 +51,10 @@ type auditDB struct {
 	evaluationsErr error
 	listErr        error
 
-	asked [][]types.EnforcedPolicy
-	limit int
-	skip  int
+	asked       [][]types.EnforcedPolicy
+	askedSearch [][]types.SearchPolicy
+	limit       int
+	skip        int
 }
 
 func (d *auditDB) GetPolicyEvaluations(string) ([]types.PolicyEvaluationObject, error) {
@@ -63,14 +65,16 @@ func (d *auditDB) GetPolicyEvaluations(string) ([]types.PolicyEvaluationObject, 
 	return []types.PolicyEvaluationObject{auditVerdict{compliant: d.compliant}}, d.err
 }
 
-func (d *auditDB) IsRecordCompliant(_ string, policies []types.EnforcedPolicy) (bool, error) {
+func (d *auditDB) IsRecordCompliant(_ string, policies []types.EnforcedPolicy, search []types.SearchPolicy) (bool, error) {
 	d.asked = append(d.asked, policies)
+	d.askedSearch = append(d.askedSearch, search)
 
 	return d.compliant, d.err
 }
 
-func (d *auditDB) ListRecordsExcluded(policies []types.EnforcedPolicy, limit, offset int) ([]string, error) {
+func (d *auditDB) ListRecordsExcluded(policies []types.EnforcedPolicy, search []types.SearchPolicy, limit, offset int) ([]string, error) {
 	d.asked = append(d.asked, policies)
+	d.askedSearch = append(d.askedSearch, search)
 	d.limit, d.skip = limit, offset
 
 	if d.listErr != nil {
@@ -115,12 +119,17 @@ func (l *auditLog) all() []map[string]any {
 }
 
 func newAuditController(db *auditDB, store types.StoreAPI, policies ...types.EnforcedPolicy) (*policyAuditCtlr, *auditLog) {
+	return auditing(db, store, types.PolicyEnforcement{Policies: policies})
+}
+
+// auditing is the audit service reading exactly this enforcement.
+func auditing(db *auditDB, store types.StoreAPI, enforcement types.PolicyEnforcement) (*policyAuditCtlr, *auditLog) {
 	log := &auditLog{}
 
 	return &policyAuditCtlr{
 		db:          db,
 		store:       store,
-		enforcement: func() types.PolicyEnforcement { return types.PolicyEnforcement{Policies: policies} },
+		enforcement: func() types.PolicyEnforcement { return enforcement },
 		audit:       slog.New(log),
 	}, log
 }
@@ -266,6 +275,34 @@ func TestPolicyAudit_ListExcludedRecords(t *testing.T) {
 	assert.Equal(t, []map[string]any{{
 		"msg": "Policy audit listing", "method": "ListExcludedRecords", "caller": auditor, "cids": []string{"cid-a", "cid-b"},
 	}}, log.all())
+}
+
+// A search policy is audited on its own, with the enforcement block empty:
+// records a query hides are records an auditor has to be able to reach.
+//
+// Its mode is not consulted. The service reports what the policies say about
+// a record, as it already does for the enforcement block in shadow mode, so
+// that a policy can be reviewed before it is turned on.
+func TestPolicyAudit_AuditsSearchPoliciesWhateverTheirMode(t *testing.T) {
+	t.Parallel()
+
+	for _, mode := range []policyconfig.Mode{policyconfig.ModeEnforce, policyconfig.ModeShadow} {
+		t.Run(string(mode), func(t *testing.T) {
+			t.Parallel()
+
+			search := []types.SearchPolicy{{ID: "cel:serve-checked", Mode: mode}}
+			db := &auditDB{excluded: []string{"cid-a"}}
+			ctlr, _ := auditing(db, &gatedStore{}, types.PolicyEnforcement{SearchPolicies: search})
+			stream := &auditStream{ctx: asAuditor(t)}
+
+			require.NoError(t, ctlr.ListExcludedRecords(&policyv1.ListExcludedRecordsRequest{}, stream))
+
+			require.Len(t, stream.sent, 1)
+			assert.Equal(t, "cid-a", stream.sent[0].GetCid())
+			assert.Equal(t, [][]types.SearchPolicy{search}, db.askedSearch)
+			assert.Equal(t, [][]types.EnforcedPolicy{nil}, db.asked, "nothing in the enforcement block")
+		})
+	}
 }
 
 // With no policy in force nothing is excluded, and the database is not asked.

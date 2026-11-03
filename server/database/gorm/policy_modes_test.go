@@ -175,11 +175,11 @@ func TestCountRecordsExcluded(t *testing.T) {
 
 	_, served := seedModeRecords(t, policyconfig.ModeShadow, policyconfig.ModeOff, nil)
 
-	excluded, err := served.CountRecordsExcluded([]types.EnforcedPolicy{policyA})
+	excluded, err := served.CountRecordsExcluded([]types.EnforcedPolicy{policyA}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, int64(2), excluded)
 
-	excluded, err = served.CountRecordsExcluded([]types.EnforcedPolicy{policyA, policyB})
+	excluded, err = served.CountRecordsExcluded([]types.EnforcedPolicy{policyA, policyB}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, int64(3), excluded, "nothing complies with an unevaluated policy")
 }
@@ -194,7 +194,7 @@ func TestCountRecordsExcluded_Empty(t *testing.T) {
 	db, err := New(gdb)
 	require.NoError(t, err)
 
-	excluded, err := db.CountRecordsExcluded([]types.EnforcedPolicy{policyA})
+	excluded, err := db.CountRecordsExcluded([]types.EnforcedPolicy{policyA}, nil)
 	require.NoError(t, err)
 	assert.Zero(t, excluded)
 }
@@ -226,7 +226,7 @@ func TestListRecordsExcluded(t *testing.T) {
 	// opens an empty one, so the cases share this test rather than run as
 	// parallel subtests.
 	for _, tt := range tests {
-		cids, err := served.ListRecordsExcluded(policies, tt.limit, tt.offset)
+		cids, err := served.ListRecordsExcluded(policies, nil, tt.limit, tt.offset)
 		require.NoError(t, err, tt.name)
 		assert.Equal(t, tt.want, cids, tt.name)
 	}
@@ -241,7 +241,7 @@ func TestIsRecordCompliant(t *testing.T) {
 	policies := []types.EnforcedPolicy{policyA}
 
 	for cid, want := range map[string]bool{gateOK: true, gateBad: false, gateNone: false, gateStale: false} {
-		compliant, err := served.IsRecordCompliant(cid, policies)
+		compliant, err := served.IsRecordCompliant(cid, policies, nil)
 		require.NoError(t, err)
 		assert.Equal(t, want, compliant, cid)
 	}

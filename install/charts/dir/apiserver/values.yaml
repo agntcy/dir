@@ -73,8 +73,10 @@ config:
     dir: "/etc/agntcy/dir/policies"
 
     # Operation policies: each decides at one or more operations (push,
-    # autosync, index) and stores nothing. Copied into the reconciler config.
-    # Omit an op (or this entire list) to skip validation on that path.
+    # autosync, index, pull, search) and stores nothing. Copied into the
+    # reconciler config. Omit an op (or this entire list) to skip validation
+    # on that path. pull and search decide what is served rather than what is
+    # accepted, and read the verdicts of the evaluation policies below.
     operations:
       - provider: oasf
         op: ["push", "autosync", "index"]
@@ -89,6 +91,17 @@ config:
       #   expressions:
       #     - record.name != ""
       #     - record.version != ""
+      # A search policy decides which records queries return, and a pull
+      # policy which are served by CID. Both read the verdicts of the
+      # evaluation policies below rather than the record. A search policy is
+      # compiled into the query rather than evaluated, so it is cel only and
+      # takes verdicts combined with && and || and nothing else.
+      # - provider: cel
+      #   op: ["search"]
+      #   name: serve-checked-records
+      #   mode: shadow
+      #   expressions:
+      #     - 'verdicts["cel:has-description"].compliant_and_current'
 
     # Evaluation policies: the reconciler evaluates every record against each
     # one and stores a verdict, which the server can enforce on reads

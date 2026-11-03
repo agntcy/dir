@@ -117,9 +117,23 @@ server:
       #   expressions:
       #     - record.name != ""
       #     - record.version != ""
+      # A search policy decides which records queries return. It is compiled
+      # into the query rather than evaluated, so it is cel only and takes
+      # verdicts combined with && and || and nothing else. Pair it with the
+      # evaluation policy it names, below.
+      # - provider: cel
+      #   op: ["search"]
+      #   name: serve-checked-records
+      #   mode: shadow
+      #   expressions:
+      #     - verdicts["cel:trusted"].compliant_and_current
     # Evaluation policies: the reconciler stores a verdict per record for
     # each, which enforcement below applies to reads. opa and cel only.
     evaluations: []
+      # - provider: cel
+      #   name: trusted
+      #   expressions:
+      #     - meta.signature.status == SignatureStatus.SIGNATURE_STATUS_VERIFIED
     # Content-policy enforcement on reads: off, shadow or enforce, per kind of
     # read. Policies lists the IDs of the policies every served record must
     # comply with; their versions come from the policies' content.

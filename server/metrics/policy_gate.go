@@ -21,7 +21,7 @@ const (
 // under a set of policies, and those with no verdict yet under a policy's
 // current version.
 type RecordCounter interface {
-	CountRecordsExcluded(policies []types.EnforcedPolicy) (int64, error)
+	CountRecordsExcluded(policies []types.EnforcedPolicy, search []types.SearchPolicy) (int64, error)
 	CountRecordsNeedingPolicyEvaluation(policyID, policyVersion string) (int64, error)
 }
 
@@ -55,7 +55,7 @@ func NewPolicyGate(enforcement func() types.PolicyEnforcement, records RecordCou
 		records:     records,
 		searchRecords: prometheus.NewDesc(
 			"dir_policy_gate_search_records_excluded",
-			`Indexed records searches exclude (outcome="excluded") or, in shadow mode, would (outcome="would_exclude"), for not complying with every enforced content policy.`,
+			`Indexed records searches exclude for failing a content policy: those the policies being enforced leave out (outcome="excluded"), and those every policy being checked would leave out if all of them were enforced (outcome="would_exclude"). The second is reported only when something is checked in shadow mode, and is never below the first.`,
 			[]string{"outcome"}, nil,
 		),
 		unevaluated: prometheus.NewDesc(
@@ -84,8 +84,8 @@ func (g *PolicyGate) Describe(ch chan<- *prometheus.Desc) {
 }
 
 // Collect implements prometheus.Collector. The search gauge is left out while
-// searches check no policy, and when it cannot be counted: failing it would
-// fail the whole scrape.
+// searches check no policy; see collectSearchRecords for when each of its two
+// series is reported.
 func (g *PolicyGate) Collect(ch chan<- prometheus.Metric) {
 	g.fetches.Collect(ch)
 
@@ -106,14 +106,47 @@ func (g *PolicyGate) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(g.unevaluated, prometheus.GaugeValue, float64(remaining), policy.ID, policy.Version)
 	}
 
-	outcome, ok := outcomeOf(enforcement.Search)
-	if !ok || len(enforcement.Policies) == 0 {
-		return
+	g.collectSearchRecords(ch, enforcement)
+}
+
+// collectSearchRecords reports what searches leave out.
+//
+// Two sets, because the enforcement block and each search policy carry their
+// own mode: what is applied, counted as "excluded", and everything checked,
+// counted as "would_exclude". The second is reported only when something is
+// checked without being applied, so that with a single mode in play — the
+// only arrangement before search policies existed — exactly one series is
+// emitted, as before.
+func (g *PolicyGate) collectSearchRecords(ch chan<- prometheus.Metric, enforcement types.PolicyEnforcement) {
+	var applied []types.EnforcedPolicy
+	if enforcement.Search == policyconfig.ModeEnforce {
+		applied = enforcement.Policies
 	}
 
-	excluded, err := g.records.CountRecordsExcluded(enforcement.Policies)
+	appliedSearch := enforcement.EnforcingSearchPolicies()
+
+	if len(applied) > 0 || len(appliedSearch) > 0 {
+		g.countExcluded(ch, outcomeExcluded, applied, appliedSearch)
+	}
+
+	var checked []types.EnforcedPolicy
+	if enforcement.Search.Active() {
+		checked = enforcement.Policies
+	}
+
+	if len(checked) > len(applied) || len(enforcement.SearchPolicies) > len(appliedSearch) {
+		g.countExcluded(ch, outcomeWouldExclude, checked, enforcement.SearchPolicies)
+	}
+}
+
+// countExcluded reports the records a search gated on these policies leaves
+// out. A count that fails is left out rather than failing the whole scrape.
+func (g *PolicyGate) countExcluded(ch chan<- prometheus.Metric, outcome string,
+	policies []types.EnforcedPolicy, search []types.SearchPolicy,
+) {
+	excluded, err := g.records.CountRecordsExcluded(policies, search)
 	if err != nil {
-		logger.Warn("Could not count records excluded by enforced policies", "error", err)
+		logger.Warn("Could not count records excluded by enforced policies", "outcome", outcome, "error", err)
 
 		return
 	}

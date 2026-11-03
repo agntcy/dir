@@ -18,8 +18,9 @@ service PolicyAuditService {
   // exclude it, with its policy verdicts.
   rpc GetRecord(GetRecordRequest) returns (GetRecordResponse);
 
-  // ListExcludedRecords lists the indexed records the enforced policies
-  // exclude, with their verdicts.
+  // ListExcludedRecords lists the indexed records a search leaves out for
+  // failing a content policy, with their verdicts. See
+  // GetRecordResponse.excluded for what counts as excluded.
   rpc ListExcludedRecords(ListExcludedRecordsRequest) returns (stream ListExcludedRecordsResponse);
 }
 
@@ -34,8 +35,17 @@ message GetRecordResponse {
   // The record.
   agntcy.dir.core.v1.Record record = 1;
 
-  // Whether the record fails an enforced policy at the version in force, so
-  // that reads enforcing the policies exclude it.
+  // Whether a search leaves the record out: it fails a content policy at the
+  // version in force, whether that policy is the enforcement block or one
+  // configured at op "search".
+  //
+  // Searches, not every read. A search policy decides what a query returns
+  // and says nothing about fetching a record by CID, so a record may be
+  // excluded here and still readable by anyone holding its CID.
+  //
+  // Reported whatever mode each policy is in, so that a policy can be
+  // reviewed before it is turned on. A policy in shadow mode excludes
+  // nothing yet.
   bool excluded = 2;
 
   // Every verdict recorded for the record.

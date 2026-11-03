@@ -39,8 +39,9 @@ type PolicyAuditServiceClient interface {
 	// GetRecord returns a record by CID whether or not the enforced policies
 	// exclude it, with its policy verdicts.
 	GetRecord(ctx context.Context, in *GetRecordRequest, opts ...grpc.CallOption) (*GetRecordResponse, error)
-	// ListExcludedRecords lists the indexed records the enforced policies
-	// exclude, with their verdicts.
+	// ListExcludedRecords lists the indexed records a search leaves out for
+	// failing a content policy, with their verdicts. See
+	// GetRecordResponse.excluded for what counts as excluded.
 	ListExcludedRecords(ctx context.Context, in *ListExcludedRecordsRequest, opts ...grpc.CallOption) (PolicyAuditService_ListExcludedRecordsClient, error)
 }
 
@@ -108,8 +109,9 @@ type PolicyAuditServiceServer interface {
 	// GetRecord returns a record by CID whether or not the enforced policies
 	// exclude it, with its policy verdicts.
 	GetRecord(context.Context, *GetRecordRequest) (*GetRecordResponse, error)
-	// ListExcludedRecords lists the indexed records the enforced policies
-	// exclude, with their verdicts.
+	// ListExcludedRecords lists the indexed records a search leaves out for
+	// failing a content policy, with their verdicts. See
+	// GetRecordResponse.excluded for what counts as excluded.
 	ListExcludedRecords(*ListExcludedRecordsRequest, PolicyAuditService_ListExcludedRecordsServer) error
 }
 
