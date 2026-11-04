@@ -26,10 +26,15 @@ var auditLogger = logging.Logger("audit")
 
 // PolicyAuditDatabase is what the policy audit service reads: verdicts, and
 // compliance with the policies in force, whatever the reads it serves enforce.
+//
+// Compliance here is a search's: both the enforcement block and every search
+// policy, whatever mode each is in. The service answers what the policies say
+// about a record, which is what an operator reviewing them needs to see,
+// rather than what today's modes happen to act on.
 type PolicyAuditDatabase interface {
 	GetPolicyEvaluations(recordCID string) ([]types.PolicyEvaluationObject, error)
-	IsRecordCompliant(cid string, policies []types.EnforcedPolicy) (bool, error)
-	ListRecordsExcluded(policies []types.EnforcedPolicy, limit, offset int) ([]string, error)
+	IsRecordCompliant(cid string, policies []types.EnforcedPolicy, search []types.SearchPolicy) (bool, error)
+	ListRecordsExcluded(policies []types.EnforcedPolicy, search []types.SearchPolicy, limit, offset int) ([]string, error)
 }
 
 type policyAuditCtlr struct {
@@ -73,8 +78,9 @@ func (c *policyAuditCtlr) getRecord(ctx context.Context, cid string) (*policyv1.
 
 	excluded := false
 
-	if policies := c.enforcement().Policies; len(policies) > 0 {
-		compliant, err := c.db.IsRecordCompliant(cid, policies)
+	enforcement := c.enforcement()
+	if len(enforcement.Policies) > 0 || len(enforcement.SearchPolicies) > 0 {
+		compliant, err := c.db.IsRecordCompliant(cid, enforcement.Policies, enforcement.SearchPolicies)
 		if err != nil {
 			return nil, c.internal("check record against enforced policies", err)
 		}
@@ -108,12 +114,13 @@ func (c *policyAuditCtlr) ListExcludedRecords(req *policyv1.ListExcludedRecordsR
 // listExcludedRecords streams the excluded records, returning the CIDs it
 // sent.
 func (c *policyAuditCtlr) listExcludedRecords(req *policyv1.ListExcludedRecordsRequest, srv policyv1.PolicyAuditService_ListExcludedRecordsServer) ([]string, error) {
-	policies := c.enforcement().Policies
-	if len(policies) == 0 {
+	enforcement := c.enforcement()
+	if len(enforcement.Policies) == 0 && len(enforcement.SearchPolicies) == 0 {
 		return nil, nil
 	}
 
-	cids, err := c.db.ListRecordsExcluded(policies, int(req.GetLimit()), int(req.GetOffset()))
+	cids, err := c.db.ListRecordsExcluded(enforcement.Policies, enforcement.SearchPolicies,
+		int(req.GetLimit()), int(req.GetOffset()))
 	if err != nil {
 		return nil, c.internal("list records excluded by enforced policies", err)
 	}

@@ -10,6 +10,7 @@ import (
 	"cel.dev/cel-go/cel"
 	"cel.dev/cel-go/common/types"
 	policyv1 "github.com/agntcy/dir/api/policy/v1"
+	"github.com/agntcy/dir/server/policy/predicate"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -34,6 +35,16 @@ type celProgram struct {
 
 	// readsRecord is whether any expression reads the record's content.
 	readsRecord bool
+
+	// predicate is what the expressions compile to for a search, and
+	// predicateErr why they do not. Exactly one of the two is set.
+	//
+	// Compiled here for every CEL policy, not only the ones at search,
+	// because the ASTs are gone afterwards and this does not know the ops.
+	// An evaluation policy has no verdicts to read and so always fails here,
+	// which costs nothing: only a policy at search is ever asked.
+	predicate    predicate.Node
+	predicateErr error
 }
 
 // celValidator evaluates a CEL policy.
@@ -75,10 +86,12 @@ func newCELValidatorWithIDs(exprs []string, l layer, evaluationIDs []string) (*c
 // validateAst runs before that happens.
 func compileCEL(exprs []string, env *cel.Env, evaluationIDs []string) (*celProgram, error) {
 	var (
-		groups      []string
-		keys        []string
-		allKeys     bool
-		readsRecord bool
+		groups       []string
+		keys         []string
+		allKeys      bool
+		readsRecord  bool
+		nodes        []predicate.Node
+		predicateErr error
 	)
 
 	rules := make([]celRule, 0, len(exprs))
@@ -103,8 +116,20 @@ func compileCEL(exprs []string, env *cel.Env, evaluationIDs []string) (*celProgr
 			return nil, fmt.Errorf("CEL expressions[%d] must evaluate to bool, got %s", i, ast.OutputType())
 		}
 
+		// Before the predicate, so that an expression about to be refused
+		// outright is not also reported as one a search cannot take.
 		if err := validateAst(ast, evaluationIDs); err != nil {
 			return nil, fmt.Errorf("CEL expressions[%d]: %w", i, err)
+		}
+
+		if node, err := celSearchPredicate(ast.NativeRep().Expr()); err != nil {
+			// The first refusal is the one reported: naming every expression
+			// a search cannot take would bury the one the author has to fix.
+			if predicateErr == nil {
+				predicateErr = fmt.Errorf("expressions[%d]: %w", i, err)
+			}
+		} else {
+			nodes = append(nodes, node)
 		}
 
 		prg, err := env.Program(ast)
@@ -115,13 +140,20 @@ func compileCEL(exprs []string, env *cel.Env, evaluationIDs []string) (*celProgr
 		rules = append(rules, celRule{expr: expr, prg: prg})
 	}
 
-	return &celProgram{
-		rules:       rules,
-		version:     contentVersion(exprs...),
-		factGroups:  normalizeGroups(groups),
-		verdicts:    verdictRefs{keys: sortedSet(keys), all: allKeys},
-		readsRecord: readsRecord,
-	}, nil
+	program := &celProgram{
+		rules:        rules,
+		version:      contentVersion(exprs...),
+		factGroups:   normalizeGroups(groups),
+		verdicts:     verdictRefs{keys: sortedSet(keys), all: allKeys},
+		readsRecord:  readsRecord,
+		predicateErr: predicateErr,
+	}
+
+	if predicateErr == nil {
+		program.predicate = celSearchPredicates(nodes)
+	}
+
+	return program, nil
 }
 
 func (v *celValidator) ValidateEvaluation(ctx context.Context, state *policyv1.RecordState) (bool, []string, []string, error) {

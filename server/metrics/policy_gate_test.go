@@ -15,16 +15,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// excludedRecords answers the counts: count records are excluded, and
-// unevaluated lack a verdict.
+// excludedRecords answers the counts: count records are excluded per policy
+// asked about, and unevaluated lack a verdict.
+//
+// Per policy so that the number a series carries says which set was counted,
+// which is the only thing separating the two search outcomes.
 type excludedRecords struct {
 	count       int64
 	unevaluated int64
 	err         error
 }
 
-func (r excludedRecords) CountRecordsExcluded([]types.EnforcedPolicy) (int64, error) {
-	return r.count, r.err
+func (r excludedRecords) CountRecordsExcluded(policies []types.EnforcedPolicy, search []types.SearchPolicy) (int64, error) {
+	return r.count * int64(len(policies)+len(search)), r.err
 }
 
 func (r excludedRecords) CountRecordsNeedingPolicyEvaluation(string, string) (int64, error) {
@@ -93,6 +96,58 @@ func TestPolicyGate_SearchGaugeFollowsTheMode(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+// A search policy is counted whatever the enforcement block says, under the
+// outcome of its own mode.
+func TestPolicyGate_SearchPolicyIsCountedUnderItsOwnMode(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		mode policyconfig.Mode
+		want map[string]float64
+	}{
+		{"enforcing", policyconfig.ModeEnforce, map[string]float64{outcomeExcluded: 1}},
+		{"shadow", policyconfig.ModeShadow, map[string]float64{outcomeWouldExclude: 1}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			gate := NewPolicyGate(func() types.PolicyEnforcement {
+				return types.PolicyEnforcement{
+					Search:         policyconfig.ModeOff,
+					SearchPolicies: []types.SearchPolicy{{ID: "cel:served", Mode: tt.mode}},
+				}
+			}, excludedRecords{count: 1})
+
+			assert.Equal(t, tt.want, gather(t, gate, "dir_policy_gate_search_records_excluded"))
+		})
+	}
+}
+
+// With something enforcing and something else in shadow, both series are
+// reported: what is left out now, and what would be if the shadowed policy
+// were turned on too. The gap between them is the cost of that switch.
+func TestPolicyGate_ShadowIsCountedOnTopOfWhatIsEnforced(t *testing.T) {
+	t.Parallel()
+
+	gate := NewPolicyGate(func() types.PolicyEnforcement {
+		return types.PolicyEnforcement{
+			Policies: []types.EnforcedPolicy{{ID: "opa:a", Version: "v1"}},
+			Search:   policyconfig.ModeEnforce,
+			SearchPolicies: []types.SearchPolicy{
+				{ID: "cel:on", Mode: policyconfig.ModeEnforce},
+				{ID: "cel:trying", Mode: policyconfig.ModeShadow},
+			},
+		}
+	}, excludedRecords{count: 1})
+
+	// Two enforcing now; all three would be.
+	assert.Equal(t, map[string]float64{outcomeExcluded: 2, outcomeWouldExclude: 3},
+		gather(t, gate, "dir_policy_gate_search_records_excluded"))
 }
 
 // A failed count leaves the gauge out without failing the scrape.

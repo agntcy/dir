@@ -4,6 +4,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 
 	policyv1 "github.com/agntcy/dir/api/policy/v1"
@@ -12,32 +13,25 @@ import (
 	"github.com/agntcy/dir/server/database"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/metrics"
-	policyconfig "github.com/agntcy/dir/server/policy/config"
+	"github.com/agntcy/dir/server/policy"
 	"github.com/agntcy/dir/server/policy/enforcement"
 	"github.com/agntcy/dir/server/types"
 	"google.golang.org/grpc"
 )
 
 // openDatabase returns the database the server was given, or else the
-// configured one, the view of it the server's APIs read through, and what
-// that view enforces; see servedDatabase.
-func openDatabase(cfg *config.Config, given types.DatabaseAPI, metricsServer *metrics.Server) (types.DatabaseAPI, types.DatabaseAPI, func() types.PolicyEnforcement, error) {
-	db := given
-	if db == nil {
-		var err error
-
-		db, err = database.New(cfg.Database)
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to create database API: %w", err)
-		}
+// configured one.
+func openDatabase(cfg *config.Config, given types.DatabaseAPI) (types.DatabaseAPI, error) {
+	if given != nil {
+		return given, nil
 	}
 
-	served, current, err := servedDatabase(db, cfg.Policy.Enforcement, cfg.Authz.Enabled, metricsServer)
+	db, err := database.New(cfg.Database)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, fmt.Errorf("failed to create database API: %w", err)
 	}
 
-	return db, served, current, nil
+	return db, nil
 }
 
 // registerPolicyAudit offers the policy audit service, which returns the
@@ -66,50 +60,102 @@ func registerPolicyAudit(registrar grpc.ServiceRegistrar, authzEnabled bool, db 
 	logger.Info("Policy audit service offered to the SPIFFE IDs the authorization policies name for it")
 }
 
-// servedDatabase returns the view of db the server's APIs read through, which
-// applies the enforced content policies, and what it enforces, nil when no
-// read checks them. db itself applies none: ingestion and the reconciler read
-// through it and must see every record. With a metrics server, the gate
-// reports what it excludes, or would.
-func servedDatabase(db types.DatabaseAPI, cfg policyconfig.EnforcementConfig, authzEnabled bool, metricsServer *metrics.Server) (types.DatabaseAPI, func() types.PolicyEnforcement, error) {
-	if err := cfg.Validate(); err != nil {
-		return nil, nil, fmt.Errorf("invalid policy enforcement config: %w", err)
-	}
-
-	if !cfg.Active() {
-		return db, nil, nil
+// wirePolicies builds the three things that depend on one another: the
+// registry of configured policies, the resolver that follows which version of
+// each is in force, and the view of db the server's APIs read through. db
+// itself applies no policy: ingestion and the reconciler read through it and
+// must see every record.
+//
+// The registry and the resolver each need the other. A policy at pull or
+// search is acted on only once the policies it reads are enforced, which the
+// resolver says; and the resolver has to follow the versions the search
+// policies read, which only the compiled registry knows. Neither reads the
+// other while it is being built, so the knot is tied here, once, instead of
+// being spread through the server as a setter called at the right moment.
+//
+// The returned enforcement source is nil when nothing is configured to be
+// enforced, which is what decides whether there is anything to audit.
+func wirePolicies(ctx context.Context, cfg *config.Config, db types.DatabaseAPI, metricsServer *metrics.Server,
+) (types.DatabaseAPI, *policy.Registry, func() types.PolicyEnforcement, error) {
+	if err := cfg.Policy.Enforcement.Validate(); err != nil {
+		return nil, nil, nil, fmt.Errorf("invalid policy enforcement config: %w", err)
 	}
 
 	gated, ok := db.(*gormdb.DB)
 	if !ok {
-		return nil, nil, fmt.Errorf("database %T cannot enforce content policies", db)
-	}
-
-	resolver, err := enforcement.NewResolver(cfg, gated)
-	if err != nil {
-		return nil, nil, fmt.Errorf("resolve enforced policy versions: %w", err)
-	}
-
-	current := resolver.Current
-
-	var observer types.PolicyGateObserver
-
-	if metricsServer != nil {
-		gate := metrics.NewPolicyGate(current, gated)
-		if err := metricsServer.Registry().Register(gate); err != nil {
-			return nil, nil, fmt.Errorf("register policy gate metrics: %w", err)
+		// A database no query can be built on cannot carry a gate, so being
+		// told to check and not checking is refused. A search policy is
+		// refused a step earlier and more precisely, by the registry it is
+		// given no verdict source for: every one of them reads a verdict.
+		if cfg.Policy.Enforcement.Active() {
+			return nil, nil, nil, fmt.Errorf("database %T cannot enforce content policies", db)
 		}
 
-		observer = gate
+		// Policies that read no verdict still load, so another database is
+		// not stopped from validating records at push.
+		registry, err := policy.NewRegistry(ctx, cfg.Policy.Evaluations, cfg.Policy.Operations, cfg.Policy.Dir)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to create policy registry: %w", err)
+		}
+
+		return db, registry, nil, nil
+	}
+
+	var resolver *enforcement.Resolver
+
+	current := func() types.PolicyEnforcement { return resolver.Current() }
+
+	registry, err := policy.NewRegistry(ctx, cfg.Policy.Evaluations, cfg.Policy.Operations, cfg.Policy.Dir,
+		policy.WithVerdicts(db, current))
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to create policy registry: %w", err)
+	}
+
+	searchPolicies := registry.SearchPolicies()
+
+	resolver, err = enforcement.NewResolver(cfg.Policy.Enforcement, gated, searchPolicies)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("resolve enforced policy versions: %w", err)
+	}
+
+	if !cfg.Policy.Enforcement.Active() && len(searchPolicies) == 0 {
+		// Nothing is enforced, so there is nothing to audit. The view is
+		// still the gated one: it applies no condition when there is none,
+		// and keeping one path means a policy added later needs no restart
+		// of anything but the process that read the config.
+		return gated.Served(current, nil), registry, nil, nil
+	}
+
+	observer, err := gateObserver(current, gated, metricsServer)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 
 	resolved := current()
-	logger.Info("Content policy enforcement", "search", cfg.Search, "fetch", cfg.Fetch,
-		"policies", resolved.Policies, "pending", resolved.Pending)
+	logger.Info("Content policy enforcement",
+		"search", cfg.Policy.Enforcement.Search, "fetch", cfg.Policy.Enforcement.Fetch,
+		"policies", resolved.Policies, "pending", resolved.Pending,
+		"search_policies", len(searchPolicies), "search_policies_applied", len(resolved.SearchPolicies))
 
-	if !authzEnabled {
+	if !cfg.Authz.Enabled {
 		logger.Warn("Content policies are checked but authorization is disabled: any caller can obtain registry credentials and read excluded records straight from the registry")
 	}
 
-	return gated.Served(current, observer), current, nil
+	return gated.Served(current, observer), registry, current, nil
+}
+
+// gateObserver reports what the gate excludes, or would, when there is a
+// metrics server to report it to.
+func gateObserver(current func() types.PolicyEnforcement, gated *gormdb.DB, metricsServer *metrics.Server,
+) (types.PolicyGateObserver, error) {
+	if metricsServer == nil {
+		return nil, nil //nolint:nilnil // no observer is not an error.
+	}
+
+	gate := metrics.NewPolicyGate(current, gated)
+	if err := metricsServer.Registry().Register(gate); err != nil {
+		return nil, fmt.Errorf("register policy gate metrics: %w", err)
+	}
+
+	return gate, nil
 }

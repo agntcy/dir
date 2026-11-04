@@ -50,6 +50,13 @@ const (
 	// OpPull runs when one record is served by CID, which is the operation
 	// the read gate decides at.
 	OpPull = "pull"
+
+	// OpSearch runs on a query returning a set of records.
+	//
+	// Unlike every other op, a policy here is never evaluated. Its decision
+	// has to be known before rows are selected, so it is compiled into the
+	// query instead, and only what can be compiled is accepted.
+	OpSearch = "search"
 )
 
 // policyNamePattern is what a policy name may contain. The name ends up in the
@@ -62,6 +69,7 @@ var knownOps = map[string]struct{}{
 	OpAutosync: {},
 	OpIndex:    {},
 	OpPull:     {},
+	OpSearch:   {},
 }
 
 // KnownOps returns every op a policy may be configured at, sorted.
@@ -331,6 +339,15 @@ func (o Operation) validate(index int) error {
 		}
 
 		seen[op] = true
+	}
+
+	// Refused here rather than when the policy is compiled, because it needs
+	// nothing but the provider and the op, and an operator is better told
+	// before anything loads.
+	if seen[OpSearch] && o.Provider != ProviderCEL {
+		return fmt.Errorf("%s: provider %q cannot be used at op %q: a search policy is compiled "+
+			"into the query rather than evaluated, and only %q can be compiled",
+			where, o.Provider, OpSearch, ProviderCEL)
 	}
 
 	return nil

@@ -79,7 +79,48 @@ func TestOperationsValidate_EvaluateIsNotAnOp(t *testing.T) {
 		Ops:         []string{"evaluate"},
 		Name:        "has-description",
 		Expressions: []string{`record.description != ""`},
-	}}).Validate(), `operations[0]: unsupported op "evaluate", expected one of autosync, index, pull, push`)
+	}}).Validate(), `operations[0]: unsupported op "evaluate", expected one of autosync, index, pull, push, search`)
+}
+
+// A policy at search is compiled into the query rather than evaluated, and
+// only CEL compiles. The restriction is reported here, before anything loads,
+// because it needs nothing but the provider and the op to see.
+func TestOperationsValidate_OnlyCELCanBeUsedAtSearch(t *testing.T) {
+	t.Parallel()
+
+	require.EqualError(t, (Operations{{
+		Provider: ProviderOPA,
+		Ops:      []string{OpSearch},
+		File:     "trusted.rego",
+	}}).Validate(),
+		`operations[0]: provider "opa" cannot be used at op "search": a search policy is compiled `+
+			`into the query rather than evaluated, and only "cel" can be compiled`)
+
+	require.EqualError(t, (Operations{{
+		Provider:  ProviderOASF,
+		Ops:       []string{OpSearch},
+		Name:      "schema",
+		SchemaURL: "https://schema.oasf.outshift.com",
+	}}).Validate(),
+		`operations[0]: provider "oasf" cannot be used at op "search": a search policy is compiled `+
+			`into the query rather than evaluated, and only "cel" can be compiled`)
+
+	// Listing search alongside an op the provider is fine at is the same
+	// mistake: the policy still has to be compiled.
+	require.EqualError(t, (Operations{{
+		Provider: ProviderOPA,
+		Ops:      []string{OpPush, OpSearch},
+		File:     "trusted.rego",
+	}}).Validate(),
+		`operations[0]: provider "opa" cannot be used at op "search": a search policy is compiled `+
+			`into the query rather than evaluated, and only "cel" can be compiled`)
+
+	require.NoError(t, (Operations{{
+		Provider:    ProviderCEL,
+		Ops:         []string{OpSearch},
+		Name:        "serve-checked-records",
+		Expressions: []string{`verdicts["cel:trusted"].compliant_and_current`},
+	}}).Validate())
 }
 
 func TestOperationsValidate_Ops(t *testing.T) {

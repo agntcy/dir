@@ -13,6 +13,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	policyv1 "github.com/agntcy/dir/api/policy/v1"
 	policyconfig "github.com/agntcy/dir/server/policy/config"
+	"github.com/agntcy/dir/server/policy/predicate"
 )
 
 // versionLength is how many hex digits of the content hash make a policy
@@ -65,6 +66,10 @@ type operationPolicy struct {
 
 	// verdicts is what this policy's source says about the verdicts it reads.
 	verdicts verdictRefs
+
+	// predicate is what the policy compiles to when it is at search, and nil
+	// at every other op, where the policy is evaluated instead.
+	predicate predicate.Node
 }
 
 // compiled is what loading one configured provider produced: the validator
@@ -84,6 +89,18 @@ type compiled struct {
 
 	// readsRecord is whether the policy reads the record's content.
 	readsRecord bool
+
+	// predicate is what the policy compiles to for a search, and predicateErr
+	// why it does not. Exactly one of the two is set, whatever the provider.
+	predicate    predicate.Node
+	predicateErr error
+}
+
+// errNotCompilableProvider is the predicateErr of a provider that compiles
+// nothing. Config validation refuses these at search already; this is what
+// keeps the compiled invariant total rather than relying on that.
+func errNotCompilableProvider(provider string) error {
+	return fmt.Errorf("%w: provider %q compiles no query", errNotCompilable, provider)
 }
 
 // evaluation is one loaded evaluation policy. Evaluators turns it into an
@@ -155,6 +172,31 @@ func NewRegistry(
 		})
 	}
 
+	byOp, err := loadOperations(ctx, operations, policyDir, verdictIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	registry := &Registry{byOp: byOp, evaluations: loaded}
+	for _, opt := range opts {
+		opt(registry)
+	}
+
+	if err := registry.checkVerdictsAreAvailable(); err != nil {
+		return nil, err
+	}
+
+	return registry, nil
+}
+
+// loadOperations compiles each configured operation policy and indexes it by
+// the ops it is configured at, checking that what it reads and what it says
+// are available at every one of them.
+//
+// verdictIDs are the configured evaluation policies a verdict key may name,
+// which each expression is checked against as it compiles.
+func loadOperations(ctx context.Context, operations policyconfig.Operations, policyDir string, verdictIDs []string,
+) (map[string][]operationPolicy, error) {
 	byOp := make(map[string][]operationPolicy)
 
 	for i, o := range operations {
@@ -168,12 +210,14 @@ func NewRegistry(
 			return nil, fmt.Errorf("operations[%d]: policy %q: %w", i, o.PolicyID(), err)
 		}
 
-		if err := checkVerdictsAreReadable(o.Ops, c.verdicts); err != nil {
-			return nil, fmt.Errorf("operations[%d]: %w", i, err)
-		}
-
-		if err := checkRecordIsReadable(o.Ops, c.readsRecord); err != nil {
-			return nil, fmt.Errorf("operations[%d]: %w", i, err)
+		for _, check := range []error{
+			checkVerdictsAreReadable(o.Ops, c.verdicts),
+			checkRecordIsReadable(o.Ops, c.readsRecord),
+			checkSearchIsCompilable(o.Ops, c.predicateErr),
+		} {
+			if check != nil {
+				return nil, fmt.Errorf("operations[%d]: %w", i, check)
+			}
 		}
 
 		// Resolved once, here, so that a decision and the log of it report the
@@ -184,25 +228,24 @@ func NewRegistry(
 		}
 
 		for _, op := range o.Ops {
-			byOp[op] = append(byOp[op], operationPolicy{
+			policy := operationPolicy{
 				id:        o.PolicyID(),
 				mode:      mode,
 				validator: c.validator,
 				verdicts:  c.verdicts,
-			})
+			}
+
+			// Only at search is the policy compiled rather than evaluated,
+			// so only there is there a predicate to carry.
+			if op == policyconfig.OpSearch {
+				policy.predicate = c.predicate
+			}
+
+			byOp[op] = append(byOp[op], policy)
 		}
 	}
 
-	registry := &Registry{byOp: byOp, evaluations: loaded}
-	for _, opt := range opts {
-		opt(registry)
-	}
-
-	if err := registry.checkVerdictsAreAvailable(); err != nil {
-		return nil, err
-	}
-
-	return registry, nil
+	return byOp, nil
 }
 
 // checkVerdictsAreAvailable refuses a policy that reads verdicts in a process
@@ -232,12 +275,12 @@ func (r *Registry) checkVerdictsAreAvailable() error {
 // checkVerdictsAreReadable rejects a policy that reads verdicts at an
 // operation where there are none to read.
 //
-// Only pull decides about a record the catalogue already holds, so only pull
-// has verdicts. At push the record is arriving and no evaluation has seen it;
-// at index it is being made searchable, which is what has to happen before an
-// evaluation can run; at autosync it is someone else's record arriving.
-// Reading verdicts at any of those would be reading an empty map, and the
-// policy would refuse everything while appearing to decide.
+// Only pull and search decide about records the catalogue already holds, so
+// only they have verdicts. At push the record is arriving and no evaluation
+// has seen it; at index it is being made searchable, which is what has to
+// happen before an evaluation can run; at autosync it is someone else's
+// record arriving. Reading verdicts at any of those would be reading an empty
+// map, and the policy would refuse everything while appearing to decide.
 //
 // Rejected here, by name, rather than by leaving verdicts out of some
 // environments: a policy may be configured at several operations at once, so
@@ -249,9 +292,9 @@ func checkVerdictsAreReadable(ops []string, refs verdictRefs) error {
 	}
 
 	for _, op := range ops {
-		if op != policyconfig.OpPull {
-			return fmt.Errorf("reads verdicts, which only op %q has: op %q decides before any verdict exists",
-				policyconfig.OpPull, op)
+		if op != policyconfig.OpPull && op != policyconfig.OpSearch {
+			return fmt.Errorf("reads verdicts, which only ops %q and %q have: op %q decides before any verdict exists",
+				policyconfig.OpPull, policyconfig.OpSearch, op)
 		}
 	}
 
@@ -259,10 +302,11 @@ func checkVerdictsAreReadable(ops []string, refs verdictRefs) error {
 }
 
 // checkRecordIsReadable rejects a policy that reads the record's content at
-// pull, where the decision is reached before the record is.
+// an op that has no record to read.
 //
 // A read by CID is gated before the content is fetched, which is what keeps a
-// lookup an index read. Handing such a policy an empty record would let it
+// lookup an index read. A search has no one record at all: it decides which
+// records there will be. Handing either an empty record would let a policy
 // decide on nothing while appearing to decide on content.
 //
 // The restriction costs less than it looks. A record's content cannot change
@@ -274,13 +318,29 @@ func checkRecordIsReadable(ops []string, readsRecord bool) error {
 		return nil
 	}
 
-	if slices.Contains(ops, policyconfig.OpPull) {
-		return fmt.Errorf("reads the record at op %q, which decides before the record is read: "+
-			"put a rule about record content in an evaluation policy and read its verdict here",
-			policyconfig.OpPull)
+	for _, op := range []string{policyconfig.OpPull, policyconfig.OpSearch} {
+		if slices.Contains(ops, op) {
+			return fmt.Errorf("reads the record at op %q, which decides before the record is read: "+
+				"put a rule about record content in an evaluation policy and read its verdict here", op)
+		}
 	}
 
 	return nil
+}
+
+// checkSearchIsCompilable rejects a policy at search that says something a
+// query cannot.
+//
+// Every other op evaluates its policy, so anything the language can express
+// is available. A search has to decide before rows are selected, so its
+// policy becomes part of the query, and only a boolean combination of verdict
+// terms survives that.
+func checkSearchIsCompilable(ops []string, predicateErr error) error {
+	if predicateErr == nil || !slices.Contains(ops, policyconfig.OpSearch) {
+		return nil
+	}
+
+	return fmt.Errorf("cannot be used at op %q: %w", policyconfig.OpSearch, predicateErr)
 }
 
 // provider is the settings of whichever backend is configured. Config
@@ -325,7 +385,11 @@ func newValidator(ctx context.Context, l layer, name string, p provider, policyD
 
 		// OASF is nothing but a reading of the record: it checks the content
 		// against a schema. There is no sense in which it reads less.
-		return compiled{validator: v, readsRecord: true}, nil
+		return compiled{
+			validator:    v,
+			readsRecord:  true,
+			predicateErr: errNotCompilableProvider(policyconfig.ProviderOASF),
+		}, nil
 	case policyconfig.ProviderCEL:
 		v, err := newCELValidatorWithIDs(p.expressions, l, evaluationIDs)
 		if err != nil {
@@ -333,11 +397,13 @@ func newValidator(ctx context.Context, l layer, name string, p provider, policyD
 		}
 
 		return compiled{
-			validator:   v,
-			version:     v.version,
-			factGroups:  v.factGroups,
-			verdicts:    v.verdicts,
-			readsRecord: v.readsRecord,
+			validator:    v,
+			version:      v.version,
+			factGroups:   v.factGroups,
+			verdicts:     v.verdicts,
+			readsRecord:  v.readsRecord,
+			predicate:    v.predicate,
+			predicateErr: v.predicateErr,
 		}, nil
 	case policyconfig.ProviderOPA:
 		v, err := newOPAValidator(ctx, policyDir, p.file)
@@ -346,15 +412,73 @@ func newValidator(ctx context.Context, l layer, name string, p provider, policyD
 		}
 
 		return compiled{
-			validator:   v,
-			version:     v.version,
-			factGroups:  v.factGroups,
-			verdicts:    v.verdicts,
-			readsRecord: v.readsRecord,
+			validator:    v,
+			version:      v.version,
+			factGroups:   v.factGroups,
+			verdicts:     v.verdicts,
+			readsRecord:  v.readsRecord,
+			predicateErr: errNotCompilableProvider(policyconfig.ProviderOPA),
 		}, nil
 	default:
 		return compiled{}, fmt.Errorf("unsupported provider %q", name)
 	}
+}
+
+// SearchPolicy is a policy at op search as the registry holds it: compiled,
+// but not yet joined to the versions of the policies it reads.
+//
+// Joining it is somebody else's job because the registry cannot do it. The
+// version a policy is in force at, and whether its verdicts cover the
+// catalogue, are both read from the database.
+type SearchPolicy struct {
+	ID        string
+	Mode      policyconfig.Mode
+	Predicate predicate.Node
+
+	// Reads are the evaluation policies the predicate names, sorted and
+	// without repeats. The caller owns the slice.
+	Reads []string
+}
+
+// SearchPolicies returns the policies configured at op search, in config
+// order, skipping the ones switched off.
+func (r *Registry) SearchPolicies() []SearchPolicy {
+	if r == nil {
+		return nil
+	}
+
+	var policies []SearchPolicy
+
+	for _, p := range r.byOp[policyconfig.OpSearch] {
+		if p.mode == policyconfig.ModeOff {
+			continue
+		}
+
+		// A key that could not be read widens to every evaluation policy,
+		// the same way mayEnforce widens, so the policy waits for all of
+		// them rather than for none.
+		//
+		// No configuration reaches it today: validateAst refuses every way
+		// of reaching verdicts that no literal key can be read from, and a
+		// search policy is CEL by the time it gets here. It stays because
+		// removing it is silent. keys is empty in exactly the case all is
+		// set, so the fallback would be a policy that waits for nothing,
+		// passes the backfill latch at once, and hides every record no
+		// verdict covers — which is what the latch exists to prevent.
+		reads := slices.Clone(p.verdicts.keys)
+		if p.verdicts.all {
+			reads = r.evaluationIDs()
+		}
+
+		policies = append(policies, SearchPolicy{
+			ID:        p.id,
+			Mode:      p.mode,
+			Predicate: p.predicate,
+			Reads:     reads,
+		})
+	}
+
+	return policies
 }
 
 // OperationIDs returns the IDs of the policies configured at op, in config

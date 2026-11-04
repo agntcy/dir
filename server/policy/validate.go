@@ -45,6 +45,7 @@ var operations = map[string]policyv1.Operation{
 	policyconfig.OpAutosync: policyv1.Operation_OPERATION_AUTOSYNC,
 	policyconfig.OpIndex:    policyv1.Operation_OPERATION_INDEX,
 	policyconfig.OpPull:     policyv1.Operation_OPERATION_PULL,
+	policyconfig.OpSearch:   policyv1.Operation_OPERATION_SEARCH,
 }
 
 // DecideOption supplies a circumstance of the operation that the op and the

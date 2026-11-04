@@ -267,16 +267,15 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	// The APIs read through servedDB, which applies the enforced content
 	// policies; ingestion and the reconciler use databaseAPI, which applies
 	// none.
-	databaseAPI, servedDB, enforced, err := openDatabase(cfg, o.database, metricsServer)
+	databaseAPI, err := openDatabase(cfg, o.database)
 	if err != nil {
 		return nil, err
 	}
 
-	// The registry is built after the database because an operation policy at
-	// pull decides on stored verdicts, and needs both them and the versions
-	// currently in force. It reads nothing here; its first use is below.
-	policyRegistry, err := policy.NewRegistry(ctx, cfg.Policy.Evaluations, cfg.Policy.Operations, cfg.Policy.Dir,
-		policy.WithVerdicts(databaseAPI, enforced))
+	// The registry, the resolver that follows policy versions, and the gated
+	// view of the database are built together because each needs the others;
+	// see wirePolicies.
+	servedDB, policyRegistry, enforced, err := wirePolicies(ctx, cfg, databaseAPI, metricsServer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create policy registry: %w", err)
 	}

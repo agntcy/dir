@@ -74,7 +74,7 @@ func TestPolicyLifecycle(t *testing.T) {
 		Search:   policyconfig.ModeEnforce,
 		Fetch:    policyconfig.ModeEnforce,
 		Policies: []string{v1.ID},
-	}, base)
+	}, base, nil)
 	require.NoError(t, err)
 
 	served := base.Served(resolver.Current, nil)

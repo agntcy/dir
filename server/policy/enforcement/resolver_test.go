@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agntcy/dir/server/policy"
 	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
@@ -46,6 +47,7 @@ type versions struct {
 	mu         sync.Mutex
 	current    map[string]string
 	remaining  int64
+	counted    []string
 	backfilled map[string]bool
 	err        error
 	errs       map[string]error // by method name
@@ -78,11 +80,30 @@ func (v *versions) PolicyBackfilled(id string) (bool, error) {
 	return v.backfilled[id], v.errs["PolicyBackfilled"]
 }
 
-func (v *versions) CountRecordsNeedingPolicyEvaluation(string, string) (int64, error) {
+func (v *versions) CountRecordsNeedingPolicyEvaluation(id, _ string) (int64, error) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
+	v.counted = append(v.counted, id)
+
 	return v.remaining, v.errs["CountRecordsNeedingPolicyEvaluation"]
+}
+
+// countsFor is how many times the records still to evaluate under id were
+// counted, which is the expensive question the resolver asks.
+func (v *versions) countsFor(id string) int {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	n := 0
+
+	for _, counted := range v.counted {
+		if counted == id {
+			n++
+		}
+	}
+
+	return n
 }
 
 func (v *versions) MarkPolicyBackfilled(id string) error {
@@ -135,7 +156,7 @@ func enforcing(ids ...string) policyconfig.EnforcementConfig {
 func newResolver(t *testing.T, store *versions, c *clock, ids ...string) *Resolver {
 	t.Helper()
 
-	resolver, err := NewResolver(enforcing(ids...), store)
+	resolver, err := NewResolver(enforcing(ids...), store, nil)
 	require.NoError(t, err)
 
 	resolver.now = c.now
@@ -150,6 +171,38 @@ func refresh(t *testing.T, resolver *Resolver) types.PolicyEnforcement {
 	require.NoError(t, resolver.Refresh())
 
 	return resolver.Current()
+}
+
+// A policy named more than once is asked about once per pass.
+//
+// Counting the records a policy has yet to cover is the most expensive query
+// the resolver makes, and it runs on a timer. Two search policies reading the
+// same evaluation policy is the ordinary arrangement, and each read of a
+// policy still in backfill would otherwise count again.
+func TestResolver_AsksAboutEachPolicyOncePerPass(t *testing.T) {
+	t.Parallel()
+
+	c := newClock()
+	store := newVersions()
+	store.register("cel:trusted", "h1")
+	store.lack(3) // still in backfill, so the count is not short-circuited.
+
+	// Named by the enforced list and by both search policies.
+	reads := []string{"cel:trusted"}
+	search := []policy.SearchPolicy{
+		{ID: "cel:one", Mode: policyconfig.ModeEnforce, Reads: reads},
+		{ID: "cel:two", Mode: policyconfig.ModeShadow, Reads: reads},
+	}
+
+	resolver, err := NewResolver(enforcing("cel:trusted"), store, search)
+	require.NoError(t, err)
+
+	resolver.now = c.now
+
+	assert.Equal(t, 1, store.countsFor("cel:trusted"), "three references, one question")
+
+	require.NoError(t, resolver.Refresh())
+	assert.Equal(t, 2, store.countsFor("cel:trusted"), "and once more on the next pass")
 }
 
 // The current version of each registered policy is enforced; the modes are
@@ -227,7 +280,7 @@ func TestResolver_StoreErrors(t *testing.T) {
 	store := newVersions()
 	store.fail(errors.New("database unavailable"))
 
-	_, err := NewResolver(enforcing("opa:a"), store)
+	_, err := NewResolver(enforcing("opa:a"), store, nil)
 	require.ErrorContains(t, err, "database unavailable")
 
 	c := newClock()
@@ -385,7 +438,7 @@ func TestResolver_EveryStoreCallCanFailTheStart(t *testing.T) {
 			store.lack(tt.lack)
 			store.failMethod(tt.method, errors.New("database unavailable"))
 
-			_, err := NewResolver(enforcing("opa:a"), store)
+			_, err := NewResolver(enforcing("opa:a"), store, nil)
 			require.ErrorContains(t, err, "database unavailable")
 		})
 	}
