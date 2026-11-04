@@ -119,6 +119,7 @@ A policy in `policy.operations` decides one operation, so it is given the record
 | `context.operation` | enum | Which operation is being decided: `Operation.OPERATION_PUSH`, `Operation.OPERATION_AUTOSYNC`, `Operation.OPERATION_INDEX` or `Operation.OPERATION_PULL`. A policy at [`search`](#at-search) reads neither `context` nor `now`, because it is compiled into a query rather than run on an operation. |
 | `context.source_peer_id` | optional string | The authenticated peer the record is being pulled from. Set at `autosync` and absent at `push` and `index`, so a policy covering more than one operation tests it with `has(context.source_peer_id)` before comparing it. |
 | `now` | timestamp | The instant the operation is being decided at, the same one for every policy deciding it. |
+| `indexed_at` | optional timestamp | When this node first indexed the record. Set at `index` when the record already has a row; absent at `index` for a record seen for the first time, and absent at `push` and `autosync`, which decide from the record alone without reading the row. Absent rather than the zero time, so a policy unwraps it with `orValue` or tests it with `hasValue()`. |
 
 ```yaml
 - provider: cel
@@ -128,7 +129,9 @@ A policy in `policy.operations` decides one operation, so it is given the record
     - 'context.operation != Operation.OPERATION_AUTOSYNC || has(record.locators)'
 ```
 
-`opa` is given the same values as its input document: `input.record.name`, `input.record_cid`, `input.context.operation`, `input.context.source_peer_id`, `input.now`, and `input.verdicts` at `pull`. Two differences follow from the document being JSON. An enum arrives as its name, so the comparison is `input.context.operation == "OPERATION_PUSH"` rather than a number. An unset `source_peer_id` is absent from the document rather than empty, so a policy tests it with `not input.context.source_peer_id`. `now` is an RFC 3339 string.
+`indexed_at` is the one variable here that not every operation can answer, which is why it is optional. `push` and `autosync` decide from the record alone and do not read its row, so they leave it absent even for a record that has been indexed before; `index` reads the row before writing one, and so answers it for a record it has seen before. Because it is optional it has to be unwrapped before it is compared: `indexed_at.orValue(now) < now - duration('168h')` is an age condition that treats a record with no index time yet as not old enough, and `indexed_at < now - duration('168h')` does not load at all, since an optional timestamp has no comparison with a timestamp. The age condition is what `prune` is for — a row the reconciler has already selected — and `prune` does not decide through a policy yet.
+
+`opa` is given the same values as its input document: `input.record.name`, `input.record_cid`, `input.context.operation`, `input.context.source_peer_id`, `input.now`, `input.indexed_at`, and `input.verdicts` at `pull`. Two differences follow from the document being JSON. An enum arrives as its name, so the comparison is `input.context.operation == "OPERATION_PUSH"` rather than a number. An unset `source_peer_id` or `indexed_at` is absent from the document rather than empty, so a policy tests it with `not input.context.source_peer_id` or `input.indexed_at`. `now` is an RFC 3339 string, and so is `indexed_at`.
 
 A policy in this block cannot read `meta`, the facts about a record that an evaluation policy reads. Those belong to `policy.evaluations`, which runs per record rather than per operation; see [Content Policy Enforcement](dir-content-policy-enforcement.md). A `cel` policy here that names one does not load, and the node reports it at startup rather than letting the policy decide on nothing.
 

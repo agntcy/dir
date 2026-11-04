@@ -616,6 +616,8 @@ type indexDB struct{ servertypes.DatabaseAPI }
 
 func (indexDB) AddRecord(coretypes.Record) error { return nil }
 
+func (indexDB) GetRecordIndexedAt(string) (time.Time, error) { return time.Time{}, nil }
+
 type oneTag struct{}
 
 func (oneTag) Tags(_ context.Context, _ string, fn func([]string) error) error {

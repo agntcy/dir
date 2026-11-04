@@ -250,7 +250,8 @@ func stateActivation(state *policyv1.RecordState) map[string]any {
 }
 
 // operationActivation binds an OperationInput the way the operation
-// environment declares it.
+// environment declares it. An unset indexed_at is absent there, so an
+// operation that cannot answer it reports nothing rather than 1970.
 func operationActivation(input *policyv1.OperationInput) (map[string]any, error) {
 	if err := checkOperationInput(input); err != nil {
 		return nil, err
@@ -271,6 +272,7 @@ func operationActivation(input *policyv1.OperationInput) (map[string]any, error)
 		celVarVerdicts:  verdicts,
 		celVarContext:   input.GetContext(),
 		celVarNow:       types.Timestamp{Time: input.GetNow().AsTime()},
+		celVarIndexedAt: optionalTime(input.GetIndexedAt()),
 	}, nil
 }
 

@@ -6,6 +6,7 @@ package policy
 import (
 	"context"
 	"testing"
+	"time"
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -295,6 +296,60 @@ func TestCELValidator_MatchesSourcePeer(t *testing.T) {
 			require.Equal(t, tc.want, ok, msgs)
 		})
 	}
+}
+
+// The rule the operation layer exists for: a record older than a window. The
+// value is the row the reconciler holds the record from, so a record it holds
+// no row for reads as an absence — and a rule that must not act on an unknown
+// age says so with orValue(now), which answers false.
+func TestCELValidator_OperationReadsIndexedAt(t *testing.T) {
+	t.Parallel()
+
+	v, err := newCELValidator([]string{
+		`indexed_at.orValue(now) < now - duration('168h')`,
+	}, layerOperation)
+	require.NoError(t, err)
+
+	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
+
+	tests := []struct {
+		name      string
+		indexedAt time.Time
+		want      bool
+	}{
+		{"indexed inside the window", time.Now().Add(-time.Hour), false},
+		{"indexed before it", time.Now().Add(-200 * time.Hour), true},
+		{"no indexed_at to read", time.Time{}, false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ok, msgs, _, err := v.ValidateOperation(context.Background(),
+				operationInput(policyconfig.OpIndex, record, IndexedAt(tc.indexedAt)))
+			require.NoError(t, err)
+			require.Equal(t, tc.want, ok, msgs)
+		})
+	}
+}
+
+// value() is the strict unwrap: a policy that requires an index time refuses a
+// record that has none instead of reading it as the zero time.
+func TestCELValidator_IndexedAtValueOnAbsenceRefuses(t *testing.T) {
+	t.Parallel()
+
+	v, err := newCELValidator([]string{
+		`indexed_at.value() < now - duration('168h')`,
+	}, layerOperation)
+	require.NoError(t, err)
+
+	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
+
+	ok, msgs, _, err := v.ValidateOperation(context.Background(), operationInput(policyconfig.OpPush, record))
+	require.NoError(t, err)
+	require.False(t, ok)
+	require.Contains(t, msgs, "indexed_at.value() < now - duration('168h'): optional.none() dereference")
 }
 
 func TestCELValidator_UnsetFactsStayAbsent(t *testing.T) {

@@ -197,6 +197,10 @@ func (f *fakeSignatureDB) GetRecordsNeedingSignatureVerification(ttl time.Durati
 }
 
 func (f *fakeSignatureDB) AddRecord(record coretypes.Record) error { return nil }
+func (f *fakeSignatureDB) GetRecordIndexedAt(cid string) (time.Time, error) {
+	return time.Time{}, nil
+}
+
 func (f *fakeSignatureDB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
 	return nil, nil
 }

@@ -182,10 +182,35 @@ func TestOperationEnv_RejectsEvaluationFields(t *testing.T) {
 	}, layerOperation)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "meta")
+}
 
-	_, err = newCELValidator([]string{`indexed_at.hasValue()`}, layerOperation)
+// The operation layer is given when this node indexed the record, optional
+// because only index can answer it: a policy at push reads an absence rather
+// than a zero time.
+func TestOperationEnv_DeclaresIndexedAtOptional(t *testing.T) {
+	t.Parallel()
+
+	v, err := newCELValidator([]string{`!indexed_at.hasValue()`}, layerOperation)
+	require.NoError(t, err)
+
+	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
+
+	ok, msgs, _, err := v.ValidateOperation(context.Background(), operationInput(policyconfig.OpPush, record))
+	require.NoError(t, err)
+	require.True(t, ok, msgs)
+}
+
+// Being optional, the value has to be unwrapped with orValue or value() before
+// it is compared. An expression that would read a missing indexed_at as the
+// zero time does not load, so no policy can take a record with no index time
+// for one that is decades old.
+func TestOperationEnv_RequiresUnwrappingIndexedAt(t *testing.T) {
+	t.Parallel()
+
+	_, err := newCELValidator([]string{`indexed_at < now - duration('168h')`}, layerOperation)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "indexed_at")
+	require.Contains(t, err.Error(), "no matching overload for '_<_'")
+	require.Contains(t, err.Error(), "optional_type(timestamp)")
 }
 
 // A policy belongs to one of the two layers. An unknown one must not quietly

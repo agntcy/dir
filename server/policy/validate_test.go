@@ -8,6 +8,7 @@ import (
 	"maps"
 	"slices"
 	"testing"
+	"time"
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -70,6 +71,32 @@ func TestFromPeer_EmptyLeavesItUnset(t *testing.T) {
 
 	unset := operationInput(policyconfig.OpAutosync, record, FromPeer(""))
 	require.Nil(t, unset.GetContext().SourcePeerId)
+}
+
+// pullInput builds an input without applying options, so an option has to
+// survive one that carries no Context rather than dereference it.
+func TestFromPeer_NoContextDoesNotPanic(t *testing.T) {
+	t.Parallel()
+
+	input := &policyv1.OperationInput{}
+
+	require.NotPanics(t, func() { FromPeer("12D3KooWSomePeer")(input) })
+	require.Nil(t, input.GetContext())
+}
+
+// A caller that holds no row passes the zero time rather than saying the
+// record was indexed at the epoch, so the policy reads an absence.
+func TestIndexedAt_ZeroLeavesItUnset(t *testing.T) {
+	t.Parallel()
+
+	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
+	indexedAt := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+
+	set := operationInput(policyconfig.OpIndex, record, IndexedAt(indexedAt))
+	require.True(t, indexedAt.Equal(set.GetIndexedAt().AsTime()))
+
+	unset := operationInput(policyconfig.OpIndex, record, IndexedAt(time.Time{}))
+	require.Nil(t, unset.GetIndexedAt())
 }
 
 // A policy reads context and now as values, so an input missing either fails
