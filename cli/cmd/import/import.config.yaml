@@ -40,9 +40,11 @@ enricher:
   # record with a fixed set of skills/domains (no LLM or local model needed).
   # static:
   #   skills:
-  #     - name: natural_language_processing/natural_language_generation/dialogue_generation
+  #     - name: language_processing/language_generation/dialogue_generation
+  #       id: 10304
   #   domains:
-  #     - name: technology/software_engineering/apis_integration
+  #     - name: technology/software_engineering
+  #       id: 102
 
   # Or use "extractor:" for LLM-free enrichment using the OASF taxonomy model,
   # either in-process from local assets (requires `dirctl init` to have been run

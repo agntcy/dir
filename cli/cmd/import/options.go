@@ -19,6 +19,10 @@ type options struct {
 	OutputCIDFile string
 	ConfigFile    string
 
+	// implicitConfigFile is the default config file used when --config is not
+	// given. It is set by runImport, never by a flag.
+	implicitConfigFile string
+
 	// extractorCloser holds the resolved OASF extractor (when the extractor
 	// enricher is used) so runImport can release it — importantly its remote gRPC
 	// connection — after the import finishes.

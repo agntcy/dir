@@ -6,12 +6,16 @@ package importcmd
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	enricherconfig "github.com/agntcy/dir-importer/enricher/config"
+	"github.com/agntcy/dir-importer/transformer"
+	"github.com/agntcy/oasf-sdk/pkg/validator"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // newTestOptions builds an isolated options struct and flag set, then parses the
@@ -46,7 +50,7 @@ func writeConfig(t *testing.T, content string) string {
 	t.Helper()
 
 	path := filepath.Join(t.TempDir(), "import.config.yaml")
-	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o600)) //nolint:gosec // G703: path is inside t.TempDir().
 
 	return path
 }
@@ -238,4 +242,96 @@ func TestReferenceConfigIsValid(t *testing.T) {
 	server, ok := o.Enricher.LLM.ToolHost.MCPServers["dir-mcp-server"]
 	require.True(t, ok)
 	assert.Equal(t, "https://schema.oasf.outshift.com", server.Env["OASF_API_VALIDATION_SCHEMA_URL"])
+}
+
+// TestReferenceStaticEnricherIsValid uncomments the static enricher example in
+// the reference file and validates its taxonomy against OASF.
+func TestReferenceStaticEnricherIsValid(t *testing.T) {
+	raw, err := os.ReadFile("import.config.yaml")
+	require.NoError(t, err)
+
+	var (
+		lines    []string
+		inStatic bool
+	)
+
+	for line := range strings.SplitSeq(string(raw), "\n") {
+		switch {
+		case strings.TrimSpace(line) == "# static:":
+			inStatic = true
+			line = "  static:"
+		case inStatic && strings.HasPrefix(line, "  #   "):
+			line = "  " + strings.TrimPrefix(line, "  # ")
+		default:
+			inStatic = false
+		}
+
+		lines = append(lines, line)
+	}
+
+	// Swap the active llm block out so only the static enricher remains.
+	cfg := strings.Join(lines, "\n")
+	start := strings.Index(cfg, "  llm:")
+	end := strings.Index(cfg, "  static:")
+
+	require.NotEqual(t, -1, start)
+	require.Greater(t, end, start)
+
+	path := writeConfig(t, cfg[:start]+cfg[end:])
+
+	o, flags := newTestOptions(t, "--config", path)
+	require.NoError(t, o.loadConfig(flags))
+
+	require.NotNil(t, o.Enricher.Static)
+	require.NoError(t, o.Enricher.Validate())
+
+	validateStaticEnricherAgainstOASF(t, o.Enricher.Static)
+}
+
+// validateStaticEnricherAgainstOASF stamps the static skills/domains on a minimal
+// record and validates it against the live OASF schema server, so renamed or
+// removed taxonomy classes are caught. It runs only when OASF_SCHEMA_URL is set,
+// keeping the default unit run off the network:
+//
+//	OASF_SCHEMA_URL=https://schema.oasf.outshift.com go test ./cmd/import/...
+func validateStaticEnricherAgainstOASF(t *testing.T, static *enricherconfig.StaticConfig) {
+	t.Helper()
+
+	schemaURL := os.Getenv("OASF_SCHEMA_URL")
+	if schemaURL == "" {
+		t.Skip("set OASF_SCHEMA_URL to validate the static enricher taxonomy against OASF")
+	}
+
+	require.NotEmpty(t, static.Skills)
+	require.NotEmpty(t, static.Domains)
+
+	skills := make([]any, 0, len(static.Skills))
+	for _, s := range static.Skills {
+		skills = append(skills, map[string]any{"name": s.GetName(), "id": float64(s.GetId())})
+	}
+
+	domains := make([]any, 0, len(static.Domains))
+	for _, d := range static.Domains {
+		domains = append(domains, map[string]any{"name": d.GetName(), "id": float64(d.GetId())})
+	}
+
+	record, err := structpb.NewStruct(map[string]any{
+		"name":           "example.com/static-enricher-test",
+		"version":        "1.0.0",
+		"schema_version": transformer.DefaultSchemaVersion,
+		"description":    "Record used to validate the static enricher taxonomy.",
+		"authors":        []any{"AGNTCY"},
+		"created_at":     "2026-01-01T00:00:00Z",
+		"locators":       []any{map[string]any{"type": "url", "urls": []any{"https://example.com"}}},
+		"skills":         skills,
+		"domains":        domains,
+	})
+	require.NoError(t, err)
+
+	v, err := validator.New(schemaURL)
+	require.NoError(t, err)
+
+	valid, errs, _, err := v.ValidateRecord(t.Context(), record)
+	require.NoError(t, err)
+	assert.True(t, valid, "static enricher taxonomy is not valid OASF: %v", errs)
 }
