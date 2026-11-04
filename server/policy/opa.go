@@ -37,9 +37,19 @@ type opaValidator struct {
 
 	// readsRecord is whether the module reads the record's content.
 	readsRecord bool
+
+	// layer is the layer this module was loaded for. The method matching it is
+	// the only one that answers.
+	layer layer
 }
 
-func newOPAValidator(ctx context.Context, policyDir, filename string) (*opaValidator, error) {
+// newOPAValidator loads one Rego module.
+//
+// l is the layer it was configured in, and evaluationIDs are the evaluation
+// policies a verdict key may name. Both are what the verdict check needs: an
+// evaluation policy cannot read verdicts at all, and an operation policy can
+// read them only by a literal key that names one of those policies.
+func newOPAValidator(ctx context.Context, policyDir, filename string, l layer, evaluationIDs []string) (*opaValidator, error) {
 	if err := policyconfig.ValidatePolicyFile(filename); err != nil {
 		return nil, fmt.Errorf("invalid policy file: %w", err)
 	}
@@ -67,6 +77,10 @@ func newOPAValidator(ctx context.Context, policyDir, filename string) (*opaValid
 		return nil, fmt.Errorf("policy file %s: package is required", filename)
 	}
 
+	if err := validateOPAModule(mod, l, evaluationIDs); err != nil {
+		return nil, fmt.Errorf("policy file %s: %w", filename, err)
+	}
+
 	query := mod.Package.Path.String() + allowQuerySfx
 
 	prepared, err := rego.New(
@@ -85,10 +99,15 @@ func newOPAValidator(ctx context.Context, policyDir, filename string) (*opaValid
 		factGroups:  opaFactGroups(mod),
 		verdicts:    opaVerdictKeys(mod),
 		readsRecord: opaReadsRecord(mod),
+		layer:       l,
 	}, nil
 }
 
 func (v *opaValidator) ValidateEvaluation(ctx context.Context, state *policyv1.RecordState) (bool, []string, []string, error) {
+	if v.layer != layerEvaluation {
+		return false, nil, nil, fmt.Errorf("OPA policy compiled for the %s layer cannot produce a verdict", v.layer)
+	}
+
 	if state.GetRecord() == nil {
 		return false, []string{"record data is required"}, nil, nil
 	}
@@ -102,6 +121,10 @@ func (v *opaValidator) ValidateEvaluation(ctx context.Context, state *policyv1.R
 }
 
 func (v *opaValidator) ValidateOperation(ctx context.Context, opInput *policyv1.OperationInput) (bool, []string, []string, error) {
+	if v.layer != layerOperation {
+		return false, nil, nil, fmt.Errorf("OPA policy compiled for the %s layer cannot decide an operation", v.layer)
+	}
+
 	// Only a policy that reads the record needs one; see the same check in
 	// the CEL validator.
 	if v.readsRecord && opInput.GetRecord() == nil {

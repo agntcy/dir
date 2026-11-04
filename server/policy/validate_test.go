@@ -143,7 +143,7 @@ func TestCheckOperationInput_RequiresContextAndNow(t *testing.T) {
 			require.Empty(t, msgs, "a failed validator reports nothing about the record")
 
 			opa, err := newOPAValidator(context.Background(),
-				writePolicy(t, "allow.rego", allowIfNamed), "allow.rego")
+				writePolicy(t, "allow.rego", allowIfNamed), "allow.rego", layerOperation, nil)
 			require.NoError(t, err)
 
 			ok, msgs, _, err = opa.ValidateOperation(context.Background(), tc.input)
