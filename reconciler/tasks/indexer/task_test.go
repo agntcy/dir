@@ -7,10 +7,13 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	coretypes "github.com/agntcy/dir/api/core/types"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	"github.com/agntcy/dir/server/policy"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
@@ -122,17 +125,23 @@ func (s *storeOf) Pull(context.Context, *corev1.RecordRef) (*corev1.Record, erro
 	return corev1.New(&typesv1alpha1.Record{Name: "agent", SchemaVersion: "0.7.0"}), nil
 }
 
-// searchDB accepts every record it is given.
+// searchDB accepts every record it is given, and reports the index time the
+// test says the row holds.
 type searchDB struct {
 	types.SearchDatabaseAPI
 
-	added int
+	indexedAt time.Time
+	added     int
 }
 
 func (d *searchDB) AddRecord(coretypes.Record) error {
 	d.added++
 
 	return nil
+}
+
+func (d *searchDB) GetRecordIndexedAt(string) (time.Time, error) {
+	return d.indexedAt, nil
 }
 
 const indexedCID = "baeareidp4vt6jw7tirdvk6qlcuqndobz24yejxovcjgcuv3qnnhwzqz4mi"
@@ -201,4 +210,50 @@ func TestRun_SaysNothingWhenNothingWasIndexed(t *testing.T) {
 
 		assert.NotPanics(t, func() { _ = task.Run(t.Context()) })
 	})
+}
+
+// --- indexed_at ---
+
+// An index policy can decide on how long a record has already been here. The
+// value is the row the index holds, which the indexer reads before it writes
+// one, so a record being indexed for the first time has no index time: the
+// policy is told that rather than being told 1970.
+func TestRun_PassesTheIndexedAtOfTheRecord(t *testing.T) {
+	t.Parallel()
+
+	// The age rule from the policy design, as an admission gate at index: do
+	// not re-index a record that has been here longer than the window. A record
+	// with no index time yet answers "not that old" through orValue(now).
+	reg, err := policy.NewRegistry(t.Context(), nil, policyconfig.Operations{{
+		Provider:    policyconfig.ProviderCEL,
+		Ops:         []string{policyconfig.OpIndex},
+		Name:        "drop-aged",
+		Expressions: []string{`!(indexed_at.orValue(now) < now - duration('168h'))`},
+	}}, "")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		indexedAt time.Time
+		wantAdded int
+	}{
+		{"a record indexed long ago is refused", time.Now().Add(-200 * time.Hour), 0},
+		{"a record indexed recently is accepted", time.Now().Add(-time.Hour), 1},
+		{"a record with no row yet is accepted", time.Time{}, 1},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := &searchDB{indexedAt: tc.indexedAt}
+
+			task, err := NewTask(Config{Enabled: true}, ociconfig.Config{}, &storeOf{},
+				&registryOf{tags: []string{indexedCID}}, db, reg)
+			require.NoError(t, err)
+
+			require.NoError(t, task.Run(t.Context()), "a refused record is a failed record, not a failed run")
+			assert.Equal(t, tc.wantAdded, db.added)
+		})
+	}
 }
