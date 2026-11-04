@@ -7,13 +7,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"strings"
 
 	client "github.com/agntcy/dir/tests/e2e/client/config"
 	daemon "github.com/agntcy/dir/tests/e2e/daemon/config"
 	local "github.com/agntcy/dir/tests/e2e/local/config"
 	network "github.com/agntcy/dir/tests/e2e/network/config"
 	policy "github.com/agntcy/dir/tests/e2e/policy/config"
+	"github.com/agntcy/dir/utils/env"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/viper"
 )
@@ -34,7 +34,7 @@ func init() {
 func LoadConfig() (*Config, error) {
 	v := viper.NewWithOptions(
 		viper.KeyDelimiter("."),
-		viper.EnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_")),
+		viper.EnvKeyReplacer(env.KeyReplacer),
 	)
 
 	configPathFlag := flag.Lookup("test-config")

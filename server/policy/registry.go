@@ -597,7 +597,7 @@ func (r *Registry) DecidePull(ctx context.Context, recordCID string,
 			// failure to make it is reported and the record served. Shadow
 			// is for learning what a policy would do, not for failing reads
 			// while finding out.
-			if !r.actsAt(policyconfig.OpPull) {
+			if !r.actsOnVerdictsAt(policyconfig.OpPull) {
 				logger.Warn("Could not read the verdicts a pull policy checks, and none is enforcing",
 					"cid", recordCID, "error", err)
 
@@ -620,11 +620,16 @@ func (r *Registry) DecidePull(ctx context.Context, recordCID string,
 	return ok, msgs, refused, err
 }
 
-// actsAt reports whether a refusal at op would change any answer: whether
-// some policy there is enforcing, the backfill latch having had its say.
-func (r *Registry) actsAt(op string) bool {
+// actsOnVerdictsAt reports whether verdicts that could not be read would
+// change any answer at op: whether some policy there both reads them and is
+// enforcing, the backfill latch having had its say.
+//
+// Reading them is half the test, not a detail. A policy that reads no verdict
+// decides the same whether or not the store answered, so letting it vote here
+// would fail a read closed over a question it never asked.
+func (r *Registry) actsOnVerdictsAt(op string) bool {
 	for _, p := range r.byOp[op] {
-		if p.validator == nil || p.mode != policyconfig.ModeEnforce {
+		if p.validator == nil || p.mode != policyconfig.ModeEnforce || !p.verdicts.reads() {
 			continue
 		}
 
@@ -672,6 +677,18 @@ func (r *Registry) apply(
 
 		ok, msgs, err := run(ctx, p.validator)
 		if err != nil {
+			// Only a policy that would act can fail the operation. One in
+			// shadow is being watched, not obeyed, so its own failure is
+			// reported and the operation decided by the rest: a policy
+			// being trialled must not be able to break what it is not yet
+			// trusted to decide.
+			if mode != policyconfig.ModeEnforce {
+				logger.Warn("Shadow policy could not decide the record; ignoring it",
+					"policy_id", p.id, "op", op, "error", err)
+
+				continue
+			}
+
 			return false, nil, "", fmt.Errorf("decide record with policy %q: %w", p.id, err)
 		}
 

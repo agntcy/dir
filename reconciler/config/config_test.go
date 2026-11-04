@@ -245,3 +245,34 @@ func TestLoadConfig_PublishTrustedFalseFromEnv(t *testing.T) {
 	require.NotNil(t, cfg.Publish.Criteria.Trusted)
 	assert.False(t, *cfg.Publish.Criteria.Trusted)
 }
+
+// The reconciler reads the server's policy block, so it inherited the
+// settings removed from it, with its own prefix. It never enforced reads, so
+// a leftover here is less costly than on the server, but it is equally dead.
+func TestLoadConfig_RefusesRetiredPolicyKeys(t *testing.T) {
+	for _, env := range []string{
+		"RECONCILER_POLICY_ENFORCEMENT_FETCH",
+		"RECONCILER_POLICY_ENFORCEMENT_SEARCH",
+		"RECONCILER_POLICY_ENFORCEMENT_POLICIES",
+		"RECONCILER_POLICY_ENFORCEMENT_REFRESH_INTERVAL",
+		"RECONCILER_POLICY_ENABLED",
+	} {
+		t.Run(env, func(t *testing.T) {
+			t.Setenv(env, "enforce")
+
+			_, err := LoadConfig()
+			require.Error(t, err)
+			require.Contains(t, err.Error(), env)
+		})
+	}
+}
+
+// The live setting whose name is closest to a retired one must still load:
+// policy_evaluation.enabled is not policy.enabled.
+func TestLoadConfig_PolicyEvaluationIsNotTheRetiredEnabled(t *testing.T) {
+	t.Setenv("RECONCILER_POLICY_EVALUATION_ENABLED", "true")
+
+	cfg, err := LoadConfig()
+	require.NoError(t, err)
+	require.True(t, cfg.PolicyEvaluation.Enabled)
+}

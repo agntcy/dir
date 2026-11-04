@@ -30,7 +30,9 @@ import (
 	synctask "github.com/agntcy/dir/reconciler/tasks/sync"
 	serverconfig "github.com/agntcy/dir/server/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 	storeconfig "github.com/agntcy/dir/server/store/oci/config"
+	"github.com/agntcy/dir/utils/env"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
@@ -264,7 +266,7 @@ var defaultConfigYAML string
 func loadConfig() (*DaemonConfig, error) {
 	v := viper.NewWithOptions(
 		viper.KeyDelimiter("."),
-		viper.EnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_")),
+		viper.EnvKeyReplacer(env.KeyReplacer),
 	)
 
 	v.SetConfigType("yaml")
@@ -286,6 +288,14 @@ func loadConfig() (*DaemonConfig, error) {
 		mapstructure.StringToTimeDurationHookFunc(),
 		mapstructure.StringToSliceHookFunc(","),
 	)
+
+	// The daemon keeps the policy block under server., and reads it with its
+	// own environment prefix, so neither half can be borrowed from another
+	// loader.
+	retired := policyconfig.KeyLocation{KeyPrefix: "server.", EnvPrefix: DefaultEnvPrefix}
+	if err := policyconfig.CheckRetired(v, retired); err != nil {
+		return nil, fmt.Errorf("invalid daemon config: %w", err)
+	}
 
 	cfg := &DaemonConfig{}
 	if err := v.Unmarshal(cfg, viper.DecodeHook(decodeHooks)); err != nil {

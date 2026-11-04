@@ -55,7 +55,6 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD":             "sync-password",
 				"DIRECTORY_SERVER_AUTHZ_ENABLED":                         "true",
 				"DIRECTORY_SERVER_AUTHZ_ENFORCER_POLICY_FILE_PATH":       "/tmp/authz_policies.csv",
-				"DIRECTORY_SERVER_POLICY_ENABLED":                        "true",
 				"DIRECTORY_SERVER_POLICY_DIR":                            "/tmp/policies",
 				"DIRECTORY_SERVER_POLICY_REFRESH_INTERVAL":               "2m",
 				"DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL":        "10s",
