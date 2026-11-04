@@ -96,8 +96,8 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 		return nil, fmt.Errorf("failed to create gRPC client for %q: %w", opts.GRPCEndpoint, err)
 	}
 
-	// Field names use protojson's lowerCamelCase default (specVersion, mediaType)
-	// to match the AI Catalog spec.
+	// Field names use protojson's lowerCamelCase default (specVersion, type,
+	// extensions) to match the AI Catalog spec.
 	jsonMarshaler := &runtime.JSONPb{
 		UseProtoNames:   false,
 		EmitUnpopulated: true,

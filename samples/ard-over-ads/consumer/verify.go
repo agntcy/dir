@@ -17,10 +17,10 @@ import (
 )
 
 // Verify confirms the entry owns its claimed identity and trust signals.
-// Identifier format is expected to be urn:ai:org.agntcy:cid:<cid>.
+// Identifier format is expected to be urn:air:org.agntcy:cid:<cid>.
 func Verify(ctx context.Context, client *adsclient.Client, e *catalogv1.CatalogEntry) error {
 	// Get AGNTYCY identifier
-	cid, found := strings.CutPrefix(e.GetIdentifier(), "urn:ai:org.agntcy:cid:")
+	cid, found := strings.CutPrefix(e.GetIdentifier(), "urn:air:org.agntcy:cid:")
 	if !found {
 		return fmt.Errorf("invalid identifier format: %s", e.GetIdentifier())
 	}

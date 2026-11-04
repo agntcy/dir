@@ -30,7 +30,7 @@ export interface TrustStatus {
 	verified: boolean;
 }
 
-export const TRUST_STATUS_METADATA_KEY = 'agntcy.dir.trust.v1.Status';
+export const TRUST_STATUS_METADATA_KEY = 'org.agntcy.dir.trust.v1.Status';
 
 export interface CatalogTag {
 	id: string;
@@ -87,7 +87,7 @@ export interface CatalogEntry {
 	tags?: string[];
 	updatedAt?: string;
 	trustManifest?: TrustManifest;
-	metadata?: Record<string, unknown>;
+	extensions?: Record<string, unknown>;
 }
 
 export interface EntryData {

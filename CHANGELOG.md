@@ -8,9 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **API**: `GET /v1/catalog` returns an AI Catalog document for a filtered page of entries, used by nested-catalog URLs in the well-known document (#2448)
 - **Search**: `RecordSummary` carries `trusted`, `verified` and an optional `safe`, matching the `TRUSTED`, `VERIFIED` and `SCAN_SAFE` filters and the AI Catalog badges; `safe` is unset when no scanner reached a verdict (#2399)
 
 ### Changed
+- **API**: **BREAKING**: the well-known AI Catalog is a regular `AICatalog` document. `collections` and `WellKnownCatalog` are removed; protocol groupings are nested-catalog `entries` pointing at `GET /v1/catalog`. Identifiers use `urn:air:`, `mediaType` is dropped in favour of `type`, and `metadata` is renamed `extensions` with reverse-DNS keys (#2448)
 - **API**: **BREAKING**: `Workload.addresses` and `Workload.ports` are removed; read endpoints from `locators`. The `DiscoveredWorkload` CRD drops the Addresses and Ports print columns (#2299)
 
 ## [v1.8.0] - 2026-10-15

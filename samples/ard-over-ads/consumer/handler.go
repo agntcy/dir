@@ -32,7 +32,7 @@ func Handle(ctx context.Context, client *adsclient.Client, taskQuery string) {
 
 // Dispatch routes a discovered entry to its native invocation path.
 func Dispatch(ctx context.Context, e *catalogv1.CatalogEntry, task map[string]any) {
-	switch e.GetMediaType() {
+	switch e.GetType() {
 	case catalogv1.ProtocolMCPCardJsonMediaType:
 		// Fetch the MCP server descriptor at e.URL, then speak JSON-RPC.
 		fmt.Printf("Invoking MCP server: %s\n", e.Identifier)
@@ -46,6 +46,6 @@ func Dispatch(ctx context.Context, e *catalogv1.CatalogEntry, task map[string]an
 		// Load the bundled Agent Skill archive at e.URL
 		fmt.Printf("Invoking Agent Skill bundle: %s\n", e.Identifier)
 	default:
-		fmt.Printf("Unsupported media type: %s\n", e.GetMediaType())
+		fmt.Printf("Unsupported type: %s\n", e.GetType())
 	}
 }

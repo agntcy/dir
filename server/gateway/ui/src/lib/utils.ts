@@ -2,7 +2,7 @@ import type { CatalogEntry, ScanManifest, SubEntry, ExportFormat, UsageMetrics, 
 import { TRUST_STATUS_METADATA_KEY } from './types';
 
 export function getScanManifest(aicard: CatalogEntry): ScanManifest | null {
-	const sm = aicard.metadata?.["agntcy.dir.security.v1.ScanResult"] as ScanManifest | undefined;
+	const sm = aicard.extensions?.['org.agntcy.dir.security.v1.ScanResult'] as ScanManifest | undefined;
 	if (!sm || !Array.isArray(sm.reports) || sm.reports.length === 0) return null;
 	return sm;
 }
@@ -32,7 +32,7 @@ export function extractShortTag(tag: string): string {
 }
 
 export function getTrustStatus(aicard: CatalogEntry): TrustStatus | null {
-	const status = aicard.metadata?.[TRUST_STATUS_METADATA_KEY] as TrustStatus | undefined;
+	const status = aicard.extensions?.[TRUST_STATUS_METADATA_KEY] as TrustStatus | undefined;
 	if (!status || typeof status.trusted !== 'boolean' || typeof status.verified !== 'boolean') {
 		return null;
 	}
@@ -41,7 +41,7 @@ export function getTrustStatus(aicard: CatalogEntry): TrustStatus | null {
 }
 
 export function getUsageMetrics(aicard: CatalogEntry): UsageMetrics | null {
-	const m = aicard.metadata?.['agntcy.dir.usage.v1.Metrics'] as UsageMetrics | undefined;
+	const m = aicard.extensions?.['org.agntcy.dir.usage.v1.Metrics'] as UsageMetrics | undefined;
 	if (!m || typeof m.pullCount !== 'number') return null;
 	return m;
 }
@@ -57,13 +57,13 @@ export function extractCid(identifier: string): string {
 	return parts[parts.length - 1];
 }
 
-export function exportFormatForType(mediaType: string): ExportFormat {
-	if (mediaType.includes('a2a')) return { format: 'a2a', label: 'Download JSON', ext: 'json' };
-	if (mediaType.includes('mcp'))
+export function exportFormatForType(type: string): ExportFormat {
+	if (type.includes('a2a')) return { format: 'a2a', label: 'Download JSON', ext: 'json' };
+	if (type.includes('mcp'))
 		return { format: 'mcp-ghcopilot', label: 'Download JSON', ext: 'json' };
-	if (mediaType.includes('agent-skills') && mediaType.endsWith('+md'))
+	if (type.includes('agent-skills') && type.endsWith('+md'))
 		return { format: 'agent-skill', label: 'Download Markdown', ext: 'md' };
-	if (mediaType.includes('agent-skills') && mediaType.endsWith('+gzip'))
+	if (type.includes('agent-skills') && type.endsWith('+gzip'))
 		return { format: 'agent-skill-bundle', label: 'Download Bundle', ext: 'gzip' };
 	return { format: 'oasf', label: 'Download Asset', ext: 'json' };
 }

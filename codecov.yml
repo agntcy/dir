@@ -28,6 +28,7 @@ coverage:
 
 ignore:
   - "**/*.pb.go"
+  - "**/*.pb.gw.go"
   - "**/mock_*.go"
   - "tests/**"
   - "**/testdata/**"

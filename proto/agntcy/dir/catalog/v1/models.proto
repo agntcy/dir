@@ -25,56 +25,9 @@ message AICatalog {
   // Catalog entries. May be empty.
   repeated CatalogEntry entries = 3;
 
-  // Custom or vendor-specific metadata.
-  map<string, google.protobuf.Value> metadata = 4;
-}
-
-// WellKnownCatalog is an AICatalog served at "/.well-known/ai-catalog.json"
-// (RFC 8615) that additionally advertises dynamic collections.
-// Specs: https://agent-card.github.io/ai-catalog/#well-known-uri
-message WellKnownCatalog {
-  // AI Catalog spec version this document conforms to, as "Major.Minor".
-  string spec_version = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.pattern = "^[0-9]+\\.[0-9]+$"
-  ];
-
-  // Operator of this catalog. Required at the Discoverable/Trusted levels.
-  optional HostInfo host = 2;
-
-  // Statically published catalog entries. May be empty.
-  repeated CatalogEntry entries = 3;
-
-  // Dynamic collections: pre-built queries that resolve to lists of records.
-  repeated CatalogCollection collections = 4;
-
-  // Custom or vendor-specific metadata.
-  map<string, google.protobuf.Value> metadata = 5;
-}
-
-// CatalogCollection is a dynamic, queryable view: fetching its url returns a
-// list of records (e.g. a nested AICatalog) matching a server-side query.
-message CatalogCollection {
-  // Human-readable name for the collection.
-  string display_name = 1 [(buf.validate.field).required = true];
-
-  // URL that resolves to the collection contents.
-  string url = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.uri = true
-  ];
-
-  // Description of what the collection returns.
-  optional string description = 3;
-
-  // Media type of the document returned by fetching url.
-  optional string media_type = 4;
-
-  // Free-form tags for filtering and discovery.
-  repeated string tags = 5;
-
-  // Custom metadata.
-  map<string, google.protobuf.Value> metadata = 6;
+  // Custom or vendor-specific extensions. Keys MUST be a valid URL or a
+  // reverse-DNS string.
+  map<string, google.protobuf.Value> extensions = 4;
 }
 
 // HostInfo identifies the operator of an AI Catalog.
@@ -91,14 +44,14 @@ message HostInfo {
   // URL to the host's logo. Data URIs (RFC 2397) are recommended.
   optional string logo_url = 4;
 
-  // Trust metadata for the host itself.
-  optional TrustManifest trust_manifest = 5;
+  reserved 5;
+  reserved "trust_manifest";
 }
 
 // CatalogEntry describes a single AI artifact: it identifies the artifact,
-// declares its type via media_type, and either references it (url) or embeds
-// it inline (data). When version is set, (identifier, version) must be unique
-// within a catalog; otherwise identifier alone must be unique.
+// declares its type, and either references it (url) or embeds it inline
+// (data). When version is set, (identifier, version) must be unique within a
+// catalog; otherwise identifier alone must be unique.
 message CatalogEntry {
   // Stable, globally unique identifier, ideally a URN (RFC 8141) or URI.
   string identifier = 1 [
@@ -106,17 +59,12 @@ message CatalogEntry {
     (buf.validate.field).string.min_len = 1
   ];
 
-  // Human-readable name for the artifact.
-  string display_name = 2 [(buf.validate.field).required = true];
+  // Human-readable name for the artifact. Optional: when omitted, consumers
+  // resolve a name from the referenced artifact.
+  string display_name = 2;
 
-  // Media type of the artifact, e.g. "application/a2a-agent-card+json",
-  // "application/mcp-server-card+json", or "application/ai-catalog+json"
-  // for a nested catalog.
-  string media_type = 3 [(buf.validate.field).required = true];
-
-  // Spec-compliant media type of the artifact. This is the preferred field for
-  // AI Catalog clients; media_type remains for wire compatibility.
-  string type = 13;
+  reserved 3;
+  reserved "media_type";
 
   // Artifact content. Exactly one of url or data must be set.
   oneof artifact {
@@ -125,7 +73,7 @@ message CatalogEntry {
     // URL where the artifact document can be retrieved.
     string url = 4 [(buf.validate.field).string.uri = true];
 
-    // Artifact document embedded inline; its structure follows media_type.
+    // Artifact document embedded inline; its structure follows type.
     google.protobuf.Value data = 5;
   }
 
@@ -148,8 +96,14 @@ message CatalogEntry {
   // RFC 3339 timestamp of the last modification to this entry.
   optional string updated_at = 11;
 
-  // Custom metadata.
-  map<string, google.protobuf.Value> metadata = 12;
+  // Custom or vendor-specific extensions. Keys MUST be a valid URL or a
+  // reverse-DNS string.
+  map<string, google.protobuf.Value> extensions = 12;
+
+  // Spec-compliant type of the artifact, e.g. "application/a2a-agent-card+json",
+  // "application/mcp-server-card+json", or "application/ai-catalog+json"
+  // for a nested catalog.
+  string type = 13 [(buf.validate.field).required = true];
 }
 
 // Publisher is the canonical identity of the entity responsible for an artifact.
@@ -193,8 +147,28 @@ message TrustManifest {
   // Detached JWS (RFC 7515) signature over the manifest, using JCS (RFC 8785).
   optional string signature = 8;
 
-  // Custom metadata.
-  map<string, google.protobuf.Value> metadata = 9;
+  // Custom or vendor-specific extensions. Keys MUST be a valid URL or a
+  // reverse-DNS string.
+  map<string, google.protobuf.Value> extensions = 9;
+
+  // Artifact release this manifest describes. Required when signature is set.
+  optional Subject subject = 10;
+}
+
+// Subject binds a TrustManifest to the artifact release it describes.
+message Subject {
+  // Logical identifier of the bound artifact; within a CatalogEntry it must
+  // equal the entry's identifier.
+  string identifier = 1 [(buf.validate.field).required = true];
+
+  // Artifact type; within a CatalogEntry it must equal the entry's type.
+  string type = 2 [(buf.validate.field).required = true];
+
+  // Artifact content digest as "algorithm:hex", SHA-256 or stronger.
+  string digest = 3 [(buf.validate.field).required = true];
+
+  // Artifact release version. Present exactly when entry.version is present.
+  optional string version = 4;
 }
 
 // TrustSchema describes the trust framework applied to an artifact.
@@ -221,8 +195,8 @@ message Attestation {
   // Location of the attestation document (HTTPS URL or Data URI).
   string uri = 2 [(buf.validate.field).required = true];
 
-  // Media type of the attestation document (e.g. "application/pdf").
-  string media_type = 3 [(buf.validate.field).required = true];
+  reserved 3;
+  reserved "media_type";
 
   // Integrity digest as "algorithm:hex" (SHA-256 or stronger).
   optional string digest = 4;

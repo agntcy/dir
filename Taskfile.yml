@@ -320,7 +320,7 @@ tasks:
   test:unit:coverage:local:
     desc: Run all unit tests with coverage
     vars:
-      COVERAGE_IGNORED_FILES: '\.pb\.go|mock_|tests|testdata' # NOTE: Need to keep sync with codecov.yml manually
+      COVERAGE_IGNORED_FILES: '\.pb\.go|\.pb\.gw\.go|mock_|tests|testdata' # NOTE: Need to keep sync with codecov.yml manually
       SHOW_TOTAL_ONLY: '{{ .SHOW_TOTAL_ONLY | default "true" }}'
     cmds:
       - task: test:unit:coverage

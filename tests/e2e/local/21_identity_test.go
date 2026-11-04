@@ -343,7 +343,7 @@ var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, func() {
 				var response struct {
 					Results []struct {
 						Identifier string                    `json:"identifier"`
-						Metadata   map[string]map[string]any `json:"metadata"`
+						Metadata   map[string]map[string]any `json:"extensions"`
 					} `json:"results"`
 				}
 
