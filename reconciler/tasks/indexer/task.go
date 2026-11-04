@@ -255,7 +255,6 @@ func (t *Task) indexedAtOption(cid string) ([]policy.DecideOption, error) {
 }
 
 // indexRecord indexes a single record from the registry into the database.
-
 func (t *Task) indexRecord(ctx context.Context, tag string) error {
 	logger.Debug("Indexing record", "tag", tag)
 
