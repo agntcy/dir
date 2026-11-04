@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/server/policy"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -71,10 +70,19 @@ type peerGate struct {
 	err      error
 }
 
-func (g peerGate) IsRecordServable(string) (bool, error) { return g.servable, g.err }
+func (g peerGate) Check(context.Context, string) error {
+	switch {
+	case g.err != nil:
+		return status.Error(codes.Internal, "failed to check record access")
+	case !g.servable:
+		return types.RecordExcludedError(peerCID)
+	default:
+		return nil
+	}
+}
 
-func newAPI(store *peerStore, servability peerGate) *RPCAPI {
-	return &RPCAPI{service: &Service{store: store, refStore: store, gate: policy.NewRecordGate(servability, nil)}}
+func newAPI(store *peerStore, gate peerGate) *RPCAPI {
+	return &RPCAPI{service: &Service{store: store, refStore: store, gate: gate}}
 }
 
 // peerCalls runs each RPC a remote peer can make for peerCID once.

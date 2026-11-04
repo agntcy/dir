@@ -17,12 +17,9 @@ var logger = logging.Logger("database/gorm")
 type DB struct {
 	gormDB *gorm.DB
 
-	// enforcement returns what reads must satisfy; see applyPolicyGate and
-	// IsRecordServable. Nil applies no policy.
+	// enforcement returns what reads must satisfy; see applyPolicyGate. Nil
+	// applies no policy.
 	enforcement func() types.PolicyEnforcement
-
-	// observer is told about fetches the policies exclude. Nil tells no one.
-	observer types.PolicyGateObserver
 }
 
 // New creates a new DB instance from a gorm.DB connection and runs migrations.
@@ -42,8 +39,8 @@ func New(db *gorm.DB) (*DB, error) {
 // content policies enforcement returns. enforcement is called per read, so
 // what is enforced may change at runtime. d itself keeps applying none:
 // background tasks read through it and must see every record.
-func (d *DB) Served(enforcement func() types.PolicyEnforcement, observer types.PolicyGateObserver) *DB {
-	return &DB{gormDB: d.gormDB, enforcement: enforcement, observer: observer}
+func (d *DB) Served(enforcement func() types.PolicyEnforcement) *DB {
+	return &DB{gormDB: d.gormDB, enforcement: enforcement}
 }
 
 // IsReady checks if the database connection is ready to serve traffic.

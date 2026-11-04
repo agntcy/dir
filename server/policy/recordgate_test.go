@@ -7,44 +7,38 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/agntcy/dir/server/types"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-// servability is a stand-in for the index the enforced verdicts are read from.
-type servability struct {
-	types.RecordServabilityAPI
-
-	servable bool
-	err      error
-}
-
-func (s servability) IsRecordServable(string) (bool, error) { return s.servable, s.err }
-
 const gatedCID = "baeareigatetest00000000000000000000000000000000000000000000000"
 
-// Both halves of the gate can refuse, and a caller is told the same thing
-// either way: the record is not available under this node's content policy,
-// with no policy name and no reason.
-func TestRecordGateCheck_EitherHalfCanRefuse(t *testing.T) {
-	t.Parallel()
+// excluded records what the gate reports, in the order it reports it.
+type excluded struct {
+	modes []policyconfig.Mode
+}
 
-	refusing := registryReading(t, `verdicts["cel:trusted"].compliant_and_current`,
-		&fakeVerdicts{}, enforcing(trustedPolicy))
-	allowing := registryReading(t, `record_cid != ""`, &fakeVerdicts{}, enforcing(trustedPolicy))
+func (e *excluded) PullExcluded(mode policyconfig.Mode) { e.modes = append(e.modes, mode) }
+
+// A caller refused by a policy is told the record is not available under this
+// node's content policy, with no policy name and no reason, and a node
+// configuring nothing at pull serves whatever it holds.
+func TestRecordGateCheck_APolicyCanRefuse(t *testing.T) {
+	t.Parallel()
 
 	for _, tc := range []struct {
 		name string
 		gate *RecordGate
 		code codes.Code
 	}{
-		{"both allow", NewRecordGate(servability{servable: true}, allowing), codes.OK},
-		{"the index refuses", NewRecordGate(servability{servable: false}, allowing), codes.PermissionDenied},
-		{"the policy refuses", NewRecordGate(servability{servable: true}, refusing), codes.PermissionDenied},
-		{"neither is configured", NewRecordGate(nil, nil), codes.OK},
+		{"the policy allows", NewRecordGate(registryReading(t, `record_cid != ""`,
+			&fakeVerdicts{}, enforcing(trustedPolicy)), nil), codes.OK},
+		{"the policy refuses", NewRecordGate(registryReading(t, `verdicts["cel:trusted"].compliant_and_current`,
+			&fakeVerdicts{}, enforcing(trustedPolicy)), nil), codes.PermissionDenied},
+		{"nothing is configured", NewRecordGate(nil, nil), codes.OK},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -59,27 +53,86 @@ func TestRecordGateCheck_EitherHalfCanRefuse(t *testing.T) {
 // A check that cannot be answered fails closed, and is reported as a failed
 // check rather than as an excluded record: the two mean different things to
 // whoever is reading the logs.
-func TestRecordGateCheck_AnUnanswerableCheckFailsClosed(t *testing.T) {
+//
+// Unless nothing would have acted on it. A shadow policy exists to be
+// watched, and a policy being watched must not be able to fail a read, so
+// the record is served and the failure only logged.
+func TestRecordGateCheck_AnUnanswerableCheckFailsClosedOnlyWhenItCounts(t *testing.T) {
 	t.Parallel()
 
-	gate := NewRecordGate(servability{servable: true, err: errors.New("database unavailable")}, nil)
+	for _, tc := range []struct {
+		mode policyconfig.Mode
+		code codes.Code
+	}{
+		{policyconfig.ModeEnforce, codes.Internal},
+		{policyconfig.ModeShadow, codes.OK},
+	} {
+		t.Run(string(tc.mode), func(t *testing.T) {
+			t.Parallel()
 
-	err := gate.Check(t.Context(), gatedCID)
+			counted := &excluded{}
+			registry := registryReading(t, `verdicts["cel:trusted"].compliant_and_current`,
+				&fakeVerdicts{err: errors.New("database unavailable")}, enforcing(trustedPolicy))
+			registry.byOp[policyconfig.OpPull][0].mode = tc.mode
 
-	require.Error(t, err)
-	assert.Equal(t, codes.Internal, status.Code(err))
+			err := NewRecordGate(registry, counted).Check(t.Context(), gatedCID)
+
+			assert.Equal(t, tc.code, status.Code(err))
+			assert.Empty(t, counted.modes, "a check that did not happen excluded nothing")
+		})
+	}
 }
 
-// The index is asked first, so a record already excluded there costs no
-// policy evaluation.
-func TestRecordGateCheck_AnExcludedRecordIsNotEvaluated(t *testing.T) {
+// The latch decides this too: a policy configured to enforce but still
+// backfilling acts on nothing, so a check it cannot make fails no read.
+func TestRecordGateCheck_AnUnanswerableCheckUnderTheLatchIsTolerated(t *testing.T) {
 	t.Parallel()
 
-	source := &fakeVerdicts{}
-	gate := NewRecordGate(servability{servable: false},
-		registryReading(t, `verdicts["cel:trusted"].compliant_and_current`, source, enforcing(trustedPolicy)))
+	gate := NewRecordGate(registryReading(t, `verdicts["cel:trusted"].compliant_and_current`,
+		&fakeVerdicts{err: errors.New("database unavailable")}, backfilling(trustedPolicy)), nil)
 
-	require.Error(t, gate.Check(t.Context(), gatedCID))
+	assert.NoError(t, gate.Check(t.Context(), gatedCID))
+}
 
-	assert.Empty(t, source.cids, "the verdicts of an excluded record must not be read")
+// One refused read is one increment, counted under the mode that refused.
+//
+// A shadow policy reaches the counter with the record still served, which is
+// the only way the would-have-excluded series is ever anything but zero: a
+// shadow refusal leaves no other trace but its log line.
+func TestRecordGateCheck_ARefusalIsCountedUnderItsMode(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		mode policyconfig.Mode
+		code codes.Code
+		want []policyconfig.Mode
+	}{
+		{policyconfig.ModeEnforce, codes.PermissionDenied, []policyconfig.Mode{policyconfig.ModeEnforce}},
+		{policyconfig.ModeShadow, codes.OK, []policyconfig.Mode{policyconfig.ModeShadow}},
+	} {
+		t.Run(string(tc.mode), func(t *testing.T) {
+			t.Parallel()
+
+			counted := &excluded{}
+			registry := registryReading(t, `verdicts["cel:trusted"].compliant_and_current`,
+				&fakeVerdicts{}, enforcing(trustedPolicy))
+			registry.byOp[policyconfig.OpPull][0].mode = tc.mode
+
+			err := NewRecordGate(registry, counted).Check(t.Context(), gatedCID)
+
+			assert.Equal(t, tc.code, status.Code(err))
+			assert.Equal(t, tc.want, counted.modes)
+		})
+	}
+}
+
+// Nothing is counted for a record the policies admit.
+func TestRecordGateCheck_AServedRecordIsNotCounted(t *testing.T) {
+	t.Parallel()
+
+	counted := &excluded{}
+	gate := NewRecordGate(registryReading(t, `record_cid != ""`, &fakeVerdicts{}, enforcing(trustedPolicy)), counted)
+
+	require.NoError(t, gate.Check(t.Context(), gatedCID))
+	assert.Empty(t, counted.modes)
 }

@@ -13,7 +13,6 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
-	"github.com/agntcy/dir/server/policy"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
@@ -26,11 +25,11 @@ var identityLogger = logging.Logger("controller/identity")
 type identityCtrl struct {
 	identityv1.UnimplementedIdentityServiceServer
 	db   types.DatabaseAPI
-	gate *policy.RecordGate
+	gate types.RecordGate
 }
 
 // NewIdentityController creates a new identity service controller.
-func NewIdentityController(db types.DatabaseAPI, gate *policy.RecordGate) identityv1.IdentityServiceServer {
+func NewIdentityController(db types.DatabaseAPI, gate types.RecordGate) identityv1.IdentityServiceServer {
 	return &identityCtrl{db: db, gate: gate}
 }
 

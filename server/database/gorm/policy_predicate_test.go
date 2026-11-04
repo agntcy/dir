@@ -15,7 +15,7 @@ import (
 )
 
 // policyC is a third policy, for the combinations two cannot express.
-var policyC = types.EnforcedPolicy{ID: "opa:c", Version: "v1"}
+var policyC = types.VersionedPolicy{ID: "opa:c", Version: "v1"}
 
 // verdictState is what a record's row for one policy says, or does not say.
 // These are the states the gate has to tell apart: only the first serves a
@@ -38,7 +38,7 @@ func (s verdictState) String() string {
 const supersededVersion = "v0"
 
 // seedVerdictState puts the record in cid into state for policy.
-func seedVerdictState(t *testing.T, db *DB, cid string, policy types.EnforcedPolicy, state verdictState) {
+func seedVerdictState(t *testing.T, db *DB, cid string, policy types.VersionedPolicy, state verdictState) {
 	t.Helper()
 
 	switch state {
@@ -55,7 +55,7 @@ func seedVerdictState(t *testing.T, db *DB, cid string, policy types.EnforcedPol
 			Status: types.PolicyEvalStatusFailed, Compliant: true,
 		}).Error)
 	case stateStale:
-		setVerdict(t, db, cid, types.EnforcedPolicy{ID: policy.ID, Version: supersededVersion}, true)
+		setVerdict(t, db, cid, types.VersionedPolicy{ID: policy.ID, Version: supersededVersion}, true)
 	}
 }
 
@@ -103,20 +103,13 @@ func seedPredicateGrid(t *testing.T) *predicateGrid {
 	return grid
 }
 
-// records is the query both gates are applied to: every seeded record.
+// records is the query the gate is applied to: every seeded record.
 func (g *predicateGrid) records() *gorm.DB {
 	return g.db.gormDB.Model(&Record{}).Select("records.record_cid")
 }
 
-// byPolicies is what the gate in use today serves.
-func (g *predicateGrid) byPolicies(t *testing.T, policies ...types.EnforcedPolicy) []string {
-	t.Helper()
-
-	return pluckCIDs(t, gatePolicies(g.records(), "records.record_cid", policies))
-}
-
-// byPredicate is what the new gate serves.
-func (g *predicateGrid) byPredicate(t *testing.T, p predicate.Node, policies ...types.EnforcedPolicy) []string {
+// byPredicate is what the gate serves.
+func (g *predicateGrid) byPredicate(t *testing.T, p predicate.Node, policies ...types.VersionedPolicy) []string {
 	t.Helper()
 
 	query, err := gatePredicate(g.records(), "records.record_cid", p, policies)
@@ -135,23 +128,26 @@ func pluckCIDs(t *testing.T, query *gorm.DB) []string {
 	return cids
 }
 
-// A conjunction of verdict terms is exactly what the gate in use today
-// enforces, so for any set of policies the two must serve the same records.
-// This is the claim the new gate has to earn before it can replace the old
-// one, over every combination of verdict states rather than a chosen few.
-func TestGatePredicate_AConjunctionAgreesWithTheGateInUseToday(t *testing.T) {
+// A conjunction serves the records compliant under every one of its terms,
+// over every combination of verdict states rather than a chosen few.
+//
+// Only stateCompliant serves. The other four are the ways a verdict can
+// exist and still not count — absent, non-compliant, failed, or reached
+// under a superseded version — and a gate that confused any of them for
+// compliance would serve a record on evidence it does not have.
+func TestGatePredicate_AConjunctionServesWhatCompliesWithEveryTerm(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name      string
 		predicate predicate.Node
-		policies  []types.EnforcedPolicy
+		policies  []types.VersionedPolicy
 		want      func(*predicateGrid) []string
 	}{
 		{
 			name:      "one policy",
 			predicate: predicate.Verdict{PolicyID: policyA.ID},
-			policies:  []types.EnforcedPolicy{policyA},
+			policies:  []types.VersionedPolicy{policyA},
 			want: func(g *predicateGrid) []string {
 				return g.byState[policyA.ID][stateCompliant]
 			},
@@ -162,7 +158,7 @@ func TestGatePredicate_AConjunctionAgreesWithTheGateInUseToday(t *testing.T) {
 				predicate.Verdict{PolicyID: policyA.ID},
 				predicate.Verdict{PolicyID: policyB.ID},
 			}},
-			policies: []types.EnforcedPolicy{policyA, policyB},
+			policies: []types.VersionedPolicy{policyA, policyB},
 			want: func(g *predicateGrid) []string {
 				return intersect(g.byState[policyA.ID][stateCompliant], g.byState[policyB.ID][stateCompliant])
 			},
@@ -176,15 +172,12 @@ func TestGatePredicate_AConjunctionAgreesWithTheGateInUseToday(t *testing.T) {
 			grid := seedPredicateGrid(t)
 			want := tt.want(grid)
 
-			// Both gates agreeing on nothing, or on everything, would say
-			// nothing about either.
+			// A gate serving nothing, or everything, would pass against an
+			// expectation that said the same.
 			require.NotEmpty(t, want)
 			require.Less(t, len(want), len(grid.cids))
 
-			assert.ElementsMatch(t, want, grid.byPolicies(t, tt.policies...),
-				"the gate in use today")
-			assert.ElementsMatch(t, want, grid.byPredicate(t, tt.predicate, tt.policies...),
-				"the predicate gate")
+			assert.ElementsMatch(t, want, grid.byPredicate(t, tt.predicate, tt.policies...))
 		})
 	}
 }
@@ -254,7 +247,7 @@ func TestGatePredicate_GatesAQueryWithNoRecordsRowInScope(t *testing.T) {
 		grid.db.gormDB.Model(&Skill{}).Distinct().Where("skills.name != ?", ""),
 		"skills.record_cid",
 		predicate.Verdict{PolicyID: policyA.ID},
-		[]types.EnforcedPolicy{policyA},
+		[]types.VersionedPolicy{policyA},
 	)
 	require.NoError(t, err)
 
@@ -278,13 +271,13 @@ func TestGatePredicate_RefusesWhatItCannotRender(t *testing.T) {
 	tests := []struct {
 		name      string
 		predicate predicate.Node
-		policies  []types.EnforcedPolicy
+		policies  []types.VersionedPolicy
 		wantErr   string
 	}{
 		{
 			name:      "a policy with no version in force",
 			predicate: predicate.Verdict{PolicyID: policyB.ID},
-			policies:  []types.EnforcedPolicy{policyA},
+			policies:  []types.VersionedPolicy{policyA},
 			wantErr:   `policy "opa:b", which has no version in force`,
 		},
 		{
@@ -293,25 +286,25 @@ func TestGatePredicate_RefusesWhatItCannotRender(t *testing.T) {
 				predicate.Verdict{PolicyID: policyA.ID},
 				predicate.Verdict{PolicyID: policyB.ID},
 			}},
-			policies: []types.EnforcedPolicy{policyA},
+			policies: []types.VersionedPolicy{policyA},
 			wantErr:  `policy "opa:b", which has no version in force`,
 		},
 		{
 			name:      "a conjunction of nothing",
 			predicate: predicate.All{},
-			policies:  []types.EnforcedPolicy{policyA},
+			policies:  []types.VersionedPolicy{policyA},
 			wantErr:   "combining nothing",
 		},
 		{
 			name:      "a disjunction of nothing",
 			predicate: predicate.Any{},
-			policies:  []types.EnforcedPolicy{policyA},
+			policies:  []types.VersionedPolicy{policyA},
 			wantErr:   "combining nothing",
 		},
 		{
 			name:      "no predicate at all",
 			predicate: nil,
-			policies:  []types.EnforcedPolicy{policyA},
+			policies:  []types.VersionedPolicy{policyA},
 			wantErr:   "unsupported predicate",
 		},
 	}

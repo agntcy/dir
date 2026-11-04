@@ -121,21 +121,22 @@ func verdictStatusOf(row types.PolicyEvaluationObject, versionInForce string) po
 	}
 }
 
-// versionsInForce is the version of each policy currently enforced or
-// pending, by ID.
+// versionsInForce is the version of each configured evaluation policy, by ID.
 //
-// Pending policies are included because their version is just as real: the
-// latch decides whether a policy may be acted on, not whether the version it
-// would be acted on under is known.
+// Whether a policy is covered does not come into it: the latch decides
+// whether a policy may be acted on, not whether the version it would be
+// acted on under is known.
+//
+// Every configured policy is here, which is the point. A policy with no
+// entry has no version in force, and verdictStatusOf reads every verdict
+// under a version that is not the one in force as superseded — so an absent
+// policy is not one that nothing is known about, it is one whose verdicts
+// all read as stale.
 func versionsInForce(enforcement types.PolicyEnforcement) map[string]string {
-	versions := make(map[string]string, len(enforcement.Policies)+len(enforcement.Pending))
+	versions := make(map[string]string, len(enforcement.Evaluations))
 
-	for _, p := range enforcement.Policies {
-		versions[p.ID] = p.Version
-	}
-
-	for _, p := range enforcement.Pending {
-		versions[p.ID] = p.Version
+	for id, p := range enforcement.Evaluations {
+		versions[id] = p.Version
 	}
 
 	return versions
@@ -161,14 +162,17 @@ func (r *Registry) evaluationIDs() []string {
 	return ids
 }
 
-// enforcedIDs are the evaluation policies whose verdicts cover the catalogue,
+// coveredIDs are the evaluation policies whose verdicts cover the catalogue,
 // which is to say the ones a decision may be acted on.
-func (r *Registry) enforcedIDs() map[string]struct{} {
+func (r *Registry) coveredIDs() map[string]struct{} {
 	enforcement := r.enforcement()
 
-	ids := make(map[string]struct{}, len(enforcement.Policies))
-	for _, p := range enforcement.Policies {
-		ids[p.ID] = struct{}{}
+	ids := make(map[string]struct{}, len(enforcement.Evaluations))
+
+	for id, p := range enforcement.Evaluations {
+		if p.Covered {
+			ids[id] = struct{}{}
+		}
 	}
 
 	return ids
@@ -190,7 +194,7 @@ func (r *Registry) mayEnforce(refs verdictRefs) bool {
 		return true
 	}
 
-	enforced := r.enforcedIDs()
+	covered := r.coveredIDs()
 
 	keys := refs.keys
 	if refs.all {
@@ -198,7 +202,7 @@ func (r *Registry) mayEnforce(refs verdictRefs) bool {
 	}
 
 	for _, key := range keys {
-		if _, ok := enforced[key]; !ok {
+		if _, ok := covered[key]; !ok {
 			return false
 		}
 	}

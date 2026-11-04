@@ -8,32 +8,23 @@ import (
 	"fmt"
 	"strings"
 
-	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/agntcy/dir/server/policy/predicate"
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm"
 )
 
-// applyPolicyGate keeps only rows whose record complies with every enforced
-// policy, when searches enforce them: for each, the record needs an
-// evaluated, compliant verdict at the version currently in force. cidColumn
-// is the column holding the record's CID in the queried table, e.g.
-// "records.record_cid" or "skills.record_cid". In shadow mode searches are not
-// filtered; CountRecordsExcluded tells what would be.
+// applyPolicyGate keeps only rows the search policies being enforced admit.
+// cidColumn is the column holding the record's CID in the queried table, e.g.
+// "records.record_cid" or "skills.record_cid". A policy in shadow mode does
+// not filter; CountRecordsExcluded tells what it would.
 //
-// The gate fails closed. It requires a positive verdict rather than
-// excluding negative ones, so a record with no verdict yet, a failed
+// The gate fails closed. A policy's term requires a positive verdict rather
+// than excluding negative ones, so a record with no verdict yet, a failed
 // evaluation, or only a verdict under a superseded version is excluded too.
 // It is applied by the query builder itself, so no caller-supplied filter
 // can lift it.
 func (d *DB) applyPolicyGate(query *gorm.DB, cidColumn string) *gorm.DB {
-	enforcement := d.currentEnforcement()
-
-	if enforcement.Search == policyconfig.ModeEnforce {
-		query = gatePolicies(query, cidColumn, enforcement.Policies)
-	}
-
-	return gateSearchPolicies(query, cidColumn, enforcement.EnforcingSearchPolicies())
+	return gateSearchPolicies(query, cidColumn, d.currentEnforcement().EnforcingSearchPolicies())
 }
 
 // gateSearchPolicies applies each search policy's predicate to the query.
@@ -62,57 +53,12 @@ func gateSearchPolicies(query *gorm.DB, cidColumn string, policies []types.Searc
 	return query
 }
 
-// IsRecordServable reports whether the record with cid may be returned by a
-// read that fetches it directly rather than searching. Unless fetches check
-// the enforced policies every record may be, indexed or not. Otherwise only a
-// record that passes the policy gate may be, so a record not yet indexed may
-// not, and the observer is told of each one that may not. In shadow mode that
-// is all that happens: every record is still served, even when the check
-// fails.
-func (d *DB) IsRecordServable(cid string) (bool, error) {
-	// Read once: deciding the mode and then gating on a second read could see
-	// two different settings.
-	enforcement := d.currentEnforcement()
-	if !enforcement.Fetch.Active() || len(enforcement.Policies) == 0 {
-		return true, nil
-	}
-
-	shadow := enforcement.Fetch == policyconfig.ModeShadow
-
-	compliant, err := d.IsRecordCompliant(cid, enforcement.Policies, nil)
-	if err != nil {
-		if shadow {
-			logger.Warn("Shadow mode: could not check record against enforced policies", "cid", cid, "error", err)
-
-			return true, nil
-		}
-
-		return false, err
-	}
-
-	if compliant {
-		return true, nil
-	}
-
-	if d.observer != nil {
-		d.observer.FetchExcluded(enforcement.Fetch)
-	}
-
-	if shadow {
-		logger.Debug("Shadow mode: enforced policies would exclude record", "cid", cid)
-
-		return true, nil
-	}
-
-	return false, nil
-}
-
 // CountRecordsExcluded counts the indexed records a search applying policies
-// and search would leave out.
-func (d *DB) CountRecordsExcluded(policies []types.EnforcedPolicy, search []types.SearchPolicy) (int64, error) {
+// would leave out.
+func (d *DB) CountRecordsExcluded(policies []types.SearchPolicy) (int64, error) {
 	var count int64
 
-	if err := d.recordsExcluded(policies, search).Count(&count).Error; err != nil {
+	if err := d.recordsExcluded(policies).Count(&count).Error; err != nil {
 		return 0, fmt.Errorf("count records excluded by enforced policies: %w", err)
 	}
 
@@ -120,10 +66,10 @@ func (d *DB) CountRecordsExcluded(policies []types.EnforcedPolicy, search []type
 }
 
 // ListRecordsExcluded returns the CIDs of the indexed records a search
-// applying policies and search would leave out, in CID order, skipping offset
-// and returning at most limit of them; a limit of zero returns them all.
-func (d *DB) ListRecordsExcluded(policies []types.EnforcedPolicy, search []types.SearchPolicy, limit, offset int) ([]string, error) {
-	query := d.recordsExcluded(policies, search).Order("records.record_cid").Offset(offset)
+// applying policies would leave out, in CID order, skipping offset and
+// returning at most limit of them; a limit of zero returns them all.
+func (d *DB) ListRecordsExcluded(policies []types.SearchPolicy, limit, offset int) ([]string, error) {
+	query := d.recordsExcluded(policies).Order("records.record_cid").Offset(offset)
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
@@ -138,27 +84,22 @@ func (d *DB) ListRecordsExcluded(policies []types.EnforcedPolicy, search []types
 }
 
 // recordsExcluded selects the indexed records left out by a search gated on
-// policies and search: the complement of what that gate serves, built by the
-// same two calls applyPolicyGate makes so that the answer cannot drift from
-// what queries actually do.
-func (d *DB) recordsExcluded(policies []types.EnforcedPolicy, search []types.SearchPolicy) *gorm.DB {
-	served := d.gormDB.Model(&Record{}).Select("records.record_cid")
-	served = gatePolicies(served, "records.record_cid", policies)
-	served = gateSearchPolicies(served, "records.record_cid", search)
+// policies: the complement of what that gate serves, built by the same call
+// applyPolicyGate makes so that the answer cannot drift from what queries
+// actually do.
+func (d *DB) recordsExcluded(policies []types.SearchPolicy) *gorm.DB {
+	served := gateSearchPolicies(d.gormDB.Model(&Record{}).Select("records.record_cid"), "records.record_cid", policies)
 
 	return d.gormDB.Model(&Record{}).Where("records.record_cid NOT IN (?)", served)
 }
 
 // IsRecordCompliant reports whether the record with cid is indexed and
-// satisfies both policies and search, whatever this view enforces.
-//
-// A fetch passes no search policies: one of those decides what a query
-// returns, not whether a record may be read by CID.
-func (d *DB) IsRecordCompliant(cid string, policies []types.EnforcedPolicy, search []types.SearchPolicy) (bool, error) {
+// satisfies policies, whatever this view itself applies.
+func (d *DB) IsRecordCompliant(cid string, policies []types.SearchPolicy) (bool, error) {
 	var count int64
 
 	query := d.gormDB.Model(&Record{}).Where("records.record_cid = ?", cid)
-	query = gateSearchPolicies(gatePolicies(query, "records.record_cid", policies), "records.record_cid", search)
+	query = gateSearchPolicies(query, "records.record_cid", policies)
 
 	if err := query.Count(&count).Error; err != nil {
 		return false, fmt.Errorf("check record against enforced policies: %w", err)
@@ -176,24 +117,11 @@ func (d *DB) currentEnforcement() types.PolicyEnforcement {
 	return d.enforcement()
 }
 
-// gatePolicies requires, for each policy, an evaluated, compliant verdict at
-// its version for the record in cidColumn. See applyPolicyGate.
-func gatePolicies(query *gorm.DB, cidColumn string, policies []types.EnforcedPolicy) *gorm.DB {
-	for _, policy := range policies {
-		query = query.Where(verdictExists(cidColumn), verdictArgs(policy.ID, policy.Version)...)
-	}
-
-	return query
-}
-
-// gatePredicate keeps only rows whose record satisfies p, reading the version
-// in force for each policy p names from policies.
-//
-// The counterpart to gatePolicies for a policy that is a boolean combination
-// rather than a conjunction. A disjunction cannot be chained as successive
-// Where calls, which only ever narrow, so this renders one condition and
-// applies it once.
-func gatePredicate(query *gorm.DB, cidColumn string, p predicate.Node, policies []types.EnforcedPolicy) (*gorm.DB, error) {
+// gatePredicate narrows query to the records satisfying p, with each term
+// read at the version in policies. A disjunction cannot be chained as
+// successive Where calls, which only ever narrow, so the whole tree is
+// rendered into one condition and applied once.
+func gatePredicate(query *gorm.DB, cidColumn string, p predicate.Node, policies []types.VersionedPolicy) (*gorm.DB, error) {
 	versions := make(map[string]string, len(policies))
 	for _, policy := range policies {
 		versions[policy.ID] = policy.Version

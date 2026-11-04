@@ -9,7 +9,6 @@ import (
 	"errors"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/server/policy"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	rpc "github.com/libp2p/go-libp2p-gorpc"
@@ -320,13 +319,13 @@ type Service struct {
 	host      host.Host
 	store     types.StoreAPI
 	refStore  types.ReferrerStoreAPI
-	gate      *policy.RecordGate
+	gate      types.RecordGate
 }
 
 // New creates the peer RPC service. gate is the policy gate every fetch a
 // remote peer makes must pass; it is required, so that the service cannot be
 // built without it.
-func New(host host.Host, store types.StoreAPI, gate *policy.RecordGate) (*Service, error) {
+func New(host host.Host, store types.StoreAPI, gate types.RecordGate) (*Service, error) {
 	if gate == nil {
 		return nil, errors.New("rpc: a record gate is required")
 	}

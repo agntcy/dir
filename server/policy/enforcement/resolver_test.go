@@ -5,6 +5,8 @@ package enforcement
 
 import (
 	"errors"
+	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -143,20 +145,36 @@ func (v *versions) GetCurrentPolicyVersion(id string) (string, bool, error) {
 	return version, ok, v.err
 }
 
-func enforcing(ids ...string) policyconfig.EnforcementConfig {
-	return policyconfig.EnforcementConfig{
-		Search:          policyconfig.ModeEnforce,
-		Fetch:           policyconfig.ModeShadow,
-		Policies:        ids,
-		RefreshInterval: testInterval,
+// covered is the evaluation policies the latch has released, and
+// backfilling the ones it has not: between them, what Policies and Pending
+// used to say. Sorted by ID, the map having no order of its own.
+func covered(e types.PolicyEnforcement) []types.VersionedPolicy {
+	return resolvedWhere(e, true)
+}
+
+func backfilling(e types.PolicyEnforcement) []types.VersionedPolicy {
+	return resolvedWhere(e, false)
+}
+
+func resolvedWhere(e types.PolicyEnforcement, want bool) []types.VersionedPolicy {
+	var policies []types.VersionedPolicy
+
+	for _, p := range e.Evaluations {
+		if p.Covered == want {
+			policies = append(policies, p.VersionedPolicy)
+		}
 	}
+
+	slices.SortFunc(policies, func(a, b types.VersionedPolicy) int { return strings.Compare(a.ID, b.ID) })
+
+	return policies
 }
 
 // newResolver resolves once, then hands the resolver the test's clock.
 func newResolver(t *testing.T, store *versions, c *clock, ids ...string) *Resolver {
 	t.Helper()
 
-	resolver, err := NewResolver(enforcing(ids...), store, nil)
+	resolver, err := NewResolver(testInterval, store, nil, ids)
 	require.NoError(t, err)
 
 	resolver.now = c.now
@@ -187,14 +205,15 @@ func TestResolver_AsksAboutEachPolicyOncePerPass(t *testing.T) {
 	store.register("cel:trusted", "h1")
 	store.lack(3) // still in backfill, so the count is not short-circuited.
 
-	// Named by the enforced list and by both search policies.
+	// Named as a configured evaluation, by the enforced list, and by both
+	// search policies.
 	reads := []string{"cel:trusted"}
 	search := []policy.SearchPolicy{
 		{ID: "cel:one", Mode: policyconfig.ModeEnforce, Reads: reads},
 		{ID: "cel:two", Mode: policyconfig.ModeShadow, Reads: reads},
 	}
 
-	resolver, err := NewResolver(enforcing("cel:trusted"), store, search)
+	resolver, err := NewResolver(testInterval, store, search, []string{"cel:trusted"})
 	require.NoError(t, err)
 
 	resolver.now = c.now
@@ -217,15 +236,43 @@ func TestResolver_EnforcesTheRegisteredVersion(t *testing.T) {
 
 	got := newResolver(t, store, c, "opa:a", "opa:b").Current()
 
-	assert.Equal(t, []types.EnforcedPolicy{{ID: "opa:a", Version: "h1"}, {ID: "opa:b", Version: "b7"}}, got.Policies)
-	assert.Empty(t, got.Pending)
-	assert.Equal(t, policyconfig.ModeEnforce, got.Search)
-	assert.Equal(t, policyconfig.ModeShadow, got.Fetch)
+	assert.Equal(t, []types.VersionedPolicy{{ID: "opa:a", Version: "h1"}, {ID: "opa:b", Version: "b7"}}, covered(got))
+	assert.Empty(t, backfilling(got))
 }
 
-// A policy no evaluator has registered is not enforced: there is no version
+// Every configured evaluation policy is resolved, whether or not anything
+// reads it. What reads a verdict is an operation policy, which the resolver
+// never sees, so it has no way to tell which of them matter and does not
+// try: a policy left out here is one whose latch never releases, and a
+// decision reading it would refuse nothing and report nothing, looking
+// exactly like a policy that allows everything.
+func TestResolver_ResolvesEveryConfiguredEvaluation(t *testing.T) {
+	t.Parallel()
+
+	c := newClock()
+	store := newVersions()
+	store.register("cel:one", "h1")
+	store.register("cel:two", "b7")
+
+	resolver, err := NewResolver(testInterval, store, nil,
+		[]string{"cel:one", "cel:two", "cel:unregistered"})
+	require.NoError(t, err)
+
+	resolver.now = c.now
+
+	assert.Equal(t, map[string]types.ResolvedPolicy{
+		"cel:one": {VersionedPolicy: types.VersionedPolicy{ID: "cel:one", Version: "h1"}, Covered: true},
+		"cel:two": {VersionedPolicy: types.VersionedPolicy{ID: "cel:two", Version: "b7"}, Covered: true},
+
+		// Resolved, and resolved as not covered: a policy no evaluator has
+		// registered is present with the latch shut, not absent.
+		"cel:unregistered": {VersionedPolicy: types.VersionedPolicy{ID: "cel:unregistered"}},
+	}, resolver.Current().Evaluations)
+}
+
+// A policy no evaluator has registered covers nothing: there is no version
 // whose verdicts could be asked for.
-func TestResolver_UnregisteredPolicyIsPending(t *testing.T) {
+func TestResolver_UnregisteredPolicyCoversNothing(t *testing.T) {
 	t.Parallel()
 
 	c := newClock()
@@ -234,8 +281,8 @@ func TestResolver_UnregisteredPolicyIsPending(t *testing.T) {
 
 	got := newResolver(t, store, c, "opa:a", "opa:later").Current()
 
-	assert.Equal(t, []types.EnforcedPolicy{{ID: "opa:a", Version: "h1"}}, got.Policies)
-	assert.Equal(t, []types.EnforcedPolicy{{ID: "opa:later"}}, got.Pending)
+	assert.Equal(t, []types.VersionedPolicy{{ID: "opa:a", Version: "h1"}}, covered(got))
+	assert.Equal(t, []types.VersionedPolicy{{ID: "opa:later"}}, backfilling(got))
 }
 
 // Editing a policy registers a new version, which is enforced at once: a
@@ -252,7 +299,7 @@ func TestResolver_AnEditIsEnforcedAtOnce(t *testing.T) {
 	store.register("opa:a", "h2")
 
 	got := refresh(t, resolver)
-	assert.Equal(t, []types.EnforcedPolicy{{ID: "opa:a", Version: "h2"}}, got.Policies)
+	assert.Equal(t, []types.VersionedPolicy{{ID: "opa:a", Version: "h2"}}, covered(got))
 }
 
 // A policy registered after the server started is picked up.
@@ -263,13 +310,13 @@ func TestResolver_ALaterRegistrationIsPickedUp(t *testing.T) {
 	store := newVersions()
 
 	resolver := newResolver(t, store, c, "opa:a")
-	require.Equal(t, []types.EnforcedPolicy{{ID: "opa:a"}}, resolver.Current().Pending)
+	require.Equal(t, []types.VersionedPolicy{{ID: "opa:a"}}, backfilling(resolver.Current()))
 
 	store.register("opa:a", "h1")
 
 	got := refresh(t, resolver)
-	assert.Equal(t, []types.EnforcedPolicy{{ID: "opa:a", Version: "h1"}}, got.Policies)
-	assert.Empty(t, got.Pending)
+	assert.Equal(t, []types.VersionedPolicy{{ID: "opa:a", Version: "h1"}}, covered(got))
+	assert.Empty(t, backfilling(got))
 }
 
 // The server does not start without knowing what it enforces; later, a
@@ -280,7 +327,7 @@ func TestResolver_StoreErrors(t *testing.T) {
 	store := newVersions()
 	store.fail(errors.New("database unavailable"))
 
-	_, err := NewResolver(enforcing("opa:a"), store, nil)
+	_, err := NewResolver(testInterval, store, nil, []string{"opa:a"})
 	require.ErrorContains(t, err, "database unavailable")
 
 	c := newClock()
@@ -288,11 +335,11 @@ func TestResolver_StoreErrors(t *testing.T) {
 	store.register("opa:a", "h1")
 
 	resolver := newResolver(t, store, c, "opa:a")
-	inForce := []types.EnforcedPolicy{{ID: "opa:a", Version: "h1"}}
+	inForce := []types.VersionedPolicy{{ID: "opa:a", Version: "h1"}}
 
 	store.fail(errors.New("database unavailable"))
 	require.Error(t, resolver.Refresh())
-	assert.Equal(t, inForce, resolver.Current().Policies)
+	assert.Equal(t, inForce, covered(resolver.Current()))
 }
 
 // Current rechecks in the background once the interval has passed, and not
@@ -308,12 +355,12 @@ func TestResolver_CurrentRefreshesAfterTheInterval(t *testing.T) {
 
 	store.register("opa:a", "h2")
 
-	assert.Equal(t, []types.EnforcedPolicy{{ID: "opa:a", Version: "h1"}}, resolver.Current().Policies, "within the interval")
+	assert.Equal(t, []types.VersionedPolicy{{ID: "opa:a", Version: "h1"}}, covered(resolver.Current()), "within the interval")
 
 	c.advance(testInterval)
 
 	assert.Eventually(t, func() bool {
-		policies := resolver.Current().Policies
+		policies := covered(resolver.Current())
 
 		return len(policies) == 1 && policies[0].Version == "h2"
 	}, 5*time.Second, 10*time.Millisecond)
@@ -328,18 +375,18 @@ func TestResolver_FailedBackgroundRecheckKeepsTheLast(t *testing.T) {
 	store.register("opa:a", "h1")
 
 	resolver := newResolver(t, store, c, "opa:a")
-	inForce := []types.EnforcedPolicy{{ID: "opa:a", Version: "h1"}}
+	inForce := []types.VersionedPolicy{{ID: "opa:a", Version: "h1"}}
 
 	store.fail(errors.New("database unavailable"))
 	c.advance(testInterval)
 
-	assert.Equal(t, inForce, resolver.Current().Policies)
+	assert.Equal(t, inForce, covered(resolver.Current()))
 
 	assert.Eventually(t, func() bool {
 		return !resolver.refreshing.Load() && resolver.refreshedAt.Load() == c.now().UnixNano()
 	}, 5*time.Second, 10*time.Millisecond)
 
-	assert.Equal(t, inForce, resolver.Current().Policies)
+	assert.Equal(t, inForce, covered(resolver.Current()))
 }
 
 // Turning a policy on does not empty search while the records are evaluated:
@@ -355,14 +402,14 @@ func TestResolver_FirstRolloutWaitsForTheRecordsToBeEvaluated(t *testing.T) {
 	resolver := newResolver(t, store, c, "opa:a")
 
 	got := resolver.Current()
-	assert.Empty(t, got.Policies)
-	assert.Equal(t, []types.EnforcedPolicy{{ID: "opa:a", Version: "h1"}}, got.Pending)
+	assert.Empty(t, covered(got))
+	assert.Equal(t, []types.VersionedPolicy{{ID: "opa:a", Version: "h1"}}, backfilling(got))
 
 	store.lack(0)
 
 	got = refresh(t, resolver)
-	assert.Equal(t, []types.EnforcedPolicy{{ID: "opa:a", Version: "h1"}}, got.Policies)
-	assert.Empty(t, got.Pending)
+	assert.Equal(t, []types.VersionedPolicy{{ID: "opa:a", Version: "h1"}}, covered(got))
+	assert.Empty(t, backfilling(got))
 }
 
 // Records indexed after the policy covered the records have no verdict until
@@ -379,7 +426,7 @@ func TestResolver_ACoveredPolicyStaysEnforcedWhenRecordsArrive(t *testing.T) {
 	store.lack(4)
 
 	got := refresh(t, resolver)
-	assert.Equal(t, []types.EnforcedPolicy{{ID: "opa:a", Version: "h1"}}, got.Policies)
+	assert.Equal(t, []types.VersionedPolicy{{ID: "opa:a", Version: "h1"}}, covered(got))
 }
 
 // An edit to a covered policy is enforced at once, however many records have
@@ -397,8 +444,8 @@ func TestResolver_AnEditToACoveredPolicyIsEnforcedAtOnce(t *testing.T) {
 	store.lack(1000)
 
 	got := refresh(t, resolver)
-	assert.Equal(t, []types.EnforcedPolicy{{ID: "opa:a", Version: "h2"}}, got.Policies)
-	assert.Empty(t, got.Pending)
+	assert.Equal(t, []types.VersionedPolicy{{ID: "opa:a", Version: "h2"}}, covered(got))
+	assert.Empty(t, backfilling(got))
 }
 
 // That a policy was covered survives a restart.
@@ -414,7 +461,7 @@ func TestResolver_ACoveredPolicyStaysEnforcedAfterARestart(t *testing.T) {
 	store.lack(4)
 
 	restarted := newResolver(t, store, c, "opa:a")
-	assert.Equal(t, []types.EnforcedPolicy{{ID: "opa:a", Version: "h1"}}, restarted.Current().Policies)
+	assert.Equal(t, []types.VersionedPolicy{{ID: "opa:a", Version: "h1"}}, covered(restarted.Current()))
 }
 
 // Every call the resolver makes can fail the start, so the server never runs
@@ -438,7 +485,7 @@ func TestResolver_EveryStoreCallCanFailTheStart(t *testing.T) {
 			store.lack(tt.lack)
 			store.failMethod(tt.method, errors.New("database unavailable"))
 
-			_, err := NewResolver(enforcing("opa:a"), store, nil)
+			_, err := NewResolver(testInterval, store, nil, []string{"opa:a"})
 			require.ErrorContains(t, err, "database unavailable")
 		})
 	}

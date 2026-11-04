@@ -10,7 +10,6 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
-	"github.com/agntcy/dir/server/policy"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -96,7 +95,19 @@ type announceGateDB struct {
 	err      error
 }
 
-func (d *announceGateDB) IsRecordServable(string) (bool, error) { return d.servable, d.err }
+// Check is the gate announcing passes through.
+//
+//nolint:wrapcheck // a gRPC status is what a real gate returns.
+func (d *announceGateDB) Check(context.Context, string) error {
+	switch {
+	case d.err != nil:
+		return status.Error(codes.Internal, "failed to check record access")
+	case !d.servable:
+		return types.RecordExcludedError(announceCID)
+	default:
+		return nil
+	}
+}
 
 // announceStore holds at most the record announceCID and counts pulls.
 type announceStore struct {
@@ -123,9 +134,9 @@ func TestAnnounceToDHT_ExcludedRecordIsReportedAsExcluded(t *testing.T) {
 	t.Parallel()
 
 	exStore := &announceStore{present: true}
-	exErr := (&Worker{gate: policy.NewRecordGate(&announceGateDB{servable: false}, nil), store: exStore}).announceToDHT(t.Context(), announceCID)
+	exErr := (&Worker{gate: &announceGateDB{servable: false}, store: exStore}).announceToDHT(t.Context(), announceCID)
 
-	missErr := (&Worker{gate: policy.NewRecordGate(&announceGateDB{servable: true}, nil), store: &announceStore{present: false}}).announceToDHT(t.Context(), announceCID)
+	missErr := (&Worker{gate: &announceGateDB{servable: true}, store: &announceStore{present: false}}).announceToDHT(t.Context(), announceCID)
 
 	require.Error(t, exErr)
 	require.Error(t, missErr)
@@ -141,7 +152,7 @@ func TestAnnounceToDHT_GateErrorAnnouncesNothing(t *testing.T) {
 
 	store := &announceStore{present: true}
 	db := &announceGateDB{servable: true, err: errors.New("database unavailable")}
-	err := (&Worker{gate: policy.NewRecordGate(db, nil), store: store}).announceToDHT(t.Context(), announceCID)
+	err := (&Worker{gate: db, store: store}).announceToDHT(t.Context(), announceCID)
 
 	assert.Equal(t, codes.Internal, status.Code(err), "a failed check is not an excluded record")
 	assert.Zero(t, store.pulls)

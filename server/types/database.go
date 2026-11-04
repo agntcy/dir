@@ -474,16 +474,42 @@ func EvaluatedPolicyStatuses() []string {
 	return []string{PolicyEvalStatusEvaluated}
 }
 
-// EnforcedPolicy is a policy, at the version currently in force, that a
-// record must comply with to be returned by any read. A verdict under a
-// different version does not count: until the record is re-evaluated, it is
-// not known to comply with this one.
-type EnforcedPolicy struct {
+// VersionedPolicy is a policy together with the version of it in force.
+//
+// The two travel as a pair because a verdict under any other version does
+// not count: until the record is re-evaluated, it is not known to comply
+// with this one. Nobody states the version — the reconciler registers the
+// version of each policy it runs, derived from the policy's content — so an
+// ID alone never says which verdicts are current.
+type VersionedPolicy struct {
 	// ID matches PolicyEvaluationObject.GetPolicyID.
 	ID string
 
 	// Version matches PolicyEvaluationObject.GetPolicyVersion.
 	Version string
+}
+
+// ResolvedPolicy is an evaluation policy as the resolver found it: the
+// version in force, and whether its verdicts are complete.
+//
+// Every configured evaluation policy is resolved, whether or not anything
+// reads it. Which of them matter is decided by the operation policies naming
+// them, which the resolver does not see and does not need to.
+type ResolvedPolicy struct {
+	VersionedPolicy
+
+	// Covered reports a complete, current verdict set: an evaluator has
+	// registered a version, and every indexed record has a verdict under
+	// that version. An unregistered policy covers nothing, there being no
+	// verdicts to count.
+	//
+	// This is the backfill latch, and it says nothing about enforcing. An
+	// evaluation policy has no mode and never acts; what acts is an
+	// operation policy reading it, and mode: enforce is that policy's. The
+	// latch only ever vetoes: until the verdicts it reads are covered, a
+	// policy configured to enforce decides in shadow, because requiring a
+	// verdict most of the catalogue lacks would hide most of the catalogue.
+	Covered bool
 }
 
 // SearchPolicy is a policy configured at op search: one compiled into a
@@ -505,34 +531,25 @@ type SearchPolicy struct {
 	Predicate predicate.Node
 
 	// Reads are the evaluation policies the predicate names, at the versions
-	// in force.
-	//
-	// Carried with the policy rather than read from Policies because the two
-	// are different mechanisms: Policies comes from the policy.enforcement
-	// block, and a search policy must not depend on it.
-	Reads []EnforcedPolicy
+	// in force. They travel with the policy because a verdict only counts
+	// under the version it was reached at; see VersionedPolicy.
+	Reads []VersionedPolicy
 }
 
-// PolicyEnforcement is what the server's reads must satisfy: the enforced
-// policies, and how each kind of read applies them. See
-// policyconfig.EnforcementConfig for which reads each mode covers.
+// PolicyEnforcement is what the server's reads must satisfy, as the resolver
+// last found it. Both fields are derived from the configured policies alone:
+// nothing enumerates what is enforced separately from what is configured,
+// which is a list the two could disagree about.
 type PolicyEnforcement struct {
-	Policies []EnforcedPolicy
-	Search   policyconfig.Mode
-	Fetch    policyconfig.Mode
-
-	// SearchPolicies are every search policy being checked, whatever Search
-	// says: they are policies in their own right, with their own modes, and
-	// the modes above belong to the policy.enforcement block alone.
-	//
-	// Checked, not applied: a policy in shadow mode is here to be counted.
-	// EnforcingSearchPolicies is the subset a query carries.
+	// SearchPolicies are every search policy being checked, whatever its
+	// own mode: a policy in shadow is here so it can be counted and
+	// audited. EnforcingSearchPolicies is the subset a query carries.
 	SearchPolicies []SearchPolicy
 
-	// Pending are the configured policies not enforced yet: no evaluator has
-	// registered them (Version is empty), or their verdicts do not yet cover
-	// the records and never did.
-	Pending []EnforcedPolicy
+	// Evaluations is every configured evaluation policy, resolved, keyed by
+	// ID. Which of them matter at a given read is decided by the operation
+	// policies naming them, which the resolver does not see.
+	Evaluations map[string]ResolvedPolicy
 }
 
 // EnforcingSearchPolicies are the search policies a query actually carries:
@@ -552,7 +569,7 @@ func (e PolicyEnforcement) EnforcingSearchPolicies() []SearchPolicy {
 // PolicyGateObserver is told about each record a read by CID excluded, or in
 // shadow mode would have excluded.
 type PolicyGateObserver interface {
-	FetchExcluded(mode policyconfig.Mode)
+	PullExcluded(mode policyconfig.Mode)
 }
 
 // PolicyEvaluationObject is a single policy verdict row, keyed by
@@ -617,16 +634,4 @@ type PolicyEvaluationDatabaseAPI interface {
 	// GetCurrentPolicyVersion returns the version of policyID an evaluator
 	// ran most recently, and whether any evaluator has registered it.
 	GetCurrentPolicyVersion(policyID string) (string, bool, error)
-
-	// RecordServabilityAPI is the policy gate for reads that fetch by CID.
-	RecordServabilityAPI
-}
-
-// RecordServabilityAPI is the policy gate for reads that fetch a record by CID
-// rather than searching: the store and AI Finder APIs, and the peer RPC.
-type RecordServabilityAPI interface {
-	// IsRecordServable reports whether a record fetched directly by CID may
-	// be returned: always unless fetches enforce the policies, otherwise only
-	// if it complies with every enforced policy.
-	IsRecordServable(cid string) (bool, error)
 }

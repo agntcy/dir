@@ -66,10 +66,34 @@ func compliantRow() storedVerdict {
 	}
 }
 
+// The three states a configured evaluation policy resolves into. Both fields
+// are needed to tell them apart: the version says whether a verdict can be
+// current, and Covered says whether anything may be acted on.
+
+// enforcing is registered and covering the catalogue.
 func enforcing(ids ...string) types.PolicyEnforcement {
-	enforcement := types.PolicyEnforcement{}
+	return resolvedAs(inForceVersion, true, ids...)
+}
+
+// backfilling is registered but not yet covering the catalogue. Its verdicts
+// are current; whether they may be acted on is the latch's business.
+func backfilling(ids ...string) types.PolicyEnforcement {
+	return resolvedAs(inForceVersion, false, ids...)
+}
+
+// unregistered is configured, but no evaluator is running it, so there is no
+// version for a verdict to be current under.
+func unregistered(ids ...string) types.PolicyEnforcement {
+	return resolvedAs("", false, ids...)
+}
+
+func resolvedAs(version string, covered bool, ids ...string) types.PolicyEnforcement {
+	enforcement := types.PolicyEnforcement{Evaluations: make(map[string]types.ResolvedPolicy, len(ids))}
 	for _, id := range ids {
-		enforcement.Policies = append(enforcement.Policies, types.EnforcedPolicy{ID: id, Version: inForceVersion})
+		enforcement.Evaluations[id] = types.ResolvedPolicy{
+			VersionedPolicy: types.VersionedPolicy{ID: id, Version: version}, //nolint:modernize // the type name says which half of the pair this is
+			Covered:         covered,
+		}
 	}
 
 	return enforcement
@@ -159,9 +183,7 @@ func TestVerdictsFor_OnlyACurrentCompliantVerdictCounts(t *testing.T) {
 func TestVerdictsFor_AnUnregisteredPolicyHasNoCurrentVersion(t *testing.T) {
 	t.Parallel()
 
-	verdict := verdictFor(t, compliantRow(), types.PolicyEnforcement{
-		Pending: []types.EnforcedPolicy{{ID: trustedPolicy}},
-	})
+	verdict := verdictFor(t, compliantRow(), unregistered(trustedPolicy))
 	assert.Equal(t, policyv1.VerdictStatus_VERDICT_STATUS_SUPERSEDED, verdict.GetStatus())
 	assert.False(t, verdict.GetCompliantAndCurrent())
 }
@@ -169,12 +191,10 @@ func TestVerdictsFor_AnUnregisteredPolicyHasNoCurrentVersion(t *testing.T) {
 // A policy still backfilling has a real version, so its verdicts read
 // normally. Whether they may be acted on is the latch's business, not the
 // map's.
-func TestVerdictsFor_APendingPolicyStillReportsItsVerdict(t *testing.T) {
+func TestVerdictsFor_ABackfillingPolicyStillReportsItsVerdict(t *testing.T) {
 	t.Parallel()
 
-	verdict := verdictFor(t, compliantRow(), types.PolicyEnforcement{
-		Pending: []types.EnforcedPolicy{{ID: trustedPolicy, Version: inForceVersion}},
-	})
+	verdict := verdictFor(t, compliantRow(), backfilling(trustedPolicy))
 	assert.Equal(t, policyv1.VerdictStatus_VERDICT_STATUS_EVALUATED, verdict.GetStatus())
 	assert.True(t, verdict.GetCompliantAndCurrent())
 }
@@ -236,7 +256,7 @@ func TestRegistryMayEnforce_HoldsOffUntilWhatItReadsHasBackfilled(t *testing.T) 
 	reading := verdictRefs{keys: []string{trustedPolicy}}
 
 	pending := registryReading(t, `verdicts["cel:trusted"].compliant_and_current`, &fakeVerdicts{},
-		types.PolicyEnforcement{Pending: []types.EnforcedPolicy{{ID: trustedPolicy, Version: inForceVersion}}})
+		backfilling(trustedPolicy))
 	assert.False(t, pending.mayEnforce(reading), "still backfilling")
 
 	covered := registryReading(t, `verdicts["cel:trusted"].compliant_and_current`, &fakeVerdicts{},
@@ -259,7 +279,7 @@ func TestRegistryMayEnforce_AnUnreadableReferenceWaitsForEveryPolicy(t *testing.
 	t.Parallel()
 
 	pending := registryReading(t, `record_cid != ""`, &fakeVerdicts{},
-		types.PolicyEnforcement{Pending: []types.EnforcedPolicy{{ID: trustedPolicy, Version: inForceVersion}}})
+		backfilling(trustedPolicy))
 	assert.False(t, pending.mayEnforce(verdictRefs{all: true}))
 
 	covered := registryReading(t, `record_cid != ""`, &fakeVerdicts{}, enforcing(trustedPolicy))
@@ -317,7 +337,7 @@ func TestRegistryDecide_ReportsRatherThanRefusesWhileBackfilling(t *testing.T) {
 	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
 
 	reg := registryReading(t, `verdicts["cel:trusted"].compliant_and_current`, &fakeVerdicts{},
-		types.PolicyEnforcement{Pending: []types.EnforcedPolicy{{ID: trustedPolicy, Version: inForceVersion}}})
+		backfilling(trustedPolicy))
 
 	ok, msgs, err := reg.Decide(context.Background(), policyconfig.OpPull, record)
 	require.NoError(t, err)

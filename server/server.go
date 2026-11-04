@@ -275,18 +275,20 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	// The registry, the resolver that follows policy versions, and the gated
 	// view of the database are built together because each needs the others;
 	// see wirePolicies.
-	servedDB, policyRegistry, enforced, err := wirePolicies(ctx, cfg, databaseAPI, metricsServer)
+	policies, err := wirePolicies(ctx, cfg, databaseAPI, metricsServer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create policy registry: %w", err)
 	}
+
+	servedDB, policyRegistry, enforced := policies.Served, policies.Registry, policies.Enforcement
 
 	// Shared ingestion service: single authoritative path for persisting
 	// records/referrers (content store + search index + referrer DB state).
 	ingestor := ingest.New(storeAPI, databaseAPI)
 
-	// Every read of one record by CID passes the same gate: the verdicts the
-	// search path filters on, and the operation policies configured at pull.
-	recordGate := policy.NewRecordGate(servedDB, policyRegistry)
+	// Every read of one record by CID passes the same gate: the operation
+	// policies configured at pull.
+	recordGate := policies.Gate
 
 	routingAPI, err := routing.New(ctx, storeAPI, ingestor, policyRegistry, recordGate, options)
 	if err != nil {

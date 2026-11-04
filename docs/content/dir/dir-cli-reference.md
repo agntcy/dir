@@ -740,11 +740,11 @@ Without `--output`, the file is written to the daemon's resolved config path: `<
 
 ### `dirctl daemon policy dry-run`
 
-Tries a candidate [content policy](dir-content-policy-enforcement.md) on the daemon's records without deploying it, and reports how many records it would exclude, a sample of them, and the reasons. Run it before putting a policy in the configuration: under strict enforcement a policy that rejects too much hides those records until it is fixed.
+Tries a candidate [content policy](dir-content-policy-enforcement.md) on the daemon's records without deploying it, and reports how many records it would exclude, a sample of them, and the reasons. Run it before putting a policy in the configuration: once a read policy enforces its verdicts, a policy that rejects too much hides those records until it is fixed.
 
 Nothing is stored. No verdict is written and no policy version is registered, so what the daemon serves does not change. The records are read from the daemon's database and from its registry, so the daemon has to be running; the command refuses to start, and says so, when nothing answers. Run it with the same `dirctl` as the daemon, since opening the database applies the migrations it is missing.
 
-The candidate is a file with a `policy.evaluations` list, as in the configuration. It is checked before the daemon is touched. A record the policy cannot judge, or that cannot be read, counts as excluded, as it would under enforcement.
+The candidate is a file with a `policy.evaluations` list, as in the configuration. It is checked before the daemon is touched. A record the policy cannot judge, or that cannot be read, counts as excluded, as it would once the policy is enforced.
 
 | Flag | Description | Default |
 |------|-------------|---------|

@@ -27,6 +27,18 @@ func RecordExcludedError(cid string) error {
 	return status.Errorf(codes.PermissionDenied, "record %s is not available under this node's content policy", cid)
 }
 
+// RecordGate is what every read of one record by CID passes through: the
+// store and AI Finder APIs, the peer RPC, and announcing to the DHT. It sits
+// here rather than beside its implementation because four packages hold one,
+// and none of them has any other business with policies.
+type RecordGate interface {
+	// Check reports nothing when the record may be served, RecordExcludedError
+	// when the node's content policy keeps it back, and a gRPC Internal when
+	// the question could not be answered — which is a refusal too, since a
+	// read path that cannot ask must not serve.
+	Check(ctx context.Context, cid string) error
+}
+
 // StoreAPI handles management of content-addressable object storage.
 type StoreAPI interface {
 	// Push record to content store

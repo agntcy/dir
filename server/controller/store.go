@@ -32,10 +32,10 @@ type storeCtrl struct {
 	ingestor       ingest.Ingestor
 	eventBus       *events.SafeEventBus
 	policyRegistry *policy.Registry
-	gate           *policy.RecordGate
+	gate           types.RecordGate
 }
 
-func NewStoreController(store types.StoreAPI, db types.DatabaseAPI, ingestor ingest.Ingestor, eventBus *events.SafeEventBus, policyRegistry *policy.Registry, gate *policy.RecordGate) storev1.StoreServiceServer {
+func NewStoreController(store types.StoreAPI, db types.DatabaseAPI, ingestor ingest.Ingestor, eventBus *events.SafeEventBus, policyRegistry *policy.Registry, gate types.RecordGate) storev1.StoreServiceServer {
 	return &storeCtrl{
 		UnimplementedStoreServiceServer: storev1.UnimplementedStoreServiceServer{},
 		store:                           store,

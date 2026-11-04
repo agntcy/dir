@@ -8,7 +8,6 @@ import (
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
-	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
@@ -25,8 +24,8 @@ const (
 )
 
 var (
-	policyA = types.EnforcedPolicy{ID: "opa:a", Version: "v2"}
-	policyB = types.EnforcedPolicy{ID: "opa:b", Version: "v1"}
+	policyA = types.VersionedPolicy{ID: "opa:a", Version: "v2"}
+	policyB = types.VersionedPolicy{ID: "opa:b", Version: "v1"}
 )
 
 // setupGateDB opens a database whose reads apply what enforcement returns at
@@ -44,15 +43,20 @@ func setupGateDB(t *testing.T, enforcement func() types.PolicyEnforcement) *DB {
 		return db
 	}
 
-	return db.Served(enforcement, nil)
+	return db.Served(enforcement)
 }
 
-// enforcing enforces policies on every kind of read.
-func enforcing(policies ...types.EnforcedPolicy) types.PolicyEnforcement {
-	return types.PolicyEnforcement{Policies: policies, Search: policyconfig.ModeEnforce, Fetch: policyconfig.ModeEnforce}
+// enforcing requires a current, compliant verdict under every one of
+// policies, written as the conjunction a single search policy applies.
+func enforcing(policies ...types.VersionedPolicy) types.PolicyEnforcement {
+	if len(policies) == 0 {
+		return types.PolicyEnforcement{}
+	}
+
+	return searching(searchPolicy("cel:gate", policies...))
 }
 
-func enforce(policies ...types.EnforcedPolicy) func() types.PolicyEnforcement {
+func enforce(policies ...types.VersionedPolicy) func() types.PolicyEnforcement {
 	return func() types.PolicyEnforcement { return enforcing(policies...) }
 }
 
@@ -74,7 +78,7 @@ func seedGateRecord(t *testing.T, db *DB, cid, skill string) {
 
 // setVerdict stores an evaluated verdict. Failed evaluations are written
 // directly where a test needs one.
-func setVerdict(t *testing.T, db *DB, cid string, policy types.EnforcedPolicy, compliant bool) {
+func setVerdict(t *testing.T, db *DB, cid string, policy types.VersionedPolicy, compliant bool) {
 	t.Helper()
 
 	require.NoError(t, db.UpsertPolicyEvaluation(&PolicyEvaluation{
@@ -135,7 +139,7 @@ func TestPolicyGate_OnlyACurrentCompliantVerdictIsServed(t *testing.T) {
 
 	setVerdict(t, db, gateOK, policyA, true)
 	setVerdict(t, db, gateBad, policyA, false)
-	setVerdict(t, db, gateStale, types.EnforcedPolicy{ID: policyA.ID, Version: "v1"}, true)
+	setVerdict(t, db, gateStale, types.VersionedPolicy{ID: policyA.ID, Version: "v1"}, true)
 
 	// Written directly: UpsertPolicyEvaluation would clear compliant on a
 	// failed row, and the gate must not rely on that alone.
@@ -196,7 +200,7 @@ func TestPolicyGate_NoFilterCanLiftIt(t *testing.T) {
 func TestPolicyGate_EnforcedSetIsReadPerQuery(t *testing.T) {
 	t.Parallel()
 
-	var enforced []types.EnforcedPolicy
+	var enforced []types.VersionedPolicy
 
 	db := setupGateDB(t, func() types.PolicyEnforcement { return enforcing(enforced...) })
 
@@ -206,7 +210,7 @@ func TestPolicyGate_EnforcedSetIsReadPerQuery(t *testing.T) {
 
 	assert.ElementsMatch(t, []string{gateOK, gateNone}, gateCIDs(t, db))
 
-	enforced = []types.EnforcedPolicy{policyA}
+	enforced = []types.VersionedPolicy{policyA}
 
 	assert.Equal(t, []string{gateOK}, gateCIDs(t, db))
 }
@@ -284,7 +288,7 @@ func readThroughGate(t *testing.T, db *DB) gateReads {
 func TestPolicyGate_AppliesToEveryRead(t *testing.T) {
 	t.Parallel()
 
-	var enforced []types.EnforcedPolicy
+	var enforced []types.VersionedPolicy
 
 	db := setupGateDB(t, func() types.PolicyEnforcement { return enforcing(enforced...) })
 
@@ -302,7 +306,7 @@ func TestPolicyGate_AppliesToEveryRead(t *testing.T) {
 	require.Equal(t, []string{"skill/bad-author", "skill/ok-author"}, open.authors)
 	require.Contains(t, open.tagIDs, catalogv1.SkillTag("*", "skill/bad"))
 
-	enforced = []types.EnforcedPolicy{policyA}
+	enforced = []types.VersionedPolicy{policyA}
 
 	gated := readThroughGate(t, db)
 	assert.Equal(t, 1, gated.records, "GetRecords")
@@ -319,7 +323,7 @@ func TestPolicyGate_AppliesToEveryRead(t *testing.T) {
 // superseded, not when the reconciler gets round to the record. Otherwise the
 // window between the two is spent serving a record on evidence known to be out
 // of date.
-func TestIsRecordServable_SupersededVerdictIsNotServed(t *testing.T) {
+func TestPolicyGate_SupersededVerdictIsNotServed(t *testing.T) {
 	t.Parallel()
 
 	db := setupGateDB(t, enforce(policyA))
@@ -331,56 +335,10 @@ func TestIsRecordServable_SupersededVerdictIsNotServed(t *testing.T) {
 	// change reaches.
 	require.NoError(t, db.RegisterPolicyVersion(policyA.ID, policyA.Version, []string{types.FactGroupScan}))
 
-	servable, err := db.IsRecordServable(gateOK)
-	require.NoError(t, err)
-	require.True(t, servable, "a compliant record is served")
+	require.Equal(t, []string{gateOK}, gateCIDs(t, db), "a compliant record is served")
 
-	_, err = supersedePolicyEvaluations(db.gormDB, gateOK, types.FactGroupScan)
+	_, err := supersedePolicyEvaluations(db.gormDB, gateOK, types.FactGroupScan)
 	require.NoError(t, err)
 
-	servable, err = db.IsRecordServable(gateOK)
-	require.NoError(t, err)
-	assert.False(t, servable, "and is not, once what it was decided on has changed")
-}
-
-// Direct fetches by CID (Pull, Lookup, PullReferrer) ask IsRecordServable.
-// With nothing enforced, a record the database has not indexed yet must stay
-// servable, as it is today; with policies enforced, it must not.
-func TestIsRecordServable(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		enforced func() types.PolicyEnforcement
-		indexed  bool
-		verdict  string // "", "pass" or "fail"
-		want     bool
-	}{
-		{"no gate, record not indexed", nil, false, "", true},
-		{"no policy in force, record not indexed", enforce(), false, "", true},
-		{"enforced, compliant", enforce(policyA), true, "pass", true},
-		{"enforced, non-compliant", enforce(policyA), true, "fail", false},
-		{"enforced, indexed but never evaluated", enforce(policyA), true, "", false},
-		{"enforced, not indexed", enforce(policyA), false, "", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			db := setupGateDB(t, tt.enforced)
-
-			if tt.indexed {
-				seedGateRecord(t, db, gateOK, "skill/ok")
-			}
-
-			if tt.verdict != "" {
-				setVerdict(t, db, gateOK, policyA, tt.verdict == "pass")
-			}
-
-			got, err := db.IsRecordServable(gateOK)
-			require.NoError(t, err)
-			assert.Equal(t, tt.want, got)
-		})
-	}
+	assert.Empty(t, gateCIDs(t, db), "and is not, once what it was decided on has changed")
 }

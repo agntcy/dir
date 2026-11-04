@@ -14,17 +14,19 @@ server:
   # No OASF validator on push: this suite pushes records of its own making and
   # does not need the OASF schema server.
   policy:
+    refresh_interval: 2s
     evaluations:
       - provider: cel
         name: has-description
         expressions:
           - 'record.description != ""'
-    enforcement:
-      search: "enforce"
-      fetch: "enforce"
-      policies:
-        - "cel:has-description"
-      refresh_interval: 2s
+    operations:
+      - provider: cel
+        op: ["search", "pull"]
+        name: serve-described-records
+        mode: enforce
+        expressions:
+          - 'verdicts["cel:has-description"].compliant_and_current'
   store:
     provider: "oci"
     oci:

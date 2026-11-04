@@ -8,8 +8,8 @@ import (
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	"github.com/agntcy/dir/server/config"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
-	"github.com/agntcy/dir/server/policy"
 	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
@@ -70,52 +70,15 @@ func (n parityNode) verdict(t *testing.T, evalStatus string, compliant bool, ver
 	}))
 }
 
-// sqlGate is the gate as it is today: the enforcement config, applied to the
-// served view of the database by the query builder.
-func (n parityNode) sqlGate(t *testing.T, mode policyconfig.Mode, cid string) bool {
+// served reports whether the pull gate let cid through, insisting that a
+// refusal is the one a caller is meant to see and not some other failure.
+func (n parityNode) served(t *testing.T, mode policyconfig.Mode, cid string) bool {
 	t.Helper()
 
-	served, _, _, err := wirePolicies(t.Context(),
-		enforcementConfig(policyconfig.EnforcementConfig{Fetch: mode, Policies: []string{parityPolicy}}), n.db, nil)
-	require.NoError(t, err)
+	cfg := pullOnlyConfig()
+	cfg.Policy.Operations[0].Mode = mode
 
-	ok, err := served.IsRecordServable(cid)
-	require.NoError(t, err)
-
-	return ok
-}
-
-// policyGate is the gate as an operation policy at pull: the same verdict,
-// read by a configured expression rather than by the query builder.
-//
-// Enforcement is resolved as the apiserver resolves it, so that the backfill
-// latch applies to this gate exactly as it applies to the other one.
-func (n parityNode) policyGate(t *testing.T, mode policyconfig.Mode, cid string) bool {
-	t.Helper()
-
-	_, _, enforced, err := wirePolicies(t.Context(),
-		enforcementConfig(policyconfig.EnforcementConfig{
-			Fetch: policyconfig.ModeEnforce, Policies: []string{parityPolicy},
-		}), n.db, nil)
-	require.NoError(t, err)
-
-	registry, err := policy.NewRegistry(t.Context(),
-		policyconfig.Evaluations{{
-			Provider:    policyconfig.ProviderCEL,
-			Name:        parityPolicyName,
-			Expressions: []string{`record.name != ""`},
-		}},
-		policyconfig.Operations{{
-			Provider:    policyconfig.ProviderCEL,
-			Ops:         []string{policyconfig.OpPull},
-			Name:        "serve-checked-records",
-			Mode:        mode,
-			Expressions: []string{parityExpression},
-		}},
-		"", policy.WithVerdicts(n.db, enforced))
-	require.NoError(t, err)
-
-	err = policy.NewRecordGate(nil, registry).Check(t.Context(), cid)
+	err := pullOnlyGate(t, cfg, n, cid)
 	if err == nil {
 		return true
 	}
@@ -125,9 +88,11 @@ func (n parityNode) policyGate(t *testing.T, mode policyconfig.Mode, cid string)
 	return false
 }
 
-// The two gates answer alike for every state a verdict can be in. This is what
-// makes replacing one with the other a change of mechanism rather than of
-// behaviour: whichever decides, the same record is served or refused.
+// The gate's answer for every state a verdict can be in.
+//
+// These cases were written to pin the replaced SQL gate and the pull policy
+// to the same answers; that gate is gone, and what is left is the behaviour
+// it was held to.
 //
 // Most states serve, and not because the gate is lax. A record is only
 // refused once the policy is enforced, and a policy is only enforced once its
@@ -136,7 +101,7 @@ func (n parityNode) policyGate(t *testing.T, mode policyconfig.Mode, cid string)
 // so the policy is still backfilling and refuses nothing. The one state that
 // refuses an indexed record is the one that says so: an evaluated verdict
 // that found it non-compliant.
-func TestPullGateParity_BothGatesAgree(t *testing.T) {
+func TestPullGate_AnswersForEveryVerdictState(t *testing.T) {
 	t.Parallel()
 
 	for _, tc := range []struct {
@@ -202,11 +167,7 @@ func TestPullGateParity_BothGatesAgree(t *testing.T) {
 
 					n := newParityNode(t)
 					tc.seed(t, n)
-					assert.Equal(t, want, n.sqlGate(t, mode, n.cid), "the gate as it is today")
-
-					n = newParityNode(t)
-					tc.seed(t, n)
-					assert.Equal(t, want, n.policyGate(t, mode, n.cid), "the gate as an operation policy")
+					assert.Equal(t, want, n.served(t, mode, n.cid))
 				})
 			}
 		})
@@ -214,18 +175,82 @@ func TestPullGateParity_BothGatesAgree(t *testing.T) {
 }
 
 // A record this node does not hold has no verdict and never will, so once the
-// catalogue is covered and the policy is enforced, both gates refuse it. This
-// is the other half of the parity: a refusal needs a policy that is actually
-// enforced, and nothing else about the two gates differs.
-func TestPullGateParity_BothGatesRefuseAnUnindexedRecord(t *testing.T) {
+// catalogue is covered and the policy is enforced, the gate refuses it. A
+// refusal needs a policy that is actually enforced, which is the whole of
+// what separates the two modes here.
+func TestPullGate_RefusesAnUnindexedRecord(t *testing.T) {
 	t.Parallel()
 
 	n := newParityNode(t)
 	n.verdict(t, types.PolicyEvalStatusEvaluated, true, parityVersion)
 
-	assert.False(t, n.sqlGate(t, policyconfig.ModeEnforce, unindexedCID), "the gate as it is today")
-	assert.False(t, n.policyGate(t, policyconfig.ModeEnforce, unindexedCID), "the gate as an operation policy")
+	assert.False(t, n.served(t, policyconfig.ModeEnforce, unindexedCID))
+	assert.True(t, n.served(t, policyconfig.ModeShadow, unindexedCID), "shadow serves it")
+}
 
-	assert.True(t, n.sqlGate(t, policyconfig.ModeShadow, unindexedCID), "shadow serves it")
-	assert.True(t, n.policyGate(t, policyconfig.ModeShadow, unindexedCID), "shadow serves it")
+// pullOnlyConfig configures the pull policy and the evaluation it reads, and
+// nothing else.
+func pullOnlyConfig() *config.Config {
+	cfg := &config.Config{}
+	cfg.Authz.Enabled = true
+	cfg.Policy.Evaluations = policyconfig.Evaluations{{
+		Provider:    policyconfig.ProviderCEL,
+		Name:        parityPolicyName,
+		Expressions: []string{`record.name != ""`},
+	}}
+	cfg.Policy.Operations = policyconfig.Operations{{
+		Provider:    policyconfig.ProviderCEL,
+		Ops:         []string{policyconfig.OpPull},
+		Name:        "serve-checked-records",
+		Expressions: []string{parityExpression},
+	}}
+
+	return cfg
+}
+
+// pullOnlyGate wires cfg afresh and asks the pull gate about cid, so that
+// each step below sees enforcement resolved against the database as it stands
+// at that moment.
+func pullOnlyGate(t *testing.T, cfg *config.Config, n parityNode, cid string) error {
+	t.Helper()
+
+	wired, err := wirePolicies(t.Context(), cfg, n.db, nil)
+	require.NoError(t, err)
+
+	//nolint:wrapcheck // the gate's own error is what the caller asserts on.
+	return wired.Gate.Check(t.Context(), cid)
+}
+
+// The pull policy latches, reads its verdicts, and enforces, with no
+// enforcement block present at all: the arrangement left once it is deleted.
+//
+// Everything above configures the list, because until now the list fed both
+// the latch and the versions a verdict is judged current against. Without it
+// the latch never released, so a policy reading that verdict stayed in shadow
+// for ever; and no version was in force, so every verdict read as superseded.
+// The two faults cancel, the first hiding the second, which is why all three
+// steps are here. A gate that refuses from the start is not latching, and one
+// that refuses a compliant record is not reading its verdicts.
+func TestPullGate_LatchesAndEnforcesWithoutTheEnforcementBlock(t *testing.T) {
+	t.Parallel()
+
+	n := newParityNode(t)
+	cfg := pullOnlyConfig()
+
+	require.NoError(t, pullOnlyGate(t, cfg, n, n.cid),
+		"no verdict yet, so the catalogue is uncovered and the policy only reports")
+
+	// A verdict covers the catalogue, so the policy enforces. It serves,
+	// which it can only do if the version the verdict was reached under is
+	// the version in force.
+	n.verdict(t, types.PolicyEvalStatusEvaluated, true, parityVersion)
+	require.NoError(t, pullOnlyGate(t, cfg, n, n.cid),
+		"a compliant verdict at the version in force counts")
+
+	// The same enforcing policy, against a record whose verdict says no.
+	n.verdict(t, types.PolicyEvalStatusEvaluated, false, parityVersion)
+
+	err := pullOnlyGate(t, cfg, n, n.cid)
+	require.Error(t, err, "the verdict says non-compliant and the policy is enforcing")
+	assert.Equal(t, codes.PermissionDenied, status.Code(err))
 }

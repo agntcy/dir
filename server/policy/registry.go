@@ -566,9 +566,11 @@ func (r *Registry) Decide(
 		input.Verdicts = verdicts
 	}
 
-	return r.apply(ctx, op, input, func(ctx context.Context, v Validator) (bool, []string, error) {
+	ok, msgs, _, err := r.apply(ctx, op, input, func(ctx context.Context, v Validator) (bool, []string, error) {
 		return validateOperation(ctx, record, input, v)
 	})
+
+	return ok, msgs, err
 }
 
 // DecidePull applies the operation policies at pull to a record known only by
@@ -577,9 +579,13 @@ func (r *Registry) Decide(
 //
 // A policy that would read the record is refused at load time, so what is
 // missing here is only what nothing configured can ask for.
-func (r *Registry) DecidePull(ctx context.Context, recordCID string) (bool, []string, error) {
+//
+// The third return is apply's: the mode of the strictest refusal, which the
+// gate counts the exclusion under.
+func (r *Registry) DecidePull(ctx context.Context, recordCID string,
+) (bool, []string, policyconfig.Mode, error) {
 	if r == nil || len(r.byOp[policyconfig.OpPull]) == 0 {
-		return true, nil, nil
+		return true, nil, "", nil
 	}
 
 	var verdicts map[string]*policyv1.Verdict
@@ -587,7 +593,18 @@ func (r *Registry) DecidePull(ctx context.Context, recordCID string) (bool, []st
 	if r.readsVerdicts(policyconfig.OpPull) {
 		read, err := r.readVerdicts(recordCID)
 		if err != nil {
-			return false, nil, err
+			// A check nothing would act on cannot change the answer, so a
+			// failure to make it is reported and the record served. Shadow
+			// is for learning what a policy would do, not for failing reads
+			// while finding out.
+			if !r.actsAt(policyconfig.OpPull) {
+				logger.Warn("Could not read the verdicts a pull policy checks, and none is enforcing",
+					"cid", recordCID, "error", err)
+
+				return true, nil, "", nil
+			}
+
+			return false, nil, "", err
 		}
 
 		verdicts = read
@@ -595,22 +612,50 @@ func (r *Registry) DecidePull(ctx context.Context, recordCID string) (bool, []st
 
 	input := pullInput(recordCID, verdicts)
 
-	return r.apply(ctx, policyconfig.OpPull, input, func(ctx context.Context, v Validator) (bool, []string, error) {
-		return validateOperationByCID(ctx, input, v)
-	})
+	ok, msgs, refused, err := r.apply(ctx, policyconfig.OpPull, input,
+		func(ctx context.Context, v Validator) (bool, []string, error) {
+			return validateOperationByCID(ctx, input, v)
+		})
+
+	return ok, msgs, refused, err
+}
+
+// actsAt reports whether a refusal at op would change any answer: whether
+// some policy there is enforcing, the backfill latch having had its say.
+func (r *Registry) actsAt(op string) bool {
+	for _, p := range r.byOp[op] {
+		if p.validator == nil || p.mode != policyconfig.ModeEnforce {
+			continue
+		}
+
+		if r.mayEnforce(p.verdicts) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // apply runs each policy at op and collects what the enforcing ones refused.
 //
 // run is how one policy is evaluated, which differs by what the caller has:
 // a record to measure and time out against, or only a CID.
+//
+// The third return is the mode of the strictest refusal: ModeEnforce when an
+// enforcing policy refused, ModeShadow when only a shadow one would have, and
+// empty when every policy passed. A shadow refusal changes no answer, so it
+// is reported separately rather than through the first two returns, and it
+// is the whole of what a shadow policy produces besides its log line.
 func (r *Registry) apply(
 	ctx context.Context,
 	op string,
 	input *policyv1.OperationInput,
 	run func(context.Context, Validator) (bool, []string, error),
-) (bool, []string, error) {
-	var all []string
+) (bool, []string, policyconfig.Mode, error) {
+	var (
+		all     []string
+		refused policyconfig.Mode
+	)
 
 	for _, p := range r.byOp[op] {
 		if p.validator == nil || p.mode == policyconfig.ModeOff {
@@ -627,17 +672,27 @@ func (r *Registry) apply(
 
 		ok, msgs, err := run(ctx, p.validator)
 		if err != nil {
-			return false, nil, fmt.Errorf("decide record with policy %q: %w", p.id, err)
+			return false, nil, "", fmt.Errorf("decide record with policy %q: %w", p.id, err)
 		}
 
 		logDecision(ctx, operationPolicy{id: p.id, mode: mode, validator: p.validator}, input, ok, msgs)
 
-		if !ok && mode == policyconfig.ModeEnforce {
+		if ok {
+			continue
+		}
+
+		if mode == policyconfig.ModeEnforce {
 			all = append(all, msgs...)
+		}
+
+		// An enforcing refusal outranks a shadow one: the record was
+		// excluded, not merely would have been.
+		if refused != policyconfig.ModeEnforce {
+			refused = mode
 		}
 	}
 
-	return len(all) == 0, all, nil
+	return len(all) == 0, all, refused, nil
 }
 
 // readsVerdicts reports whether any policy at op decides on a stored verdict,
