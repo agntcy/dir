@@ -1518,6 +1518,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#deciding-searches-with-a-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deciding Searches With a Policy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#when-a-new-record-is-served" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2402,6 +2413,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#deciding-searches-with-a-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deciding Searches With a Policy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#when-a-new-record-is-served" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2730,6 +2752,7 @@
 </tbody>
 </table>
 <p>The modes and the policy list are read at startup: restart the server after changing them.</p>
+<p>This whole block is being replaced by policies at the <a href="#deciding-reads-with-a-policy"><code>pull</code></a> and <a href="#deciding-searches-with-a-policy"><code>search</code></a> operations, which say the same things as configuration and more besides. Both arrangements work and both apply; a new deployment is better off writing the policies.</p>
 <h2 id="deciding-reads-with-a-policy">Deciding Reads With a Policy</h2>
 <p>The settings above are one rule, fixed in code: a read by CID is served when the record has a compliant, current verdict under <em>every</em> enforced policy. A policy at the <code>pull</code> operation expresses that rule as configuration instead, which is how it will be expressed from now on:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">policy</span><span class="p">:</span>
@@ -2747,6 +2770,25 @@
 <p>A policy is enforced only once its verdicts cover every indexed record, and a policy at <code>pull</code> inherits that: until then it reports what it would refuse and serves the record, whatever its <code>mode</code> says. Watch <code>dir_policy_gate_records_unevaluated</code> for the policies it reads, as in <a href="#turning-enforcement-on">Turning Enforcement On</a>.</p>
 <p>This also means a verdict that failed, was superseded, or was reached under a since-edited version refuses nothing: none of those covers the record it is for, so the policy is held in backfill by the very record it would have refused. The only verdict that refuses an indexed record is one that evaluated it and found it non-compliant; everything else waits for the reconciler.</p>
 </div>
+<h2 id="deciding-searches-with-a-policy">Deciding Searches With a Policy</h2>
+<p><code>policy.enforcement.search</code> has the same counterpart at the <code>search</code> operation, and the same reason to prefer it: the fixed rule can only require every policy at once, and a policy can say anything over the verdicts.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">policy</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">operations</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cel</span>
+<span class="w">      </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;search&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">serve-checked-records</span>
+<span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shadow</span>
+<span class="w">      </span><span class="nt">expressions</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;verdicts[&quot;cel:trusted&quot;].compliant_and_current</span><span class="nv"> </span><span class="s">||</span><span class="nv"> </span><span class="s">verdicts[&quot;opa:reviewed&quot;].compliant_and_current&#39;</span>
+</code></pre></div>
+<p>That disjunction is the thing the fixed rule cannot express: a record is returned if it is <em>either</em> automatically trusted <em>or</em> manually reviewed. <code>policies: ["cel:trusted", "opa:reviewed"]</code> would require both.</p>
+<p>A search policy differs from every other kind in one way that is worth knowing before you write one: it is <strong>compiled into the query</strong> rather than evaluated per record, because a search has to know what it may return before it selects a page of rows. Three consequences follow.</p>
+<ul>
+<li><strong>Only <code>cel</code>, and only a small subset of it.</strong> Verdicts combined with <code>&amp;&amp;</code> and <code>||</code>, and nothing else — no negation, no comparisons, no other verdict fields. <code>opa</code> is refused at this operation. The node checks this when it loads the configuration and names the expression it could not compile, so a policy that does not work is a startup error and never a silently wrong result. <a href="../dir-component-records-validation/#at-search">The subset in full</a>.</li>
+<li><strong>It is independent of <code>policy.enforcement</code>.</strong> A search policy applies whatever <code>search:</code> is set to, including <code>off</code>, and carries its own <code>mode</code>. The two coexist and a record must pass both while they do; <code>policy.enforcement</code> is on its way out.</li>
+<li><strong>It affects searches only.</strong> A record a search policy leaves out is still returned by a read of its CID. Pair it with a policy at <a href="#deciding-reads-with-a-policy"><code>pull</code></a> to withhold the record entirely.</li>
+</ul>
+<p>Each search policy waits for its own backfill, as above, and waits as a whole: a policy reading three verdicts applies once all three cover every indexed record, never partly. Until then it excludes nothing whatever its <code>mode</code> says, and <code>dir_policy_gate_search_records_excluded</code> reports nothing for it.</p>
 <h2 id="when-a-new-record-is-served">When a New Record Is Served</h2>
 <p>A record is withheld until it has been indexed and evaluated, and both happen as soon as it arrives, not at the tasks' next intervals:</p>
 <ol>
@@ -2856,6 +2898,12 @@
 </tbody>
 </table>
 <p><code>outcome</code> is <code>would_exclude</code> in shadow mode and <code>excluded</code> when enforcing.</p>
+<p>On the search gauge, where <code>policy.enforcement.search</code> and each <a href="#deciding-searches-with-a-policy">search policy</a> carry a mode of their own, the two series mean:</p>
+<ul>
+<li><strong><code>excluded</code></strong> — records left out <em>now</em>, by everything currently enforcing.</li>
+<li><strong><code>would_exclude</code></strong> — records that would be left out if everything being checked were enforcing, including whatever is in shadow. Never below <code>excluded</code>, and reported only when something is in shadow, so a node with a single mode in play emits one series as before.</li>
+</ul>
+<p>The gap between them is what switching the shadowed policies to <code>enforce</code> would cost, which is the number to watch during a rollout.</p>
 <h2 id="turning-enforcement-on">Turning Enforcement On</h2>
 <ol>
 <li>Add the policy ID and set both modes to <code>shadow</code>.</li>
@@ -2864,6 +2912,7 @@
 <li>Set <code>search</code> to <code>enforce</code> and watch the <code>excluded</code> series. Searches have the smaller blast radius: a record hidden by mistake can still be fetched by CID.</li>
 <li>Set <code>fetch</code> to <code>enforce</code>. A caller that fetches an excluded record by CID then gets <code>PermissionDenied</code>, and so does one that fetches a CID the node does not hold: the refusal does not say which CIDs it holds.</li>
 </ol>
+<p>A <a href="#deciding-searches-with-a-policy">search policy</a> rolls out the same way, with its own <code>mode</code> in place of the setting: start it at <code>shadow</code>, read the gap between the gauge's two series, then set it to <code>enforce</code>. Because the mode is per policy, one can be trialled while the others keep enforcing, and the restart is still required.</p>
 <h2 id="editing-a-policy">Editing a Policy</h2>
 <p>Edit the policy file and deploy it; the reconciler loads it as it starts. The reconciler registers the new version and starts evaluating records under it, and the server enforces the new version as soon as it sees it, within <code>refresh_interval</code>.</p>
 <p>A verdict reached under the previous version no longer counts. Every record is therefore hidden until it has been evaluated under the new rule, so nothing the new rule rejects is served while that happens. This is deliberate: content already delivered to users cannot be recalled, and a policy is usually tightened because something harmful was found. The cost is that records disappear for as long as the re-evaluation takes.</p>
@@ -2900,6 +2949,8 @@
 <li><code>GetRecord</code> returns a record by CID whether or not it is excluded, with its verdicts.</li>
 <li><code>ListExcludedRecords</code> lists the excluded records with their verdicts, paged by <code>limit</code> and <code>offset</code>.</li>
 </ul>
+<p><em>Excluded</em> here means left out of a search, by <code>policy.enforcement</code> or by a <a href="#deciding-searches-with-a-policy">search policy</a>. A record excluded this way may still be readable by anyone holding its CID, unless a <code>fetch</code> or <code>pull</code> policy withholds it too.</p>
+<p>The service reports what the policies say, not what the modes do, so a policy in <code>shadow</code> is included and a record it names is listed even though nothing is excluded yet. That is the point: it is how a policy is reviewed record by record before it is turned on.</p>
 <p>The server offers the service only while policies are checked and authorization is on. Only a rule naming the auditor's SPIFFE ID grants it; a rule for a whole trust domain does not:</p>
 <div class="highlight"><pre><span></span><code>p,spiffe://example.org/ns/dir/sa/auditor,/agntcy.dir.policy.v1.PolicyAuditService/*
 </code></pre></div>

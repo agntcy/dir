@@ -1027,6 +1027,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#at-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        At search
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2526,6 +2537,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#at-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        At search
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2840,7 +2862,7 @@
 <p>The Directory enforces validation on all records before accepting them.
 Validation is performed using the <a href="https://docs.agntcy.org/oasf/oasf-sdk/">OASF SDK</a>, which requires an OASF schema server URL for validation.</p>
 <h3 id="configuration">Configuration</h3>
-<p>The Directory server validates records using <code>policy.operations</code> in YAML. Each entry selects a provider, the operations it applies to (<code>push</code>, <code>autosync</code>, <code>index</code>, <code>pull</code>), a <code>name</code>, that provider's settings, and optionally a <code>mode</code>. An empty list disables record validation. This list cannot be set via environment variables.</p>
+<p>The Directory server validates records using <code>policy.operations</code> in YAML. Each entry selects a provider, the operations it applies to (<code>push</code>, <code>autosync</code>, <code>index</code>, <code>pull</code>, <code>search</code>), a <code>name</code>, that provider's settings, and optionally a <code>mode</code>. An empty list disables record validation. This list cannot be set via environment variables.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># server.config.yml</span>
 <span class="nt">listen_address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.0.0.0:8888&quot;</span>
 <span class="nt">policy</span><span class="p">:</span>
@@ -2887,7 +2909,7 @@ unless overridden.</p>
 <tr>
 <td><code>context.operation</code></td>
 <td>enum</td>
-<td>Which operation is being decided: <code>Operation.OPERATION_PUSH</code>, <code>Operation.OPERATION_AUTOSYNC</code>, <code>Operation.OPERATION_INDEX</code> or <code>Operation.OPERATION_PULL</code>.</td>
+<td>Which operation is being decided: <code>Operation.OPERATION_PUSH</code>, <code>Operation.OPERATION_AUTOSYNC</code>, <code>Operation.OPERATION_INDEX</code> or <code>Operation.OPERATION_PULL</code>. A policy at <a href="#at-search"><code>search</code></a> reads neither <code>context</code> nor <code>now</code>, because it is compiled into a query rather than run on an operation.</td>
 </tr>
 <tr>
 <td><code>context.source_peer_id</code></td>
@@ -2982,7 +3004,28 @@ unless overridden.</p>
 </code></pre></div>
 <p>A policy at <code>pull</code> <strong>cannot read <code>record</code></strong>. A read by CID is decided before the content is fetched, which is what keeps a lookup an index read, so there is no record there to give it. A policy that reads one does not load, and the node says so at startup rather than letting it decide on an empty record. This applies to <code>oasf</code> too, which is nothing but a reading of record content.</p>
 <p>The restriction costs less than it looks. A record's content cannot change under its CID, so a question about content has one answer forever: ask it in <code>policy.evaluations</code>, which sees the whole record, is answered once per record, and leaves a verdict to read here.</p>
-<p>Reading verdicts is the other way around: only <code>pull</code> has them. Every other operation decides before any verdict exists, so a policy naming <code>verdicts</code> at <code>push</code>, <code>autosync</code> or <code>index</code> does not load either.</p>
+<p>Reading verdicts is the other way around: only <code>pull</code> and <code>search</code> have them. Every other operation decides before any verdict exists, so a policy naming <code>verdicts</code> at <code>push</code>, <code>autosync</code> or <code>index</code> does not load either.</p>
+<h4 id="at-search">At <code>search</code></h4>
+<p>A policy at <code>search</code> decides which records a query returns. It reads the same <code>verdicts</code> map as <code>pull</code> and, like <code>pull</code>, cannot read <code>record</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cel</span>
+<span class="w">  </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;search&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">serve-checked-records</span>
+<span class="w">  </span><span class="nt">expressions</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;verdicts[&quot;cel:trusted&quot;].compliant_and_current&#39;</span>
+</code></pre></div>
+<p>Everything else about it follows from one fact: <strong>a search policy is never evaluated.</strong> Every other policy is handed a record and asked about it, but a search has no record to be asked about — the decision has to be known before any row is selected, or the node would have to read the whole index to return one page. So a search policy is <em>compiled into the query</em> instead, and the only expressions it accepts are the ones that can be compiled:</p>
+<p>one verdict's <code>compliant_and_current</code>, and those combined with <code>&amp;&amp;</code> and <code>||</code>, nested freely.</p>
+<div class="highlight"><pre><span></span><code>verdicts[&quot;cel:trusted&quot;].compliant_and_current
+verdicts[&quot;a&quot;].compliant_and_current &amp;&amp; verdicts[&quot;b&quot;].compliant_and_current
+verdicts[&quot;a&quot;].compliant_and_current &amp;&amp; (verdicts[&quot;b&quot;].compliant_and_current || verdicts[&quot;c&quot;].compliant_and_current)
+</code></pre></div>
+<p>Everything else is refused when the policy is loaded, and the node names the expression it could not take. That includes negation (<code>!</code>), the other verdict fields (<code>status</code>, <code>compliant</code>, <code>reason</code>, <code>policy_version</code>, <code>evaluated_at</code>), <code>record_cid</code>, <code>now</code>, <code>context</code>, comparisons, constants, <code>has()</code>, and anything that iterates. Several of these could be compiled, and may be later; they are refused now because a refusal at startup costs an operator one error message, while a widening that turns out to mean something different in SQL than it did in CEL costs them records they never decided to hide.</p>
+<p>Negation is the one worth understanding rather than just avoiding. The gate requires a <em>positive</em> verdict rather than excluding negative ones, so a record nobody has evaluated yet is already excluded. <code>!verdicts["x"].compliant_and_current</code> reads naturally as "records that failed x", but it would also match every record not yet evaluated, every record whose verdict was superseded by a metadata change, and every record whose evaluation errored — which is the opposite of a policy that hides unsafe records. Write the condition you want served, not the one you want hidden.</p>
+<div class="admonition note">
+<p class="admonition-title"><code>search</code> accepts <code>cel</code> only</p>
+<p><code>opa</code> cannot be used at <code>search</code>, and the node refuses the configuration at startup. The compilable subset is small enough that a Rego policy here would be a <code>.rego</code> file forbidden from using almost any Rego: no <code>not</code>, no comprehensions, no helper rules, no built-ins. Supporting it would mean maintaining a second frontend whose only legal programs are a transliteration of the CEL ones. An <code>opa</code> policy at any other operation is unaffected.</p>
+</div>
+<p>A search policy is enforced only once every evaluation policy it reads has verdicts covering all indexed records, the same <a href="../dir-content-policy-enforcement/#deciding-reads-with-a-policy">backfill latch</a> as elsewhere. Unlike the flat policy list, the terms of a search policy cannot be dropped one at a time while they wait: dropping a term from a <code>&amp;&amp;</code> would serve records the policy excludes, and dropping one from a <code>||</code> would hide records it allows. There is no safe direction, so the whole policy waits.</p>
 <h3 id="modes">Modes</h3>
 <p>Each entry carries an optional <code>mode</code>, which decides what happens to its refusals. It applies to that entry alone, so one policy can be tried out while the others keep enforcing.</p>
 <table>
@@ -3023,6 +3066,7 @@ unless overridden.</p>
 </code></pre></div>
 <p>A refusal is logged at <code>INFO</code> and an accepted record at <code>DEBUG</code>, since every record pushed, synced or indexed produces one of the latter. <code>peer</code> names the peer a record was synced from, and <code>caller</code> the authenticated identity of a push; each appears only where it is known.</p>
 <p><code>decision</code> is always what the policy decided, and <code>mode</code> says what was done about it. A line reading <code>decision=refuse mode=shadow</code> is a record that was accepted — reported by the message <code>Shadow mode: operation policy would have refused the record</code> — and counting those is how a shadow policy is assessed before it is switched to <code>enforce</code>.</p>
+<p>A policy at <a href="#at-search"><code>search</code></a> writes no line. It is never run on a record, so there is no per-record decision to log; one query would produce a line per row it did not return. What it excludes is reported as a count instead, by <code>dir_policy_gate_search_records_excluded</code>, and the records themselves can be listed through the <a href="../dir-content-policy-enforcement/#auditing-excluded-records">audit service</a>.</p>
 <p>The Prometheus counters under <code>dir_policy_gate_*</code> are not this. They aggregate reads the <em>evaluation</em> layer excludes, carrying no CID and no policy ID; see <a href="../dir-content-policy-enforcement/">Content Policy Enforcement</a>.</p>
 <h3 id="validation-behavior">Validation Behavior</h3>
 <p>The Directory server uses API-based validation against the configured OASF schema server:</p>
