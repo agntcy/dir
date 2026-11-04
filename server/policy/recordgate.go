@@ -15,27 +15,27 @@ import (
 
 var recordGateLogger = logging.Logger("policy/record-gate")
 
-// RecordGate decides whether a record may be served when it is fetched by CID
+// RecordGate decides whether a record may be served when it is pulled by CID
 // rather than found by searching.
 //
-// It carries both of the things that decide: the stored verdicts the search
-// path already filters on, and the operation policies configured at pull. They
-// travel together so that a read path cannot consult one and miss the other,
-// which is a mistake this code has made before.
+// The operation policies configured at pull are the whole of that decision:
+// a read by CID applies no filter the database adds of its own.
 type RecordGate struct {
-	servability types.RecordServabilityAPI
-	policies    *Registry
+	policies *Registry
+
+	// observer counts the records refused, and those a shadow policy would
+	// have refused. Nil tells no one.
+	observer types.PolicyGateObserver
 }
 
 // NewRecordGate returns the gate every read by CID passes through.
 //
-// Either half may be absent: a node that enforces no verdicts and configures
-// no policy at pull serves whatever it stores, which is the default. The gate
-// itself must not be: a read path reaching Check with no gate panics rather
-// than quietly serving everything, which is the mistake this type exists to
-// prevent.
-func NewRecordGate(servability types.RecordServabilityAPI, policies *Registry) *RecordGate {
-	return &RecordGate{servability: servability, policies: policies}
+// policies may be absent: a node configuring no policy at pull serves
+// whatever it stores, which is the default. The gate itself must not be: a
+// read path reaching Check with no gate panics rather than quietly serving
+// everything, which is the mistake this type exists to prevent.
+func NewRecordGate(policies *Registry, observer types.PolicyGateObserver) *RecordGate {
+	return &RecordGate{policies: policies, observer: observer}
 }
 
 // Check returns nil when the record with cid may be served.
@@ -45,26 +45,20 @@ func NewRecordGate(servability types.RecordServabilityAPI, policies *Registry) *
 // without saying which policy or why. When that cannot be determined it
 // returns Internal: the check fails closed.
 func (g *RecordGate) Check(ctx context.Context, cid string) error {
-	if g.servability != nil {
-		ok, err := g.servability.IsRecordServable(cid)
-		if err != nil {
-			recordGateLogger.Error("Failed to check whether a record may be served", "cid", cid, "error", err)
-
-			return status.Error(codes.Internal, "failed to check record access") //nolint:wrapcheck // a gRPC status for the caller
-		}
-
-		if !ok {
-			recordGateLogger.Debug("Record excluded by content policy", "cid", cid)
-
-			return types.RecordExcludedError(cid) //nolint:wrapcheck // a gRPC status for the caller
-		}
-	}
-
-	ok, _, err := g.policies.DecidePull(ctx, cid)
+	ok, _, refused, err := g.policies.DecidePull(ctx, cid)
 	if err != nil {
 		recordGateLogger.Error("Failed to decide a read by CID", "cid", cid, "error", err)
 
 		return status.Error(codes.Internal, "failed to check record access") //nolint:wrapcheck // a gRPC status for the caller
+	}
+
+	// Counted here rather than where the policies run, because the question
+	// the counter answers is about reads, not about policies: one refused
+	// read is one increment however many policies refused it. A shadow
+	// policy reaches this with ok still true, which is what lets the
+	// would-have-excluded series be anything but zero.
+	if refused != "" && g.observer != nil {
+		g.observer.PullExcluded(refused)
 	}
 
 	if !ok {

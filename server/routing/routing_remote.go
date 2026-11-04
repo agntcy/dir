@@ -125,7 +125,7 @@ func newRemote(parentCtx context.Context,
 	storeAPI types.StoreAPI,
 	ingestor ingest.Ingestor,
 	policyRegistry *policy.Registry,
-	gate *policy.RecordGate,
+	gate types.RecordGate,
 	dstore types.Datastore,
 	opts types.APIOptions,
 ) (*routeRemote, error) {

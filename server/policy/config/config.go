@@ -10,12 +10,12 @@ import (
 )
 
 // DefaultRefreshInterval is how often the server rechecks which version of
-// each enforced policy is in force.
+// each evaluation policy is in force.
 const DefaultRefreshInterval = 30 * time.Second
 
 // Config is the node's record checks: the policies that produce a verdict per
-// record, the policies that decide at an operation, the directory named OPA
-// files are loaded from, and how reads enforce the verdicts.
+// record, the policies that decide at an operation, and the directory named
+// OPA files are loaded from.
 type Config struct {
 	// Dir is the directory that holds policy files (one file per policy).
 	// An OPA policy's file is resolved against it.
@@ -31,12 +31,17 @@ type Config struct {
 	// YAML only — a list of objects cannot be bound to a single env var.
 	Operations Operations `json:"operations,omitempty" mapstructure:"operations"`
 
-	// Enforcement decides which policies the records this server returns
-	// must comply with, and how each kind of read applies them.
-	Enforcement EnforcementConfig `json:"enforcement" mapstructure:"enforcement"`
+	// RefreshInterval is how often the server rechecks which version of each
+	// evaluation policy is in force, and whether its verdicts yet cover the
+	// catalogue. Zero means DefaultRefreshInterval.
+	//
+	// Nothing else about enforcement is configured. Which policies a read
+	// applies is said by the operation policies naming them, so there is no
+	// second list to keep in step with the first.
+	RefreshInterval time.Duration `json:"refresh_interval,omitempty" mapstructure:"refresh_interval"`
 }
 
-// Validate checks both policy blocks and enforcement.
+// Validate checks both policy blocks.
 func (c *Config) Validate() error {
 	if err := c.Evaluations.Validate(); err != nil {
 		return fmt.Errorf("policy: %w", err)
@@ -50,70 +55,8 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("policy: %w", err)
 	}
 
-	return c.Enforcement.Validate()
-}
-
-// EnforcementConfig is the enforced policies and one mode per kind of read,
-// so enforcement can be rolled out one kind at a time.
-type EnforcementConfig struct {
-	// Search applies to reads that query the index: search, the catalog,
-	// filter values, and publication by query or of every record.
-	Search Mode `json:"search,omitempty" mapstructure:"search"`
-
-	// Fetch applies to reads of one record by CID: pull, lookup, referrers,
-	// export, the peer RPC, publication of explicit CIDs and verification
-	// lookups.
-	Fetch Mode `json:"fetch,omitempty" mapstructure:"fetch"`
-
-	// Policies are the IDs of the policies a record must comply with, as
-	// their evaluators report them, e.g. "opa:require-license".
-	//
-	// No version is given. A policy's version comes from its content: the
-	// reconciler registers the version of each policy it runs, and the server
-	// follows it. A verdict reached under any other version does not count, so
-	// after a policy changes a record stays hidden until it is evaluated under
-	// the new rule, and nothing the new rule rejects is served meanwhile.
-	Policies []string `json:"policies,omitempty" mapstructure:"policies"`
-
-	// RefreshInterval is how often the server rechecks which version of each
-	// policy is in force. Zero means DefaultRefreshInterval.
-	RefreshInterval time.Duration `json:"refresh_interval,omitempty" mapstructure:"refresh_interval"`
-}
-
-// Active reports whether any kind of read checks the enforced policies.
-func (c *EnforcementConfig) Active() bool {
-	return c.Search.Active() || c.Fetch.Active()
-}
-
-func (c *EnforcementConfig) Validate() error {
-	if err := c.Search.Validate(); err != nil {
-		return fmt.Errorf("search: %w", err)
-	}
-
-	if err := c.Fetch.Validate(); err != nil {
-		return fmt.Errorf("fetch: %w", err)
-	}
-
-	seen := make(map[string]bool, len(c.Policies))
-
-	for i, id := range c.Policies {
-		if id == "" {
-			return fmt.Errorf("policy %d: the id is required", i)
-		}
-
-		if seen[id] {
-			return fmt.Errorf("policy %q is listed more than once", id)
-		}
-
-		seen[id] = true
-	}
-
-	if c.Active() && len(c.Policies) == 0 {
-		return errors.New("a search or fetch mode is set but no policies are enforced")
-	}
-
 	if c.RefreshInterval < 0 {
-		return errors.New("refresh_interval must not be negative")
+		return errors.New("policy: refresh_interval must not be negative")
 	}
 
 	return nil
@@ -121,7 +64,7 @@ func (c *EnforcementConfig) Validate() error {
 
 // GetRefreshInterval returns RefreshInterval, or DefaultRefreshInterval when
 // it is not set.
-func (c *EnforcementConfig) GetRefreshInterval() time.Duration {
+func (c *Config) GetRefreshInterval() time.Duration {
 	if c.RefreshInterval == 0 {
 		return DefaultRefreshInterval
 	}

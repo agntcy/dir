@@ -20,7 +20,6 @@ import (
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/config"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
-	"github.com/agntcy/dir/server/policy"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -89,7 +88,25 @@ type gatedDB struct {
 	lookups  int
 }
 
-func (d *gatedDB) IsRecordServable(string) (bool, error) { return d.servable, d.gateErr }
+// Check is the gate the read paths pass through; gatedDB plays both parts
+// because every test here needs the two to agree about one record.
+func (d *gatedDB) Check(_ context.Context, cid string) error {
+	return gateAnswer(cid, d.servable, d.gateErr)
+}
+
+// gateAnswer is what a real gate returns for a canned outcome: an
+// unanswerable check fails closed with Internal, a refusal with the error
+// that names no policy.
+func gateAnswer(cid string, servable bool, err error) error {
+	switch {
+	case err != nil:
+		return status.Error(codes.Internal, "failed to check record access")
+	case !servable:
+		return types.RecordExcludedError(cid)
+	default:
+		return nil
+	}
+}
 
 func (d *gatedDB) IncrementPullCount(string) error {
 	d.pulls++
@@ -137,7 +154,7 @@ func pullOnce(t *testing.T, store *gatedStore, db *gatedDB) (*fakeStream[corev1.
 
 	stream := &fakeStream[corev1.RecordRef, corev1.Record]{ctx: t.Context(), reqs: []*corev1.RecordRef{{Cid: gatedCID}}}
 
-	return stream, NewStoreController(store, db, nil, nil, nil, policy.NewRecordGate(db, nil)).Pull(stream)
+	return stream, NewStoreController(store, db, nil, nil, nil, db).Pull(stream)
 }
 
 func lookupOnce(t *testing.T, store *gatedStore, db *gatedDB) (*fakeStream[corev1.RecordRef, corev1.RecordMeta], error) {
@@ -145,7 +162,7 @@ func lookupOnce(t *testing.T, store *gatedStore, db *gatedDB) (*fakeStream[corev
 
 	stream := &fakeStream[corev1.RecordRef, corev1.RecordMeta]{ctx: t.Context(), reqs: []*corev1.RecordRef{{Cid: gatedCID}}}
 
-	return stream, NewStoreController(store, db, nil, nil, nil, policy.NewRecordGate(db, nil)).Lookup(stream)
+	return stream, NewStoreController(store, db, nil, nil, nil, db).Lookup(stream)
 }
 
 func pullReferrerOnce(t *testing.T, store *gatedStore, db *gatedDB) (*fakeStream[storev1.PullReferrerRequest, storev1.PullReferrerResponse], error) {
@@ -156,7 +173,7 @@ func pullReferrerOnce(t *testing.T, store *gatedStore, db *gatedDB) (*fakeStream
 		reqs: []*storev1.PullReferrerRequest{{RecordRef: &corev1.RecordRef{Cid: gatedCID}}},
 	}
 
-	return stream, NewStoreController(store, db, nil, nil, nil, policy.NewRecordGate(db, nil)).PullReferrer(stream)
+	return stream, NewStoreController(store, db, nil, nil, nil, db).PullReferrer(stream)
 }
 
 // --- Pull ---
@@ -277,7 +294,7 @@ func TestPullReferrer_ServableRecordStreamsReferrers(t *testing.T) {
 func exportOnce(t *testing.T, store *gatedStore, db *fakeCatalogDB) error {
 	t.Helper()
 
-	ctrl := NewAIFinderController("hostId", db, policy.NewRecordGate(db, nil), config.HTTPGatewayConfig{}, store)
+	ctrl := NewAIFinderController("hostId", db, db, config.HTTPGatewayConfig{}, store)
 	_, err := ctrl.ExportAgent(t.Context(), &catalogv1.ExportAgentRequest{Cid: gatedCID})
 
 	return err
@@ -317,7 +334,7 @@ func TestGetIdentityStatus_ExcludedRecordIsReportedAsExcluded(t *testing.T) {
 	withClaim(db, "cid-v1")
 	db.withheld = map[string]bool{"cid-v1": true}
 
-	resp, err := NewIdentityController(db, policy.NewRecordGate(db, nil)).GetIdentityStatus(t.Context(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
+	resp, err := NewIdentityController(db, db).GetIdentityStatus(t.Context(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
 
 	require.Error(t, err)
 	assert.Nil(t, resp)
@@ -333,7 +350,7 @@ func TestGetIdentityStatus_ExcludedRecordFoundByNameIsReportedAsExcluded(t *test
 	withClaim(db, "cid-v2")
 	db.withheld = map[string]bool{"cid-v2": true}
 
-	_, err := NewIdentityController(db, policy.NewRecordGate(db, nil)).GetIdentityStatus(t.Context(), &identityv1.GetIdentityStatusRequest{Name: new("acme.com/agent")})
+	_, err := NewIdentityController(db, db).GetIdentityStatus(t.Context(), &identityv1.GetIdentityStatusRequest{Name: new("acme.com/agent")})
 
 	require.Error(t, err)
 	assert.Equal(t, codes.PermissionDenied, status.Code(err))
@@ -346,7 +363,7 @@ func TestGetIdentityStatus_ServableRecordIsDisclosed(t *testing.T) {
 	withClaim(db, "cid-v1")
 	db.withheld = map[string]bool{"cid-v2": true}
 
-	resp, err := NewIdentityController(db, policy.NewRecordGate(db, nil)).GetIdentityStatus(t.Context(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
+	resp, err := NewIdentityController(db, db).GetIdentityStatus(t.Context(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp.GetIdentity())
@@ -360,7 +377,7 @@ func TestGetIdentityStatus_GateErrorFailsClosed(t *testing.T) {
 	withClaim(db, "cid-v1")
 	db.gateErr = errors.New("database unavailable")
 
-	resp, err := NewIdentityController(db, policy.NewRecordGate(db, nil)).GetIdentityStatus(t.Context(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
+	resp, err := NewIdentityController(db, db).GetIdentityStatus(t.Context(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
 
 	require.Error(t, err)
 	assert.Nil(t, resp)

@@ -96,6 +96,12 @@ config:
       # evaluation policies below rather than the record. A search policy is
       # compiled into the query rather than evaluated, so it is cel only and
       # takes verdicts combined with && and || and nothing else.
+      #
+      # Either is held in shadow until the verdicts it reads cover every
+      # indexed record, so adding one does not empty search while they are
+      # evaluated. After an evaluation policy is edited it applies at once
+      # under the new version, so nothing the new rule rejects is served
+      # while re-evaluation runs.
       # - provider: cel
       #   op: ["search"]
       #   name: serve-checked-records
@@ -104,10 +110,10 @@ config:
       #     - 'verdicts["cel:has-description"].compliant_and_current'
 
     # Evaluation policies: the reconciler evaluates every record against each
-    # one and stores a verdict, which the server can enforce on reads
-    # (policy.enforcement below). No op and no mode, because they never act;
-    # opa and cel only, since a verdict is stored against the version of the
-    # policy content that reached it.
+    # one and stores a verdict, which an operation policy below can read. No
+    # op and no mode, because they never act; opa and cel only, since a
+    # verdict is stored against the version of the policy content that
+    # reached it.
     evaluations: []
       # - provider: opa
       #   name: require-license
@@ -117,33 +123,9 @@ config:
       #   expressions:
       #     - 'record.description != ""'
 
-    # Content-policy enforcement on reads. Each kind of read has its own mode,
-    # so enforcement can be rolled out one kind at a time:
-    #   off     - no policy is checked
-    #   shadow  - each read is checked and what it would exclude is reported
-    #             (metrics dir_policy_gate_*, outcome="would_exclude"), but
-    #             nothing is excluded
-    #   enforce - records not complying with every policy below are left out
-    #             of searches and refused when fetched by CID
-    #             (outcome="excluded")
-    # search covers search, the catalog, filter values and query-based
-    # publication; fetch covers pull, lookup, referrers, export, the peer RPC,
-    # publication of explicit CIDs and identity status lookups.
-    enforcement:
-      search: "off"
-      fetch: "off"
-      # IDs of the policies every served record must comply with, e.g.
-      # ["opa:require-license"]. No version is given: a policy's version comes
-      # from its content, which the reconciler registers and the server
-      # follows. Only a verdict under the current version counts, so after a
-      # policy is edited a record stays hidden until it has been evaluated
-      # under the new rule, and nothing the new rule rejects is served
-      # meanwhile. A policy added for the first time is the exception: it is
-      # enforced once its verdicts cover every record, so that adding it does
-      # not empty search while they are evaluated.
-      policies: []
-      # How often the server rechecks which version of each policy is in force.
-      refresh_interval: 30s
+    # How often the server rechecks which version of each evaluation policy
+    # is in force, and whether its verdicts yet cover every indexed record.
+    refresh_interval: 30s
 
   # Store settings for the storage backend.
   store:

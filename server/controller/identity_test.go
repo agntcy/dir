@@ -46,12 +46,8 @@ type fakeIdentityDB struct {
 	gateErr  error
 }
 
-func (f *fakeIdentityDB) IsRecordServable(cid string) (bool, error) {
-	if f.gateErr != nil {
-		return false, f.gateErr
-	}
-
-	return !f.withheld[cid], nil
+func (f *fakeIdentityDB) Check(_ context.Context, cid string) error {
+	return gateAnswer(cid, !f.withheld[cid], f.gateErr)
 }
 
 func (f *fakeIdentityDB) GetRecords(opts ...types.FilterOption) ([]coretypes.Record, error) {

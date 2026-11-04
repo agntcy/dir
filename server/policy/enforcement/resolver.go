@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/agntcy/dir/server/policy"
-	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 )
@@ -44,11 +43,11 @@ type VersionStore interface {
 // on it stays enforced: records indexed later have no verdict until evaluated,
 // and are hidden until they do.
 type Resolver struct {
-	cfg      policyconfig.EnforcementConfig
-	search   []policy.SearchPolicy
-	store    VersionStore
-	interval time.Duration
-	now      func() time.Time
+	search      []policy.SearchPolicy
+	evaluations []string
+	store       VersionStore
+	interval    time.Duration
+	now         func() time.Time
 
 	current     atomic.Pointer[types.PolicyEnforcement]
 	refreshedAt atomic.Int64
@@ -68,14 +67,20 @@ type Resolver struct {
 // search are the policies configured at op search, which the same refresh
 // follows: they depend on the versions of the policies they read, so there is
 // nothing to be gained by following them on a different clock.
-func NewResolver(cfg policyconfig.EnforcementConfig, store VersionStore, search []policy.SearchPolicy) (*Resolver, error) {
+//
+// evaluations are every configured evaluation policy. All of them are
+// resolved, whether or not anything reads them: what reads a verdict is an
+// operation policy, which the resolver does not see and does not need to.
+func NewResolver(
+	interval time.Duration, store VersionStore, search []policy.SearchPolicy, evaluations []string,
+) (*Resolver, error) {
 	resolver := &Resolver{
-		cfg:      cfg,
-		search:   search,
-		store:    store,
-		interval: cfg.GetRefreshInterval(),
-		now:      time.Now,
-		warned:   map[string]bool{},
+		search:      search,
+		evaluations: evaluations,
+		store:       store,
+		interval:    interval,
+		now:         time.Now,
+		warned:      map[string]bool{},
 	}
 
 	if err := resolver.Refresh(); err != nil {
@@ -111,25 +116,28 @@ func (r *Resolver) Refresh() error {
 
 	r.refreshedAt.Store(r.now().UnixNano())
 
-	next := types.PolicyEnforcement{Search: r.cfg.Search, Fetch: r.cfg.Fetch}
+	next := types.PolicyEnforcement{
+		Evaluations: make(map[string]types.ResolvedPolicy, len(r.evaluations)),
+	}
 
 	// One pass asks about each policy once, however many times it is named.
-	// The enforced list and the search policies overlap freely — two search
-	// policies reading the same evaluation policy is the ordinary case — and
-	// resolving one still in backfill counts the records it has yet to
-	// cover, which is the most expensive query the server makes on a timer.
-	pass := make(map[string]resolution, len(r.cfg.Policies))
+	// A policy reached twice — two search policies reading the same one is
+	// the ordinary case — is resolved once, and resolving one still in
+	// backfill counts the records it has yet to cover, which is the most
+	// expensive query the server makes on a timer.
+	pass := make(map[string]resolution, len(r.evaluations))
 
-	for _, id := range r.cfg.Policies {
+	// First, so that the configured set warms the pass and the search
+	// policies are answered from it rather than the other way round.
+	for _, id := range r.evaluations {
 		resolved, err := r.resolveOnce(pass, id)
 		if err != nil {
 			return err
 		}
 
-		if resolved.enforced {
-			next.Policies = append(next.Policies, resolved.policy)
-		} else {
-			next.Pending = append(next.Pending, resolved.policy)
+		next.Evaluations[id] = types.ResolvedPolicy{
+			VersionedPolicy: resolved.policy,
+			Covered:         resolved.enforced,
 		}
 	}
 
@@ -162,7 +170,7 @@ func (r *Resolver) Refresh() error {
 // shadow policy back too: counting exclusions from verdicts that do not yet
 // cover the records would report a blackout as a finding.
 func (r *Resolver) resolveSearch(pass map[string]resolution, p policy.SearchPolicy) (types.SearchPolicy, bool, error) {
-	reads := make([]types.EnforcedPolicy, 0, len(p.Reads))
+	reads := make([]types.VersionedPolicy, 0, len(p.Reads))
 
 	for _, id := range p.Reads {
 		read, err := r.resolveOnce(pass, id)
@@ -182,7 +190,7 @@ func (r *Resolver) resolveSearch(pass map[string]resolution, p policy.SearchPoli
 
 // resolution is what one pass concluded about one policy.
 type resolution struct {
-	policy   types.EnforcedPolicy
+	policy   types.VersionedPolicy
 	enforced bool
 }
 
@@ -209,27 +217,27 @@ func (r *Resolver) resolveOnce(pass map[string]resolution, id string) (resolutio
 }
 
 // resolve works out what to enforce for one policy, and whether anything is.
-func (r *Resolver) resolve(id string) (types.EnforcedPolicy, bool, error) {
+func (r *Resolver) resolve(id string) (types.VersionedPolicy, bool, error) {
 	version, registered, err := r.store.GetCurrentPolicyVersion(id)
 	if err != nil {
-		return types.EnforcedPolicy{}, false, fmt.Errorf("get current version of policy %s: %w", id, err)
+		return types.VersionedPolicy{}, false, fmt.Errorf("get current version of policy %s: %w", id, err)
 	}
 
 	if !registered {
 		if !r.warned[id] {
 			r.warned[id] = true
 
-			logger.Warn("Policy is configured for enforcement but no evaluator has registered it; it is not enforced", "policy_id", id)
+			logger.Warn("Policy is configured but no evaluator has registered it; it is not enforced", "policy_id", id)
 		}
 
-		return types.EnforcedPolicy{ID: id}, false, nil
+		return types.VersionedPolicy{ID: id}, false, nil
 	}
 
-	policy := types.EnforcedPolicy{ID: id, Version: version}
+	policy := types.VersionedPolicy{ID: id, Version: version}
 
 	covered, err := r.covered(id, version)
 	if err != nil {
-		return types.EnforcedPolicy{}, false, err
+		return types.VersionedPolicy{}, false, err
 	}
 
 	return policy, covered, nil

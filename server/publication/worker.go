@@ -12,7 +12,6 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	databaseutils "github.com/agntcy/dir/server/database/utils"
-	"github.com/agntcy/dir/server/policy"
 	publypes "github.com/agntcy/dir/server/publication/types"
 	"github.com/agntcy/dir/server/types"
 )
@@ -21,7 +20,7 @@ import (
 type Worker struct {
 	id        int
 	db        types.DatabaseAPI
-	gate      *policy.RecordGate
+	gate      types.RecordGate
 	store     types.StoreAPI
 	routing   types.RoutingAPI
 	workQueue <-chan publypes.WorkItem
@@ -29,7 +28,7 @@ type Worker struct {
 }
 
 // NewWorker creates a new worker instance.
-func NewWorker(id int, db types.DatabaseAPI, gate *policy.RecordGate, store types.StoreAPI, routing types.RoutingAPI, workQueue <-chan publypes.WorkItem, timeout time.Duration) *Worker {
+func NewWorker(id int, db types.DatabaseAPI, gate types.RecordGate, store types.StoreAPI, routing types.RoutingAPI, workQueue <-chan publypes.WorkItem, timeout time.Duration) *Worker {
 	return &Worker{
 		id:        id,
 		db:        db,

@@ -5,9 +5,12 @@ package gorm
 
 import (
 	"testing"
+	"time"
 
+	"github.com/agntcy/dir/server/policy"
 	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/agntcy/dir/server/policy/enforcement"
+	"github.com/agntcy/dir/server/policy/predicate"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,8 +62,8 @@ func TestPolicyBackfillBookkeeping(t *testing.T) {
 func TestPolicyLifecycle(t *testing.T) {
 	t.Parallel()
 
-	v1 := types.EnforcedPolicy{ID: policyA.ID, Version: "v1"}
-	v2 := types.EnforcedPolicy{ID: policyA.ID, Version: "v2"}
+	v1 := types.VersionedPolicy{ID: policyA.ID, Version: "v1"}
+	v2 := types.VersionedPolicy{ID: policyA.ID, Version: "v2"}
 
 	base := setupGateDB(t, nil)
 	seedGateRecord(t, base, gateOK, "skill/ok")
@@ -70,14 +73,21 @@ func TestPolicyLifecycle(t *testing.T) {
 	require.NoError(t, base.RegisterPolicyVersion(v1.ID, v1.Version, nil))
 	setVerdict(t, base, gateOK, v1, true)
 
-	resolver, err := enforcement.NewResolver(policyconfig.EnforcementConfig{
-		Search:   policyconfig.ModeEnforce,
-		Fetch:    policyconfig.ModeEnforce,
-		Policies: []string{v1.ID},
-	}, base, nil)
+	// A search policy reading the evaluation policy, which is how a verdict
+	// reaches a read.
+	search := []policy.SearchPolicy{{
+		ID:        "cel:serve-checked-records",
+		Mode:      policyconfig.ModeEnforce,
+		Predicate: predicate.Verdict{PolicyID: v1.ID},
+		Reads:     []string{v1.ID},
+	}}
+
+	// An hour, because this test calls Refresh itself: a resolver that
+	// rechecks on a timer would race the in-memory database.
+	resolver, err := enforcement.NewResolver(time.Hour, base, search, []string{v1.ID})
 	require.NoError(t, err)
 
-	served := base.Served(resolver.Current, nil)
+	served := base.Served(resolver.Current)
 	all := []string{gateOK, gateBad}
 
 	assert.ElementsMatch(t, all, gateCIDs(t, served), "not enforced while a record has no verdict")
@@ -92,7 +102,6 @@ func TestPolicyLifecycle(t *testing.T) {
 	require.NoError(t, base.RegisterPolicyVersion(v2.ID, v2.Version, nil))
 	require.NoError(t, resolver.Refresh())
 	assert.Empty(t, gateCIDs(t, served), "hidden until evaluated under the new rule")
-	assert.Empty(t, servable(t, served, all...))
 
 	remaining, err := base.CountRecordsNeedingPolicyEvaluation(v2.ID, v2.Version)
 	require.NoError(t, err)
@@ -103,7 +112,6 @@ func TestPolicyLifecycle(t *testing.T) {
 	setVerdict(t, base, gateBad, v2, true)
 
 	assert.Equal(t, []string{gateBad}, gateCIDs(t, served))
-	assert.Equal(t, []string{gateBad}, servable(t, served, all...))
 
 	// A record published meanwhile is hidden until it has a verdict too.
 	const published = "baeareipublished0000000000000000000000000000000000000000000000"

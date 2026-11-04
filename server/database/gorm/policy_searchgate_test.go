@@ -14,14 +14,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// searching is enforcement carrying search policies and nothing else: the
-// policy.enforcement block is off, which is how a search policy has to work.
+// searching is enforcement carrying search policies and nothing else, which
+// is all there is to carry.
 func searching(policies ...types.SearchPolicy) types.PolicyEnforcement {
 	return types.PolicyEnforcement{SearchPolicies: policies}
 }
 
 // searchPolicy compiles into "complies with every one of reads", enforcing.
-func searchPolicy(id string, reads ...types.EnforcedPolicy) types.SearchPolicy {
+func searchPolicy(id string, reads ...types.VersionedPolicy) types.SearchPolicy {
 	parts := make([]predicate.Node, 0, len(reads))
 	for _, read := range reads {
 		parts = append(parts, predicate.Verdict{PolicyID: read.ID})
@@ -66,36 +66,7 @@ func TestSearchGate_AppliesToEveryRead(t *testing.T) {
 	assert.NotContains(t, gated.tagIDs, catalogv1.SkillTag("*", "skill/bad"), "ListCatalogTags")
 }
 
-// A search policy and the policy.enforcement block are different mechanisms.
-// A search policy applies whatever that block says, including when it is off,
-// which is the state it will be in once the block is removed.
-func TestSearchGate_DoesNotDependOnTheEnforcementBlock(t *testing.T) {
-	t.Parallel()
-
-	for _, mode := range []policyconfig.Mode{"", policyconfig.ModeOff, policyconfig.ModeShadow, policyconfig.ModeEnforce} {
-		t.Run(string(mode), func(t *testing.T) {
-			t.Parallel()
-
-			db := setupGateDB(t, func() types.PolicyEnforcement {
-				return types.PolicyEnforcement{
-					// No Policies, so the block gates nothing whatever its mode.
-					Search:         mode,
-					SearchPolicies: []types.SearchPolicy{searchPolicy("cel:serve-checked", policyA)},
-				}
-			})
-
-			seedGateRecord(t, db, gateOK, "skill/ok")
-			seedGateRecord(t, db, gateBad, "skill/bad")
-			setVerdict(t, db, gateOK, policyA, true)
-			setVerdict(t, db, gateBad, policyA, false)
-
-			assert.Equal(t, []string{gateOK}, gateCIDs(t, db))
-		})
-	}
-}
-
-// Several search policies all have to hold, the same reading two enforced
-// policies get.
+// Several search policies all have to hold.
 func TestSearchGate_EverySearchPolicyMustHold(t *testing.T) {
 	t.Parallel()
 
@@ -130,7 +101,7 @@ func TestSearchGate_ADisjunctionReachesTheRead(t *testing.T) {
 				predicate.Verdict{PolicyID: policyA.ID},
 				predicate.Verdict{PolicyID: policyB.ID},
 			}},
-			Reads: []types.EnforcedPolicy{policyA, policyB},
+			Reads: []types.VersionedPolicy{policyA, policyB},
 		})
 	})
 
@@ -141,34 +112,6 @@ func TestSearchGate_ADisjunctionReachesTheRead(t *testing.T) {
 	setVerdict(t, db, gateBad, policyB, true)
 
 	assert.ElementsMatch(t, []string{gateOK, gateBad}, gateCIDs(t, db))
-}
-
-// The gate and the search policies are both applied, and a record has to get
-// past both.
-func TestSearchGate_AppliesAlongsideTheEnforcementBlock(t *testing.T) {
-	t.Parallel()
-
-	db := setupGateDB(t, func() types.PolicyEnforcement {
-		return types.PolicyEnforcement{
-			Policies:       []types.EnforcedPolicy{policyA},
-			Search:         policyconfig.ModeEnforce,
-			SearchPolicies: []types.SearchPolicy{searchPolicy("cel:serve-signed", policyB)},
-		}
-	})
-
-	seedGateRecord(t, db, gateOK, "skill/ok")
-	seedGateRecord(t, db, gateBad, "skill/bad")
-	seedGateRecord(t, db, gateNone, "skill/none")
-
-	// Past both.
-	setVerdict(t, db, gateOK, policyA, true)
-	setVerdict(t, db, gateOK, policyB, true)
-	// Past the block only.
-	setVerdict(t, db, gateBad, policyA, true)
-	// Past the search policy only.
-	setVerdict(t, db, gateNone, policyB, true)
-
-	assert.Equal(t, []string{gateOK}, gateCIDs(t, db))
 }
 
 // A policy that cannot be rendered fails the read rather than being dropped
@@ -221,7 +164,7 @@ func TestSearchGate_ShadowDoesNotFilter(t *testing.T) {
 		"gateNone has no verdict and would be excluded if the policy were enforcing")
 
 	// And what it would have excluded is still countable.
-	count, err := db.CountRecordsExcluded(nil, []types.SearchPolicy{shadow})
+	count, err := db.CountRecordsExcluded([]types.SearchPolicy{shadow})
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), count)
 }
@@ -247,28 +190,22 @@ func TestSearchGate_ExclusionsAreCountedAndListed(t *testing.T) {
 			predicate.Verdict{PolicyID: policyA.ID},
 			predicate.Verdict{PolicyID: policyB.ID},
 		}},
-		Reads: []types.EnforcedPolicy{policyA, policyB},
+		Reads: []types.VersionedPolicy{policyA, policyB},
 	}
 
 	// The disjunction serves gateOK and gateBad, so only gateNone is left
 	// out — a number no conjunction of policies could have produced.
-	count, err := db.CountRecordsExcluded(nil, []types.SearchPolicy{either})
+	count, err := db.CountRecordsExcluded([]types.SearchPolicy{either})
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), count)
 
-	cids, err := db.ListRecordsExcluded(nil, []types.SearchPolicy{either}, 0, 0)
+	cids, err := db.ListRecordsExcluded([]types.SearchPolicy{either}, 0, 0)
 	require.NoError(t, err)
 	assert.Equal(t, []string{gateNone}, cids)
 
-	// The enforcement block narrows on top of it: policyB alone no longer
-	// gets gateBad through.
-	count, err = db.CountRecordsExcluded([]types.EnforcedPolicy{policyA}, []types.SearchPolicy{either})
-	require.NoError(t, err)
-	assert.Equal(t, int64(2), count)
-
 	// And one record can be asked about on its own, which is what the audit
 	// service reports per CID.
-	compliant, err := db.IsRecordCompliant(gateBad, nil, []types.SearchPolicy{either})
+	compliant, err := db.IsRecordCompliant(gateBad, []types.SearchPolicy{either})
 	require.NoError(t, err)
 	assert.True(t, compliant, "gateBad satisfies the disjunction through policyB")
 }

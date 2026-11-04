@@ -26,20 +26,28 @@ type excludedRecords struct {
 	err         error
 }
 
-func (r excludedRecords) CountRecordsExcluded(policies []types.EnforcedPolicy, search []types.SearchPolicy) (int64, error) {
-	return r.count * int64(len(policies)+len(search)), r.err
+func (r excludedRecords) CountRecordsExcluded(policies []types.SearchPolicy) (int64, error) {
+	return r.count * int64(len(policies)), r.err
 }
 
 func (r excludedRecords) CountRecordsNeedingPolicyEvaluation(string, string) (int64, error) {
 	return r.unevaluated, r.err
 }
 
-func gateFor(search policyconfig.Mode, records excludedRecords) *PolicyGate {
+// gateFor reports one search policy in mode, and one evaluation policy for
+// the unevaluated gauge to ask about.
+func gateFor(mode policyconfig.Mode, records excludedRecords) *PolicyGate {
 	return NewPolicyGate(func() types.PolicyEnforcement {
-		return types.PolicyEnforcement{
-			Policies: []types.EnforcedPolicy{{ID: "opa:a", Version: "v1"}},
-			Search:   search,
+		enforcement := types.PolicyEnforcement{
+			Evaluations: map[string]types.ResolvedPolicy{
+				"opa:a": {VersionedPolicy: types.VersionedPolicy{ID: "opa:a", Version: "v1"}, Covered: true},
+			},
 		}
+		if mode != policyconfig.ModeOff {
+			enforcement.SearchPolicies = []types.SearchPolicy{{ID: "cel:served", Mode: mode}}
+		}
+
+		return enforcement
 	}, records)
 }
 
@@ -74,8 +82,8 @@ func gather(t *testing.T, gate *PolicyGate, metric string) map[string]float64 {
 	return series
 }
 
-// The search gauge tells "would exclude" from "excluded" by the search mode,
-// and is absent while searches check nothing.
+// The search gauge tells "would exclude" from "excluded" by the policy's
+// mode, and is absent while searches check nothing.
 func TestPolicyGate_SearchGaugeFollowsTheMode(t *testing.T) {
 	t.Parallel()
 
@@ -98,8 +106,7 @@ func TestPolicyGate_SearchGaugeFollowsTheMode(t *testing.T) {
 	}
 }
 
-// A search policy is counted whatever the enforcement block says, under the
-// outcome of its own mode.
+// A search policy is counted under the outcome of its own mode.
 func TestPolicyGate_SearchPolicyIsCountedUnderItsOwnMode(t *testing.T) {
 	t.Parallel()
 
@@ -118,7 +125,6 @@ func TestPolicyGate_SearchPolicyIsCountedUnderItsOwnMode(t *testing.T) {
 
 			gate := NewPolicyGate(func() types.PolicyEnforcement {
 				return types.PolicyEnforcement{
-					Search:         policyconfig.ModeOff,
 					SearchPolicies: []types.SearchPolicy{{ID: "cel:served", Mode: tt.mode}},
 				}
 			}, excludedRecords{count: 1})
@@ -136,8 +142,6 @@ func TestPolicyGate_ShadowIsCountedOnTopOfWhatIsEnforced(t *testing.T) {
 
 	gate := NewPolicyGate(func() types.PolicyEnforcement {
 		return types.PolicyEnforcement{
-			Policies: []types.EnforcedPolicy{{ID: "opa:a", Version: "v1"}},
-			Search:   policyconfig.ModeEnforce,
 			SearchPolicies: []types.SearchPolicy{
 				{ID: "cel:on", Mode: policyconfig.ModeEnforce},
 				{ID: "cel:trying", Mode: policyconfig.ModeShadow},
@@ -145,8 +149,8 @@ func TestPolicyGate_ShadowIsCountedOnTopOfWhatIsEnforced(t *testing.T) {
 		}
 	}, excludedRecords{count: 1})
 
-	// Two enforcing now; all three would be.
-	assert.Equal(t, map[string]float64{outcomeExcluded: 2, outcomeWouldExclude: 3},
+	// One enforcing now; both would be.
+	assert.Equal(t, map[string]float64{outcomeExcluded: 1, outcomeWouldExclude: 2},
 		gather(t, gate, "dir_policy_gate_search_records_excluded"))
 }
 
@@ -157,41 +161,52 @@ func TestPolicyGate_CountErrorDropsOnlyTheGauge(t *testing.T) {
 	gate := gateFor(policyconfig.ModeEnforce, excludedRecords{err: errors.New("database unavailable")})
 
 	assert.Empty(t, gather(t, gate, "dir_policy_gate_search_records_excluded"))
-	assert.Len(t, gather(t, gate, "dir_policy_gate_fetches_excluded_total"), 2)
+	assert.Len(t, gather(t, gate, "dir_policy_gate_pulls_excluded_total"), 2)
 }
 
-// Fetches are counted under the outcome of the mode that saw them; both
+// Pulls are counted under the outcome of the mode that saw them; both
 // series exist from the start.
-func TestPolicyGate_CountsExcludedFetchesByOutcome(t *testing.T) {
+func TestPolicyGate_CountsExcludedPullsByOutcome(t *testing.T) {
 	t.Parallel()
 
 	gate := gateFor(policyconfig.ModeOff, excludedRecords{})
 	assert.Equal(t, map[string]float64{outcomeExcluded: 0, outcomeWouldExclude: 0},
-		gather(t, gate, "dir_policy_gate_fetches_excluded_total"))
+		gather(t, gate, "dir_policy_gate_pulls_excluded_total"))
 
-	gate.FetchExcluded(policyconfig.ModeEnforce)
-	gate.FetchExcluded(policyconfig.ModeShadow)
-	gate.FetchExcluded(policyconfig.ModeShadow)
-	gate.FetchExcluded(policyconfig.ModeOff)
+	gate.PullExcluded(policyconfig.ModeEnforce)
+	gate.PullExcluded(policyconfig.ModeShadow)
+	gate.PullExcluded(policyconfig.ModeShadow)
+	gate.PullExcluded(policyconfig.ModeOff)
 
 	assert.Equal(t, map[string]float64{outcomeExcluded: 1, outcomeWouldExclude: 2},
-		gather(t, gate, "dir_policy_gate_fetches_excluded_total"))
+		gather(t, gate, "dir_policy_gate_pulls_excluded_total"))
 }
 
-// Each registered policy reports how many records have no verdict yet under
-// its current version: the size of the blackout after an edit. A policy no
-// evaluator registered has no version to count under.
+// Each registered evaluation policy reports how many records have no verdict
+// yet under its current version: the size of the blackout after an edit. A
+// policy no evaluator registered has no version to count under.
+//
+// Covered is what the two differ by, and it is not what is counted: the
+// backfilling policy is precisely the one an operator is watching.
 func TestPolicyGate_ReportsUnevaluatedRecordsPerPolicy(t *testing.T) {
 	t.Parallel()
 
 	gate := NewPolicyGate(func() types.PolicyEnforcement {
-		return types.PolicyEnforcement{
-			Policies: []types.EnforcedPolicy{{ID: "opa:done", Version: "v1"}},
-			Pending:  []types.EnforcedPolicy{{ID: "opa:new", Version: "v1"}, {ID: "opa:unregistered"}},
-		}
+		return types.PolicyEnforcement{Evaluations: map[string]types.ResolvedPolicy{
+			"opa:done":         resolved("opa:done", "v1", true),
+			"opa:new":          resolved("opa:new", "v1", false),
+			"opa:unregistered": resolved("opa:unregistered", "", false),
+		}}
 	}, excludedRecords{unevaluated: 12})
 
 	assert.Equal(t, map[string]float64{"opa:done/v1": 12, "opa:new/v1": 12}, gather(t, gate, "dir_policy_gate_records_unevaluated"))
+}
+
+func resolved(id, version string, covered bool) types.ResolvedPolicy {
+	return types.ResolvedPolicy{
+		VersionedPolicy: types.VersionedPolicy{ID: id, Version: version}, //nolint:modernize // the type name says which half of the pair this is
+		Covered:         covered,
+	}
 }
 
 // A policy whose records cannot be counted is left out without failing the
@@ -200,9 +215,11 @@ func TestPolicyGate_UnevaluatedCountErrorDropsOnlyThatGauge(t *testing.T) {
 	t.Parallel()
 
 	gate := NewPolicyGate(func() types.PolicyEnforcement {
-		return types.PolicyEnforcement{Policies: []types.EnforcedPolicy{{ID: "opa:a", Version: "v1"}}}
+		return types.PolicyEnforcement{Evaluations: map[string]types.ResolvedPolicy{
+			"opa:a": resolved("opa:a", "v1", true),
+		}}
 	}, excludedRecords{err: errors.New("database unavailable")})
 
 	assert.Empty(t, gather(t, gate, "dir_policy_gate_records_unevaluated"))
-	assert.Len(t, gather(t, gate, "dir_policy_gate_fetches_excluded_total"), 2)
+	assert.Len(t, gather(t, gate, "dir_policy_gate_pulls_excluded_total"), 2)
 }

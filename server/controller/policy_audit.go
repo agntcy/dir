@@ -33,8 +33,8 @@ var auditLogger = logging.Logger("audit")
 // rather than what today's modes happen to act on.
 type PolicyAuditDatabase interface {
 	GetPolicyEvaluations(recordCID string) ([]types.PolicyEvaluationObject, error)
-	IsRecordCompliant(cid string, policies []types.EnforcedPolicy, search []types.SearchPolicy) (bool, error)
-	ListRecordsExcluded(policies []types.EnforcedPolicy, search []types.SearchPolicy, limit, offset int) ([]string, error)
+	IsRecordCompliant(cid string, policies []types.SearchPolicy) (bool, error)
+	ListRecordsExcluded(policies []types.SearchPolicy, limit, offset int) ([]string, error)
 }
 
 type policyAuditCtlr struct {
@@ -79,8 +79,8 @@ func (c *policyAuditCtlr) getRecord(ctx context.Context, cid string) (*policyv1.
 	excluded := false
 
 	enforcement := c.enforcement()
-	if len(enforcement.Policies) > 0 || len(enforcement.SearchPolicies) > 0 {
-		compliant, err := c.db.IsRecordCompliant(cid, enforcement.Policies, enforcement.SearchPolicies)
+	if len(enforcement.SearchPolicies) > 0 {
+		compliant, err := c.db.IsRecordCompliant(cid, enforcement.SearchPolicies)
 		if err != nil {
 			return nil, c.internal("check record against enforced policies", err)
 		}
@@ -115,12 +115,11 @@ func (c *policyAuditCtlr) ListExcludedRecords(req *policyv1.ListExcludedRecordsR
 // sent.
 func (c *policyAuditCtlr) listExcludedRecords(req *policyv1.ListExcludedRecordsRequest, srv policyv1.PolicyAuditService_ListExcludedRecordsServer) ([]string, error) {
 	enforcement := c.enforcement()
-	if len(enforcement.Policies) == 0 && len(enforcement.SearchPolicies) == 0 {
+	if len(enforcement.SearchPolicies) == 0 {
 		return nil, nil
 	}
 
-	cids, err := c.db.ListRecordsExcluded(enforcement.Policies, enforcement.SearchPolicies,
-		int(req.GetLimit()), int(req.GetOffset()))
+	cids, err := c.db.ListRecordsExcluded(enforcement.SearchPolicies, int(req.GetLimit()), int(req.GetOffset()))
 	if err != nil {
 		return nil, c.internal("list records excluded by enforced policies", err)
 	}

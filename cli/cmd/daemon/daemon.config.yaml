@@ -128,20 +128,15 @@ server:
       #   expressions:
       #     - verdicts["cel:trusted"].compliant_and_current
     # Evaluation policies: the reconciler stores a verdict per record for
-    # each, which enforcement below applies to reads. opa and cel only.
+    # each, which an operation policy below can read. opa and cel only.
     evaluations: []
       # - provider: cel
       #   name: trusted
       #   expressions:
       #     - meta.signature.status == SignatureStatus.SIGNATURE_STATUS_VERIFIED
-    # Content-policy enforcement on reads: off, shadow or enforce, per kind of
-    # read. Policies lists the IDs of the policies every served record must
-    # comply with; their versions come from the policies' content.
-    enforcement:
-      search: "off"
-      fetch: "off"
-      policies: []
-      refresh_interval: 30s
+    # How often the server rechecks which version of each evaluation policy
+    # is in force, and whether its verdicts yet cover every indexed record.
+    refresh_interval: 30s
 
 reconciler:
   regsync:

@@ -24,7 +24,12 @@ import (
 
 const auditor = "spiffe://example.org/ns/dir/sa/auditor"
 
-var auditPolicy = types.EnforcedPolicy{ID: "opa:a", Version: "v1"}
+// auditVersion is the evaluation policy the verdicts are under, and
+// auditPolicy the search policy reading it: what the audit service reports.
+var (
+	auditVersion = types.VersionedPolicy{ID: "opa:a", Version: "v1"}
+	auditPolicy  = types.SearchPolicy{ID: "cel:served", Reads: []types.VersionedPolicy{auditVersion}}
+)
 
 // auditVerdict is a stored verdict.
 type auditVerdict struct {
@@ -33,8 +38,8 @@ type auditVerdict struct {
 	compliant bool
 }
 
-func (v auditVerdict) GetPolicyID() string      { return auditPolicy.ID }
-func (v auditVerdict) GetPolicyVersion() string { return auditPolicy.Version }
+func (v auditVerdict) GetPolicyID() string      { return auditVersion.ID }
+func (v auditVerdict) GetPolicyVersion() string { return auditVersion.Version }
 func (v auditVerdict) GetStatus() string        { return types.PolicyEvalStatusEvaluated }
 func (v auditVerdict) GetCompliant() bool       { return v.compliant }
 func (v auditVerdict) GetReason() string        { return "license missing" }
@@ -51,10 +56,9 @@ type auditDB struct {
 	evaluationsErr error
 	listErr        error
 
-	asked       [][]types.EnforcedPolicy
-	askedSearch [][]types.SearchPolicy
-	limit       int
-	skip        int
+	asked [][]types.SearchPolicy
+	limit int
+	skip  int
 }
 
 func (d *auditDB) GetPolicyEvaluations(string) ([]types.PolicyEvaluationObject, error) {
@@ -65,16 +69,14 @@ func (d *auditDB) GetPolicyEvaluations(string) ([]types.PolicyEvaluationObject, 
 	return []types.PolicyEvaluationObject{auditVerdict{compliant: d.compliant}}, d.err
 }
 
-func (d *auditDB) IsRecordCompliant(_ string, policies []types.EnforcedPolicy, search []types.SearchPolicy) (bool, error) {
+func (d *auditDB) IsRecordCompliant(_ string, policies []types.SearchPolicy) (bool, error) {
 	d.asked = append(d.asked, policies)
-	d.askedSearch = append(d.askedSearch, search)
 
 	return d.compliant, d.err
 }
 
-func (d *auditDB) ListRecordsExcluded(policies []types.EnforcedPolicy, search []types.SearchPolicy, limit, offset int) ([]string, error) {
+func (d *auditDB) ListRecordsExcluded(policies []types.SearchPolicy, limit, offset int) ([]string, error) {
 	d.asked = append(d.asked, policies)
-	d.askedSearch = append(d.askedSearch, search)
 	d.limit, d.skip = limit, offset
 
 	if d.listErr != nil {
@@ -118,8 +120,8 @@ func (l *auditLog) all() []map[string]any {
 	return l.lines
 }
 
-func newAuditController(db *auditDB, store types.StoreAPI, policies ...types.EnforcedPolicy) (*policyAuditCtlr, *auditLog) {
-	return auditing(db, store, types.PolicyEnforcement{Policies: policies})
+func newAuditController(db *auditDB, store types.StoreAPI, policies ...types.SearchPolicy) (*policyAuditCtlr, *auditLog) {
+	return auditing(db, store, types.PolicyEnforcement{SearchPolicies: policies})
 }
 
 // auditing is the audit service reading exactly this enforcement.
@@ -148,11 +150,11 @@ func TestPolicyAudit_GetRecord(t *testing.T) {
 	tests := []struct {
 		name      string
 		compliant bool
-		policies  []types.EnforcedPolicy
+		policies  []types.SearchPolicy
 		excluded  bool
 	}{
-		{"excluded record", false, []types.EnforcedPolicy{auditPolicy}, true},
-		{"compliant record", true, []types.EnforcedPolicy{auditPolicy}, false},
+		{"excluded record", false, []types.SearchPolicy{auditPolicy}, true},
+		{"compliant record", true, []types.SearchPolicy{auditPolicy}, false},
 		{"no policy in force", false, nil, false},
 	}
 
@@ -268,7 +270,7 @@ func TestPolicyAudit_ListExcludedRecords(t *testing.T) {
 
 	assert.Equal(t, []string{"cid-a", "cid-b"}, streamedCIDs(stream))
 	assert.Len(t, stream.sent[0].GetEvaluations(), 1)
-	assert.Equal(t, [][]types.EnforcedPolicy{{auditPolicy}}, db.asked)
+	assert.Equal(t, [][]types.SearchPolicy{{auditPolicy}}, db.asked)
 	assert.Equal(t, 2, db.limit)
 	assert.Equal(t, 4, db.skip)
 
@@ -299,8 +301,7 @@ func TestPolicyAudit_AuditsSearchPoliciesWhateverTheirMode(t *testing.T) {
 
 			require.Len(t, stream.sent, 1)
 			assert.Equal(t, "cid-a", stream.sent[0].GetCid())
-			assert.Equal(t, [][]types.SearchPolicy{search}, db.askedSearch)
-			assert.Equal(t, [][]types.EnforcedPolicy{nil}, db.asked, "nothing in the enforcement block")
+			assert.Equal(t, [][]types.SearchPolicy{search}, db.asked)
 		})
 	}
 }

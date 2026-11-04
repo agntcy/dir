@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
-	"github.com/agntcy/dir/server/policy"
 	"github.com/agntcy/dir/server/publication/config"
 	publypes "github.com/agntcy/dir/server/publication/types"
 	"github.com/agntcy/dir/server/types"
@@ -20,7 +19,7 @@ var logger = logging.Logger("publication")
 // Service manages the publication operations.
 type Service struct {
 	db      types.DatabaseAPI
-	gate    *policy.RecordGate
+	gate    types.RecordGate
 	store   types.StoreAPI
 	routing types.RoutingAPI
 	config  config.Config
@@ -33,7 +32,7 @@ type Service struct {
 }
 
 // New creates a new publication service.
-func New(db types.DatabaseAPI, gate *policy.RecordGate, store types.StoreAPI, routing types.RoutingAPI, opts types.APIOptions) (*Service, error) {
+func New(db types.DatabaseAPI, gate types.RecordGate, store types.StoreAPI, routing types.RoutingAPI, opts types.APIOptions) (*Service, error) {
 	return &Service{
 		db:      db,
 		gate:    gate,

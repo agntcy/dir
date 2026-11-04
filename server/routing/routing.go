@@ -45,7 +45,7 @@ func (r *route) hasPeersInRoutingTable() bool {
 
 // New creates the routing API. gate is the policy gate for the peer
 // RPC, which serves records to remote peers by CID.
-func New(ctx context.Context, store types.StoreAPI, ingestor ingest.Ingestor, policyRegistry *policy.Registry, gate *policy.RecordGate, opts types.APIOptions) (types.RoutingAPI, error) {
+func New(ctx context.Context, store types.StoreAPI, ingestor ingest.Ingestor, policyRegistry *policy.Registry, gate types.RecordGate, opts types.APIOptions) (types.RoutingAPI, error) {
 	// Create main router
 	mainRounter := &route{
 		eventBus: opts.EventBus(),

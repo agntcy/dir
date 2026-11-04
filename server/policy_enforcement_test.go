@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	policyv1 "github.com/agntcy/dir/api/policy/v1"
 	"github.com/agntcy/dir/server/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
@@ -34,20 +36,8 @@ func newTestDatabase(t *testing.T) *gormdb.DB {
 	return db
 }
 
-var enforcedA = []string{"opa:a"}
-
-// enforcementConfig is a config carrying nothing but the enforcement block.
-func enforcementConfig(enforcement policyconfig.EnforcementConfig) *config.Config {
-	cfg := &config.Config{}
-	cfg.Policy.Enforcement = enforcement
-	cfg.Authz.Enabled = true
-
-	return cfg
-}
-
-// searchConfig is a config whose only policy is one at op search, reading the
-// verdict of an evaluation policy: the arrangement that has to work once the
-// enforcement block is gone.
+// searchConfig is a config whose only policy is one at op search, reading
+// the verdict of an evaluation policy.
 func searchConfig() *config.Config {
 	cfg := &config.Config{}
 	cfg.Authz.Enabled = true
@@ -70,58 +60,66 @@ func wire(t *testing.T, cfg *config.Config, db types.DatabaseAPI, metricsServer 
 ) (types.DatabaseAPI, func() types.PolicyEnforcement) {
 	t.Helper()
 
-	served, _, current, err := wirePolicies(context.Background(), cfg, db, metricsServer)
+	wired, err := wirePolicies(context.Background(), cfg, db, metricsServer)
 	require.NoError(t, err)
 
-	return served, current
+	return wired.Served, wired.Enforcement
 }
 
 // wireErr is what wirePolicies reports, for the cases about refusing to start.
-//
-//nolint:dogsled // only the error is under test.
 func wireErr(cfg *config.Config, db types.DatabaseAPI, metricsServer *metrics.Server) error {
-	_, _, _, err := wirePolicies(context.Background(), cfg, db, metricsServer)
+	_, err := wirePolicies(context.Background(), cfg, db, metricsServer)
 
 	return err
 }
 
 // With nothing to enforce the APIs read a view that applies nothing, and
 // there is no enforcement to hand on, which is what says there is nothing to
-// audit.
+// audit. An evaluation policy alone is not something to enforce: it produces
+// verdicts, and acts on none of them.
 func TestWirePolicies_NothingEnforced(t *testing.T) {
 	t.Parallel()
 
-	db := newTestDatabase(t)
+	cfg := searchConfig()
+	cfg.Policy.Operations = nil
 
-	served, current := wire(t, enforcementConfig(policyconfig.EnforcementConfig{Policies: enforcedA}), db, nil)
-	assert.Nil(t, current, "every mode off and no search policy")
-
-	ok, err := served.IsRecordServable("baeareigatenone000000000000000000000000000000000000000000000000")
-	require.NoError(t, err)
-	assert.True(t, ok, "the view applies no policy")
+	_, current := wire(t, cfg, newTestDatabase(t), nil)
+	assert.Nil(t, current, "no search policy and nothing at pull")
 }
 
-// A checked mode serves a separate view, so the database the reconciler
-// reads stays unfiltered, and the gate reports to the metrics server.
-func TestWirePolicies_CheckedModeServesAGatedView(t *testing.T) {
+// A policy being checked serves a separate view, so the database the
+// reconciler reads stays unfiltered, and the gate reports to the metrics
+// server.
+func TestWirePolicies_ACheckedPolicyServesAGatedView(t *testing.T) {
 	t.Parallel()
 
 	db := newTestDatabase(t)
-	require.NoError(t, db.RegisterPolicyVersion("opa:a", "v1", nil))
+	require.NoError(t, db.RegisterPolicyVersion("cel:trusted", "v1", nil))
+
+	record := corev1.New(&typesv1alpha1.Record{Name: "refused", Version: "1.0.0", SchemaVersion: "0.7.0"})
+
+	adapter, err := record.Decode()
+	require.NoError(t, err)
+	require.NoError(t, db.AddRecord(adapter))
+
+	// A verdict, so the catalogue is covered and the latch releases; it says
+	// non-compliant, so the policy reading it hides the record.
+	require.NoError(t, db.UpsertPolicyEvaluation(&gormdb.PolicyEvaluation{
+		RecordCID: record.GetCid(), PolicyID: "cel:trusted", PolicyVersion: "v1",
+		Status: types.PolicyEvalStatusEvaluated, Compliant: false,
+	}))
 
 	metricsServer := metrics.New("127.0.0.1:0")
 
-	served, _ := wire(t, enforcementConfig(policyconfig.EnforcementConfig{
-		Fetch: policyconfig.ModeEnforce, Policies: enforcedA,
-	}), db, metricsServer)
+	served, _ := wire(t, searchConfig(), db, metricsServer)
 
-	ok, err := served.IsRecordServable("baeareigatenone000000000000000000000000000000000000000000000000")
+	gated, err := served.GetRecords()
 	require.NoError(t, err)
-	assert.False(t, ok, "the served view enforces the policies")
+	assert.Empty(t, gated, "the served view applies the search policy")
 
-	ok, err = db.IsRecordServable("baeareigatenone000000000000000000000000000000000000000000000000")
+	all, err := db.GetRecords()
 	require.NoError(t, err)
-	assert.True(t, ok, "the database itself does not")
+	assert.Len(t, all, 1, "the database itself does not")
 
 	families, err := metricsServer.Registry().Gather()
 	require.NoError(t, err)
@@ -131,13 +129,13 @@ func TestWirePolicies_CheckedModeServesAGatedView(t *testing.T) {
 		names = append(names, family.GetName())
 	}
 
-	assert.Contains(t, names, "dir_policy_gate_fetches_excluded_total")
+	assert.Contains(t, names, "dir_policy_gate_pulls_excluded_total")
 }
 
-// A search policy is checked whether or not the enforcement block is, which
-// is the arrangement left once that block is removed. Until the evaluation
-// policy it reads has a version in force, it is not applied: the latch.
-func TestWirePolicies_ASearchPolicyIsCheckedWithoutTheEnforcementBlock(t *testing.T) {
+// A search policy is checked as soon as it is configured, and nothing else
+// has to say so. Until the evaluation policy it reads has a version in
+// force, it is not applied: the latch.
+func TestWirePolicies_ASearchPolicyIsCheckedAsConfigured(t *testing.T) {
 	t.Parallel()
 
 	db := newTestDatabase(t)
@@ -155,7 +153,7 @@ func TestWirePolicies_ASearchPolicyIsCheckedWithoutTheEnforcementBlock(t *testin
 	applied := current().SearchPolicies
 	require.Len(t, applied, 1)
 	assert.Equal(t, "cel:serve-checked-records", applied[0].ID)
-	assert.Equal(t, []types.EnforcedPolicy{{ID: "cel:trusted", Version: "v1"}}, applied[0].Reads)
+	assert.Equal(t, []types.VersionedPolicy{{ID: "cel:trusted", Version: "v1"}}, applied[0].Reads)
 }
 
 // A search policy in shadow is checked but not applied: it reaches the
@@ -181,41 +179,18 @@ func TestWirePolicies_AShadowSearchPolicyIsNotApplied(t *testing.T) {
 
 // The server refuses to start rather than serve records it was told to check
 // without checking them.
+//
+// A database no query can be built on carries no gate, and every policy that
+// decides what is served reads a verdict, so the registry refuses it for
+// want of a verdict source. That is one refusal rather than two, and it
+// names the policy.
 func TestWirePolicies_RefusesWhatItCannotEnforce(t *testing.T) {
 	t.Parallel()
 
 	var notGorm types.DatabaseAPI
 
-	require.ErrorContains(t,
-		wireErr(enforcementConfig(policyconfig.EnforcementConfig{
-			Search: policyconfig.ModeShadow, Policies: enforcedA,
-		}), notGorm, nil),
-		"cannot enforce content policies")
-
-	// A search policy is refused a step earlier, by the registry: every one
-	// of them reads a verdict, and a database that cannot carry a gate is
-	// given no source for verdicts either.
 	require.ErrorContains(t, wireErr(searchConfig(), notGorm, nil),
 		`at op "search" reads verdicts, which this process has no source of`)
-
-	// And a database it could gate is no help if the config is invalid.
-	require.ErrorContains(t,
-		wireErr(enforcementConfig(policyconfig.EnforcementConfig{Search: policyconfig.ModeEnforce}), newTestDatabase(t), nil),
-		"invalid policy enforcement config")
-}
-
-// A policy no evaluator has registered has no version whose verdicts could be
-// asked for, so it is not enforced yet.
-func TestWirePolicies_UnregisteredPolicyIsNotEnforced(t *testing.T) {
-	t.Parallel()
-
-	served, _ := wire(t, enforcementConfig(policyconfig.EnforcementConfig{
-		Fetch: policyconfig.ModeEnforce, Policies: enforcedA,
-	}), newTestDatabase(t), nil)
-
-	ok, err := served.IsRecordServable("baeareigatenone000000000000000000000000000000000000000000000000")
-	require.NoError(t, err)
-	assert.True(t, ok)
 }
 
 // The server does not start when it cannot tell which policy versions are in
@@ -233,17 +208,12 @@ func TestWirePolicies_Failures(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, sqlDB.Close())
 
-	require.ErrorContains(t,
-		wireErr(enforcementConfig(policyconfig.EnforcementConfig{
-			Fetch: policyconfig.ModeEnforce, Policies: enforcedA,
-		}), db, nil),
-		"resolve enforced policy versions")
+	require.ErrorContains(t, wireErr(searchConfig(), db, nil), "resolve enforced policy versions")
 
 	metricsServer := metrics.New("127.0.0.1:0")
-	enforcing := enforcementConfig(policyconfig.EnforcementConfig{Search: policyconfig.ModeShadow, Policies: enforcedA})
 
-	require.NoError(t, wireErr(enforcing, newTestDatabase(t), metricsServer))
-	require.ErrorContains(t, wireErr(enforcing, newTestDatabase(t), metricsServer),
+	require.NoError(t, wireErr(searchConfig(), newTestDatabase(t), metricsServer))
+	require.ErrorContains(t, wireErr(searchConfig(), newTestDatabase(t), metricsServer),
 		"register policy gate metrics")
 }
 
