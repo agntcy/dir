@@ -5,6 +5,7 @@ package daemon
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -153,6 +154,13 @@ func registerServerDefaults(v *viper.Viper) {
 
 	_ = v.BindEnv("server.policy.dir")
 	v.SetDefault("server.policy.dir", "policies")
+
+	// Bound although nothing defaults it, because viper reads a variable
+	// only for a key it already knows, and this one is absent from the
+	// embedded config. Unbound, the variable the migration from
+	// policy.enforcement.refresh_interval sends an operator to would be
+	// read by the apiserver, which binds it, and silently ignored here.
+	_ = v.BindEnv("server.policy.refresh_interval")
 }
 
 func registerReconcilerDefaults(v *viper.Viper) {
@@ -289,20 +297,34 @@ func loadConfig() (*DaemonConfig, error) {
 		mapstructure.StringToSliceHookFunc(","),
 	)
 
-	// The daemon keeps the policy block under server., and reads it with its
-	// own environment prefix, so neither half can be borrowed from another
-	// loader.
-	retired := policyconfig.KeyLocation{KeyPrefix: "server.", EnvPrefix: DefaultEnvPrefix}
-	if err := policyconfig.CheckRetired(v, retired); err != nil {
-		// Named by its source rather than by what went wrong, which the
-		// error already says and the callers say again: what they cannot
-		// say is which file to edit.
-		source := v.ConfigFileUsed()
-		if source == "" {
-			source = "built-in daemon config"
+	// The daemon holds two copies of the policy block, the server's and the
+	// reconciler's, and reads both with its own environment prefix: neither
+	// half of either location can be borrowed from another loader.
+	policyBlocks := []policyconfig.KeyLocation{
+		{KeyPrefix: "server.", EnvPrefix: DefaultEnvPrefix},
+		{KeyPrefix: "reconciler.", EnvPrefix: DefaultEnvPrefix},
+	}
+
+	// No file to name: a variable is the whole of what is wrong.
+	if err := policyconfig.CheckEnvOnly(policyBlocks...); err != nil {
+		//nolint:wrapcheck // the error is complete, and names the variable
+		return nil, err
+	}
+
+	if err := policyconfig.CheckRetired(v, policyBlocks...); err != nil {
+		// Which file to edit is the one thing the error cannot say and the
+		// callers say nothing about either. It is worth saying only about a
+		// setting the file carries: the daemon writes daemon.config.yaml on
+		// first start, so there is nearly always a file to name, and naming
+		// it for a variable's mistake sends the operator to edit a config
+		// the key is not in.
+		var refused *policyconfig.RetiredError
+		if source := v.ConfigFileUsed(); source != "" && errors.As(err, &refused) && refused.InFile {
+			return nil, fmt.Errorf("%s: %w", source, err)
 		}
 
-		return nil, fmt.Errorf("%s: %w", source, err)
+		//nolint:wrapcheck // the error is complete, and the only prefix available here would be wrong
+		return nil, err
 	}
 
 	cfg := &DaemonConfig{}

@@ -13,13 +13,9 @@ import (
 
 // retiredKey is a setting that no longer exists, and what to write instead.
 type retiredKey struct {
-	// key is relative to the policy block, so one entry serves every loader
-	// that has one, wherever each keeps it.
+	// key is relative to the policy block, so one entry serves every copy of
+	// the block, wherever a loader keeps it.
 	key string
-
-	// hadEnv is whether a variable used to set it. Only leaves did: the
-	// block as a whole was never one variable.
-	hadEnv bool
 
 	// replacement completes "write ... instead".
 	replacement string
@@ -36,22 +32,18 @@ type retiredKey struct {
 var retiredKeys = []retiredKey{
 	{
 		key:         "enforcement.search",
-		hadEnv:      true,
 		replacement: `a policy at op: ["search"] carrying that mode`,
 	},
 	{
 		key:         "enforcement.fetch",
-		hadEnv:      true,
 		replacement: `a policy at op: ["pull"] carrying that mode`,
 	},
 	{
 		key:         "enforcement.policies",
-		hadEnv:      true,
 		replacement: `verdicts["<id>"].compliant_and_current in that policy's expressions`,
 	},
 	{
 		key:         "enforcement.refresh_interval",
-		hadEnv:      true,
 		replacement: "policy.refresh_interval, one level up",
 	},
 	{
@@ -63,11 +55,12 @@ var retiredKeys = []retiredKey{
 // migrationGuide is where the replacement for each retired key is written out.
 const migrationGuide = "https://docs.agntcy.org/dir/dir-content-policy-enforcement/#migrating-from-policyenforcement"
 
-// KeyLocation is where a loader keeps this block. The three that read it
-// agree on everything below policy., and on nothing above it.
+// KeyLocation is where a copy of this block lives. Every copy agrees on
+// everything below policy., and on nothing above it.
 type KeyLocation struct {
 	// KeyPrefix is what precedes "policy." in the configuration file: empty
-	// for the server and the reconciler, "server." for the daemon.
+	// for the server and the reconciler read on their own, and "server." or
+	// "reconciler." for the daemon, which holds both.
 	KeyPrefix string
 
 	// EnvPrefix is the loader's viper environment prefix, which the three do
@@ -89,10 +82,59 @@ type isSetter interface {
 	IsSet(key string) bool
 }
 
+// RetiredError is what CheckRetired returns, and says where the settings it
+// refused came from.
+//
+// A caller that read a configuration file can name it, but only the settings
+// in the file are the file's doing: a file named for a variable's mistake
+// sends the operator to edit a config that does not carry the key.
+type RetiredError struct {
+	// InFile is whether any refused setting came from the configuration
+	// rather than from the environment.
+	InFile bool
+
+	message string
+}
+
+func (e *RetiredError) Error() string { return e.message }
+
 // CheckRetired refuses a configuration that still carries a removed policy
 // setting, naming each one it found, where it found it, and what replaces it.
-func CheckRetired(v isSetter, at KeyLocation) error {
-	var found []string
+//
+// A loader passes every copy of the block it holds, so that one start reports
+// everything there is to fix rather than one copy at a time.
+func CheckRetired(v isSetter, at ...KeyLocation) error {
+	var (
+		found  []string
+		inFile bool
+	)
+
+	for _, location := range at {
+		lines, fromFile := findRetired(v, location)
+
+		found = append(found, lines...)
+		inFile = inFile || fromFile
+	}
+
+	if len(found) == 0 {
+		return nil
+	}
+
+	return &RetiredError{
+		InFile: inFile,
+		message: fmt.Sprintf(
+			"policy configuration uses settings that were removed:\n%s\nSee %s",
+			strings.Join(found, "\n"), migrationGuide),
+	}
+}
+
+// findRetired is what one copy of the block still carries, and whether the
+// configuration rather than the environment is what carries it.
+func findRetired(v isSetter, at KeyLocation) ([]string, bool) {
+	var (
+		found  []string
+		inFile bool
+	)
 
 	for _, retired := range retiredKeys {
 		key := "policy." + retired.key
@@ -102,14 +144,22 @@ func CheckRetired(v isSetter, at KeyLocation) error {
 		// is invisible to IsSet however it was set. Presence is the test,
 		// not value, because every loader here allows an empty variable to
 		// count.
+		//
+		// It is also checked first, and for the block as well as its
+		// leaves. No variable ever set the block, but viper's AutomaticEnv
+		// answers IsSet from the environment for any key at all, so a
+		// variable left over the block reads as configuration unless the
+		// variable is looked for — and the caller then names a file that
+		// does not contain it.
 		variable := at.envName(key)
 		_, inEnv := os.LookupEnv(variable)
 
 		switch {
-		case retired.hadEnv && inEnv:
+		case inEnv:
 			found = append(found, fmt.Sprintf("  %s is set: write %s", variable, retired.replacement))
 		case v.IsSet(at.KeyPrefix + key):
 			found = append(found, fmt.Sprintf("  %s is set: write %s", at.KeyPrefix+key, retired.replacement))
+			inFile = true
 		default:
 			continue
 		}
@@ -121,11 +171,5 @@ func CheckRetired(v isSetter, at KeyLocation) error {
 		}
 	}
 
-	if len(found) == 0 {
-		return nil
-	}
-
-	return fmt.Errorf(
-		"policy configuration uses settings that were removed:\n%s\nSee %s",
-		strings.Join(found, "\n"), migrationGuide)
+	return found, inFile
 }

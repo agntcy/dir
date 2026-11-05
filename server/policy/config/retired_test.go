@@ -4,6 +4,7 @@
 package config_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/agntcy/dir/server/policy/config"
@@ -20,6 +21,10 @@ var (
 	serverKeys     = config.KeyLocation{EnvPrefix: "DIRECTORY_SERVER"}
 	daemonKeys     = config.KeyLocation{KeyPrefix: "server.", EnvPrefix: "DIRECTORY_DAEMON"}
 	reconcilerKeys = config.KeyLocation{EnvPrefix: "RECONCILER"}
+
+	// The reconciler's copy of the block as the daemon holds it, alongside
+	// the server's.
+	daemonReconcilerKeys = config.KeyLocation{KeyPrefix: "reconciler.", EnvPrefix: "DIRECTORY_DAEMON"}
 )
 
 // Every loader of this block keeps it somewhere different, and each must
@@ -123,3 +128,74 @@ func TestCheckRetired_AcceptsWhatReplacedThem(t *testing.T) {
 		"policy.dir":              true,
 	}, serverKeys))
 }
+
+// A loader holding the block twice is told about both copies at once. The
+// daemon configures a server and a reconciler, each with one, and an
+// operator who fixes what the first start reported should not be stopped by
+// the second on the next.
+func TestCheckRetired_ChecksEveryCopyOfTheBlock(t *testing.T) {
+	t.Parallel()
+
+	err := config.CheckRetired(keysSet{
+		"server.policy.enforcement.fetch":      true,
+		"reconciler.policy.enforcement.search": true,
+	}, daemonKeys, daemonReconcilerKeys)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "server.policy.enforcement.fetch")
+	assert.Contains(t, err.Error(), "reconciler.policy.enforcement.search")
+}
+
+// Each copy is read on its own, so a block found whole in one of them is
+// still reported when the other supplied the children. Sharing the count
+// would drop the line that is the only evidence of the second copy.
+func TestCheckRetired_ReportsTheBlockFoundInASecondCopy(t *testing.T) {
+	t.Parallel()
+
+	err := config.CheckRetired(keysSet{
+		"server.policy.enforcement.fetch": true,
+		"reconciler.policy.enforcement":   true,
+	}, daemonKeys, daemonReconcilerKeys)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "reconciler.policy.enforcement is set")
+}
+
+// Whether the file carries one decides whether a caller can name the file,
+// and the environment is not the file's doing.
+func TestCheckRetired_SaysWhetherTheFileCarriesOne(t *testing.T) {
+	var refused *config.RetiredError
+
+	t.Run("from the file", func(t *testing.T) {
+		err := config.CheckRetired(keysSet{"policy.enforcement.fetch": true}, serverKeys)
+		require.ErrorAs(t, err, &refused)
+		assert.True(t, refused.InFile)
+	})
+
+	t.Run("from the environment", func(t *testing.T) {
+		t.Setenv("DIRECTORY_SERVER_POLICY_ENFORCEMENT_FETCH", "enforce")
+
+		err := config.CheckRetired(keysSet{}, serverKeys)
+		require.ErrorAs(t, err, &refused)
+		assert.False(t, refused.InFile)
+	})
+
+	// No variable ever set the block itself, but viper answers IsSet from
+	// the environment for any key at all. Read through viper, a variable
+	// left over the block would look like configuration, and the caller
+	// would name a file that does not contain it.
+	t.Run("the block itself, from the environment", func(t *testing.T) {
+		t.Setenv("DIRECTORY_SERVER_POLICY_ENFORCEMENT", "")
+
+		err := config.CheckRetired(viperLike{"policy.enforcement"}, serverKeys)
+		require.ErrorAs(t, err, &refused)
+		assert.False(t, refused.InFile)
+		assert.Contains(t, err.Error(), "DIRECTORY_SERVER_POLICY_ENFORCEMENT is set")
+	})
+}
+
+// viperLike answers IsSet for these keys the way viper does with
+// AutomaticEnv: from the environment, whether or not the key is in the file.
+type viperLike []string
+
+func (k viperLike) IsSet(key string) bool { return slices.Contains(k, key) }

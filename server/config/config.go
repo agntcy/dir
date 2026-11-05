@@ -696,7 +696,12 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 		mapstructure.StringToSliceHookFunc(","),
 	)
 
-	if err := policy.CheckRetired(v, policy.KeyLocation{EnvPrefix: DefaultEnvPrefix}); err != nil {
+	policyBlock := policy.KeyLocation{EnvPrefix: DefaultEnvPrefix}
+	if err := policy.CheckEnvOnly(policyBlock); err != nil {
+		return nil, fmt.Errorf("invalid server config: %w", err)
+	}
+
+	if err := policy.CheckRetired(v, policyBlock); err != nil {
 		return nil, fmt.Errorf("invalid server config: %w", err)
 	}
 

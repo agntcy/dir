@@ -79,7 +79,9 @@ policy:
   refresh_interval: 30s
 ```
 
-`refresh_interval` is how often the server rechecks which version of each evaluation policy is in force, and whether its verdicts yet cover the catalogue. A policy's version comes from its content: the reconciler registers the version of each policy it runs and the server follows it, so an edit to a policy needs no change to this configuration. It can also be set from the environment, as `DIRECTORY_SERVER_POLICY_REFRESH_INTERVAL`.
+`refresh_interval` is how often the server rechecks which version of each evaluation policy is in force, and whether its verdicts yet cover the catalogue. A policy's version comes from its content: the reconciler registers the version of each policy it runs and the server follows it, so an edit to a policy needs no change to this configuration. It can also be set from the environment, as `DIRECTORY_SERVER_POLICY_REFRESH_INTERVAL` on the apiserver and `DIRECTORY_DAEMON_SERVER_POLICY_REFRESH_INTERVAL` on the daemon.
+
+The policies themselves are written in the configuration file and nowhere else. A list of policies has no environment form, so a variable for one is refused at startup rather than read: `DIRECTORY_SERVER_POLICY_OPERATIONS`, `DIRECTORY_SERVER_POLICY_EVALUATIONS` and `DIRECTORY_SERVER_POLICY`, and the same three under each of the other prefixes. Given a value, a variable for one is not a list of policies; given none, it would empty the list, and a node that starts with its policies quietly removed enforces nothing it was told to. `policy.dir` and `policy.refresh_interval` are the settings a variable may carry.
 
 Everything else belongs to a policy. Each entry in `policy.operations` names the operations it decides, and carries its own [`mode`](dir-component-records-validation.md#modes):
 
@@ -297,17 +299,18 @@ Point by point:
 | `enforcement.policies: [X]` | `verdicts["X"].compliant_and_current` in the expressions of the policy that reads it. Several entries that all had to pass become one expression per line, since a policy's expressions are conjoined; several that any could satisfy become `\|\|`. |
 | `enforcement.search: <mode>` | That `mode` on a policy at `op: ["search"]`. |
 | `enforcement.fetch: <mode>` | That `mode` on a policy at `op: ["pull"]`. The operation is named `pull` throughout. |
-| `enforcement.refresh_interval` | `policy.refresh_interval`, one level up. |
+| `enforcement.refresh_interval` | `policy.refresh_interval`, one level up. From the environment, that is `*_POLICY_REFRESH_INTERVAL` in place of `*_POLICY_ENFORCEMENT_REFRESH_INTERVAL`. |
 
-The environment variables that set these are refused the same way. Three components read this block, each with its own prefix and its own place for it, and each refuses what it would have read:
+The environment variables that set these are refused the same way. The block is read in four places, each with its own prefix and its own place for it, and each refuses what it would have read:
 
 | Component | In the file | From the environment |
 |---|---|---|
 | apiserver | `policy.enforcement.*` | `DIRECTORY_SERVER_POLICY_ENFORCEMENT_*` |
-| daemon | `server.policy.enforcement.*` | `DIRECTORY_DAEMON_SERVER_POLICY_ENFORCEMENT_*` |
-| reconciler | `policy.enforcement.*` | `RECONCILER_POLICY_ENFORCEMENT_*` |
+| daemon, for its server | `server.policy.enforcement.*` | `DIRECTORY_DAEMON_SERVER_POLICY_ENFORCEMENT_*` |
+| daemon, for its reconciler | `reconciler.policy.enforcement.*` | `DIRECTORY_DAEMON_RECONCILER_POLICY_ENFORCEMENT_*` |
+| reconciler on its own | `policy.enforcement.*` | `RECONCILER_POLICY_ENFORCEMENT_*` |
 
-The reconciler is included because it is given the same policy block as the server. It never decided reads, so a leftover there withheld nothing, but it is as dead as the others.
+The reconciler is included because it is given the same policy block as the server, and the daemon appears twice because it configures both. The reconciler never decided reads, so a leftover there withheld nothing, but it is as dead as the others. A daemon carrying one in each is told about both at once.
 
 One metric was renamed with the operation: `dir_policy_gate_fetches_excluded_total` is now `dir_policy_gate_pulls_excluded_total`. Update dashboards and alerts that name it.
 
