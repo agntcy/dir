@@ -294,7 +294,15 @@ func loadConfig() (*DaemonConfig, error) {
 	// loader.
 	retired := policyconfig.KeyLocation{KeyPrefix: "server.", EnvPrefix: DefaultEnvPrefix}
 	if err := policyconfig.CheckRetired(v, retired); err != nil {
-		return nil, fmt.Errorf("invalid daemon config: %w", err)
+		// Named by its source rather than by what went wrong, which the
+		// error already says and the callers say again: what they cannot
+		// say is which file to edit.
+		source := v.ConfigFileUsed()
+		if source == "" {
+			source = "built-in daemon config"
+		}
+
+		return nil, fmt.Errorf("%s: %w", source, err)
 	}
 
 	cfg := &DaemonConfig{}
