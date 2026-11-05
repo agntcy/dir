@@ -70,11 +70,8 @@ func TestCheckRetired_NamesEachLoadersOwnEnvironmentVariable(t *testing.T) {
 		{serverKeys, "DIRECTORY_SERVER_POLICY_ENFORCEMENT_SEARCH", `op: ["search"]`},
 		{serverKeys, "DIRECTORY_SERVER_POLICY_ENFORCEMENT_POLICIES", "compliant_and_current"},
 		{serverKeys, "DIRECTORY_SERVER_POLICY_ENFORCEMENT_REFRESH_INTERVAL", "policy.refresh_interval"},
-		{serverKeys, "DIRECTORY_SERVER_POLICY_ENABLED", "because it is configured"},
 		{daemonKeys, "DIRECTORY_DAEMON_SERVER_POLICY_ENFORCEMENT_FETCH", `op: ["pull"]`},
-		{daemonKeys, "DIRECTORY_DAEMON_SERVER_POLICY_ENABLED", "because it is configured"},
 		{reconcilerKeys, "RECONCILER_POLICY_ENFORCEMENT_FETCH", `op: ["pull"]`},
-		{reconcilerKeys, "RECONCILER_POLICY_ENABLED", "because it is configured"},
 	} {
 		t.Run(tt.env, func(t *testing.T) {
 			t.Setenv(tt.env, "enforce")

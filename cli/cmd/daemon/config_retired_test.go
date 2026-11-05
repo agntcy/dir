@@ -66,7 +66,6 @@ func TestLoadConfig_RefusesTheRetiredEnforcementEnvironment(t *testing.T) {
 		{"DIRECTORY_DAEMON_SERVER_POLICY_ENFORCEMENT_FETCH", "enforce", `op: ["pull"]`},
 		{"DIRECTORY_DAEMON_SERVER_POLICY_ENFORCEMENT_POLICIES", "cel:x", "compliant_and_current"},
 		{"DIRECTORY_DAEMON_SERVER_POLICY_ENFORCEMENT_REFRESH_INTERVAL", "30s", "policy.refresh_interval"},
-		{"DIRECTORY_DAEMON_SERVER_POLICY_ENABLED", "true", "a policy is in effect because it is configured"},
 	} {
 		t.Run(tt.env, func(t *testing.T) {
 			withConfigFile(t, "server:\n  listen_address: \"localhost:8888\"\n")

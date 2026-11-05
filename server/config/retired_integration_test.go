@@ -61,11 +61,6 @@ policy:
 			body: "policy:\n  enforcement: {}\n",
 			want: []string{"policy.enforcement"},
 		},
-		{
-			name: "policy.enabled, retired earlier",
-			body: "policy:\n  enabled: true\n",
-			want: []string{"policy.enabled"},
-		},
 	}
 
 	for _, tt := range tests {

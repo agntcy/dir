@@ -25,8 +25,7 @@ type retiredKey struct {
 	replacement string
 }
 
-// retiredKeys is the policy.enforcement block, removed in #2348, and
-// policy.enabled, removed before it.
+// retiredKeys is the policy.enforcement block, removed in #2348.
 //
 // They are refused rather than ignored because of what they used to do.
 // v1.8.0 shipped the enforcement block, and shipped no operation at pull or
@@ -58,11 +57,6 @@ var retiredKeys = []retiredKey{
 	{
 		key:         "enforcement",
 		replacement: `policies at op: ["pull"] and op: ["search"]`,
-	},
-	{
-		key:         "enabled",
-		hadEnv:      true,
-		replacement: "nothing: a policy is in effect because it is configured",
 	},
 }
 

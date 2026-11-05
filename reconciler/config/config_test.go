@@ -255,7 +255,6 @@ func TestLoadConfig_RefusesRetiredPolicyKeys(t *testing.T) {
 		"RECONCILER_POLICY_ENFORCEMENT_SEARCH",
 		"RECONCILER_POLICY_ENFORCEMENT_POLICIES",
 		"RECONCILER_POLICY_ENFORCEMENT_REFRESH_INTERVAL",
-		"RECONCILER_POLICY_ENABLED",
 	} {
 		t.Run(env, func(t *testing.T) {
 			t.Setenv(env, "enforce")

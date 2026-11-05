@@ -262,7 +262,6 @@ This configuration:
 
 ```yaml
 policy:
-  enabled: true
   enforcement:
     search: enforce
     fetch: shadow
@@ -299,15 +298,14 @@ Point by point:
 | `enforcement.search: <mode>` | That `mode` on a policy at `op: ["search"]`. |
 | `enforcement.fetch: <mode>` | That `mode` on a policy at `op: ["pull"]`. The operation is named `pull` throughout. |
 | `enforcement.refresh_interval` | `policy.refresh_interval`, one level up. |
-| `enabled: true` | Nothing. A policy is in effect because it is configured. |
 
 The environment variables that set these are refused the same way. Three components read this block, each with its own prefix and its own place for it, and each refuses what it would have read:
 
 | Component | In the file | From the environment |
 |---|---|---|
-| apiserver | `policy.enforcement.*` | `DIRECTORY_SERVER_POLICY_ENFORCEMENT_*`, `DIRECTORY_SERVER_POLICY_ENABLED` |
-| daemon | `server.policy.enforcement.*` | `DIRECTORY_DAEMON_SERVER_POLICY_ENFORCEMENT_*`, `DIRECTORY_DAEMON_SERVER_POLICY_ENABLED` |
-| reconciler | `policy.enforcement.*` | `RECONCILER_POLICY_ENFORCEMENT_*`, `RECONCILER_POLICY_ENABLED` |
+| apiserver | `policy.enforcement.*` | `DIRECTORY_SERVER_POLICY_ENFORCEMENT_*` |
+| daemon | `server.policy.enforcement.*` | `DIRECTORY_DAEMON_SERVER_POLICY_ENFORCEMENT_*` |
+| reconciler | `policy.enforcement.*` | `RECONCILER_POLICY_ENFORCEMENT_*` |
 
 The reconciler is included because it is given the same policy block as the server. It never decided reads, so a leftover there withheld nothing, but it is as dead as the others.
 

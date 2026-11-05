@@ -6,6 +6,7 @@ package policy
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	policyconfig "github.com/agntcy/dir/server/policy/config"
@@ -16,7 +17,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const gatedCID = "baeareigatetest00000000000000000000000000000000000000000000000"
+const (
+	gatedCID = "baeareigatetest00000000000000000000000000000000000000000000000"
+
+	// otherCID is a record the policies here do not single out.
+	otherCID = "baeareigatetest11111111111111111111111111111111111111111111111"
+)
 
 // excluded records what the gate reports, in the order it reports it.
 type excluded struct {
@@ -142,6 +148,10 @@ func TestRecordGateCheck_AServedRecordIsNotCounted(t *testing.T) {
 // twoPullPolicies builds a registry with two policies at pull: the first
 // reading no verdict, the second reading one. Each carries the given mode,
 // so a test can say which of the two would act.
+//
+// The first refuses gatedCID. A policy that cannot refuse would pass every
+// test here whether or not it was ever asked, which is how a gate that
+// skipped it entirely once looked correct.
 func twoPullPolicies(t *testing.T, source VerdictSource, modes [2]policyconfig.Mode) *Registry {
 	t.Helper()
 
@@ -157,7 +167,7 @@ func twoPullPolicies(t *testing.T, source VerdictSource, modes [2]policyconfig.M
 				Ops:         []string{policyconfig.OpPull},
 				Name:        "reads-no-verdict",
 				Mode:        modes[0],
-				Expressions: []string{`record_cid != ""`},
+				Expressions: []string{fmt.Sprintf("record_cid != %q", gatedCID)},
 			},
 			{
 				Provider:    policyconfig.ProviderCEL,
@@ -179,16 +189,52 @@ func twoPullPolicies(t *testing.T, source VerdictSource, modes [2]policyconfig.M
 // enforcing" but "is anything that reads verdicts enforcing". An enforcing
 // policy that reads none decides the same either way, so it must not be the
 // reason a read fails closed over a question it never asked.
-func TestRecordGateCheck_AnEnforcingPolicyThatReadsNoVerdictDoesNotFailTheRead(t *testing.T) {
+func TestRecordGateCheck_AnEnforcingPolicyThatReadsNoVerdictStillDecides(t *testing.T) {
 	t.Parallel()
 
 	registry := twoPullPolicies(t, &fakeVerdicts{err: errors.New("database unavailable")},
 		[2]policyconfig.Mode{policyconfig.ModeEnforce, policyconfig.ModeShadow})
 
-	err := NewRecordGate(registry, nil).Check(t.Context(), gatedCID)
+	counted := &excluded{}
+	err := NewRecordGate(registry, counted).Check(t.Context(), gatedCID)
 
-	assert.Equal(t, codes.OK, status.Code(err),
-		"only the shadow policy reads verdicts, so nothing that acts was deprived of one")
+	// Not Internal: only the shadow policy reads verdicts, so nothing that
+	// acts was deprived of one. Not OK either: the enforcing policy asked
+	// nothing of the verdict store and refuses this CID whether or not the
+	// store answered. An outage there must not serve an excluded record.
+	assert.Equal(t, codes.PermissionDenied, status.Code(err))
+	assert.Equal(t, []policyconfig.Mode{policyconfig.ModeEnforce}, counted.modes,
+		"a record withheld during the outage is still a record the gate excluded")
+}
+
+// The same two policies with the store up, to show the refusal above is the
+// policy deciding rather than the outage leaking through.
+func TestRecordGateCheck_TheStoreBeingUpDoesNotChangeThatRefusal(t *testing.T) {
+	t.Parallel()
+
+	registry := twoPullPolicies(t, &fakeVerdicts{},
+		[2]policyconfig.Mode{policyconfig.ModeEnforce, policyconfig.ModeShadow})
+
+	counted := &excluded{}
+	err := NewRecordGate(registry, counted).Check(t.Context(), gatedCID)
+
+	assert.Equal(t, codes.PermissionDenied, status.Code(err))
+	assert.Equal(t, []policyconfig.Mode{policyconfig.ModeEnforce}, counted.modes)
+}
+
+// And a record the enforcing policy allows is served through the outage,
+// which is what tolerating the failure was for.
+func TestRecordGateCheck_AnAllowedRecordIsServedThroughTheOutage(t *testing.T) {
+	t.Parallel()
+
+	registry := twoPullPolicies(t, &fakeVerdicts{err: errors.New("database unavailable")},
+		[2]policyconfig.Mode{policyconfig.ModeEnforce, policyconfig.ModeShadow})
+
+	counted := &excluded{}
+	err := NewRecordGate(registry, counted).Check(t.Context(), otherCID)
+
+	assert.Equal(t, codes.OK, status.Code(err))
+	assert.Empty(t, counted.modes, "nothing was excluded, so nothing is counted")
 }
 
 // The counterpart: once the policy that reads verdicts is the enforcing one,
