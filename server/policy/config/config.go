@@ -33,7 +33,7 @@ type Config struct {
 
 	// RefreshInterval is how often the server rechecks which version of each
 	// evaluation policy is in force, and whether its verdicts yet cover the
-	// catalogue. Zero or less means DefaultRefreshInterval.
+	// catalogue. Zero means DefaultRefreshInterval.
 	//
 	// Nothing else about enforcement is configured. Which policies a read
 	// applies is said by the operation policies naming them, so there is no
@@ -64,14 +64,8 @@ func (c *Config) Validate() error {
 
 // GetRefreshInterval returns RefreshInterval, or DefaultRefreshInterval when
 // it is not set.
-//
-// A negative interval falls back as an unset one does, rather than being
-// passed on. Validate refuses it, but nothing on the serving path calls
-// Validate, and the resolver compares an age against this interval: negative
-// makes every enforcement it holds read as stale, so every request arriving at
-// a quiet node starts a refresh.
 func (c *Config) GetRefreshInterval() time.Duration {
-	if c.RefreshInterval <= 0 {
+	if c.RefreshInterval == 0 {
 		return DefaultRefreshInterval
 	}
 

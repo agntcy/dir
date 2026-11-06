@@ -266,6 +266,57 @@ func TestLoadConfig_RefusesRetiredPolicyKeys(t *testing.T) {
 	}
 }
 
+// The policies are lists, and the block is what holds them, so a variable for
+// one can only subtract: empty, as a template with a missing substitution
+// leaves it, it decodes to an empty list over whatever the file configured,
+// and over the block it takes policy.dir with it. The reconciler produces the
+// verdicts the server's gate reads, so a reconciler that loses its policies
+// leaves the gate with nothing to decide on.
+func TestLoadConfig_RefusesAPolicyListFromTheEnvironment(t *testing.T) {
+	for _, env := range []string{
+		"RECONCILER_POLICY",
+		"RECONCILER_POLICY_OPERATIONS",
+		"RECONCILER_POLICY_EVALUATIONS",
+	} {
+		// Empty is the case that matters, and "x" is not a policy block by any
+		// reading, so neither can be mistaken for a value worth decoding.
+		for _, value := range []string{"", "x"} {
+			t.Run(env+"="+value, func(t *testing.T) {
+				t.Setenv(env, value)
+
+				_, err := LoadConfig()
+				require.Error(t, err)
+				require.Contains(t, err.Error(), env)
+				require.Contains(t, err.Error(), "configuration file")
+			})
+		}
+	}
+}
+
+// The setting in the block a variable can carry must still load, or the
+// refusal above would be a refusal of the whole block. policy.refresh_interval
+// is the block's other such setting, but this loader does not bind it: it is
+// how often the server's gate rechecks policy versions, and the reconciler has
+// no gate.
+func TestLoadConfig_AcceptsThePolicySettingAVariableCanCarry(t *testing.T) {
+	t.Setenv("RECONCILER_POLICY_DIR", "/tmp/policies")
+
+	cfg, err := LoadConfig()
+	require.NoError(t, err)
+	require.Equal(t, "/tmp/policies", cfg.Policy.Dir)
+}
+
+// Each loader answers for its own prefix. The reconciler runs beside a server
+// and a daemon, and refusing their variables would stop it over configuration
+// that is not its own.
+func TestLoadConfig_IgnoresAnotherLoadersPolicyListVariable(t *testing.T) {
+	t.Setenv("DIRECTORY_SERVER_POLICY_OPERATIONS", "")
+	t.Setenv("DIRECTORY_DAEMON_RECONCILER_POLICY_OPERATIONS", "")
+
+	_, err := LoadConfig()
+	require.NoError(t, err)
+}
+
 // The live setting whose name is closest to a retired one must still load:
 // policy_evaluation.enabled is not policy.enabled.
 func TestLoadConfig_PolicyEvaluationIsNotTheRetiredEnabled(t *testing.T) {
