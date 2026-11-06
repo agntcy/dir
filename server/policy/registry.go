@@ -568,7 +568,7 @@ func (r *Registry) Decide(
 
 	ok, msgs, _, err := r.apply(ctx, op, input, func(ctx context.Context, v Validator) (bool, []string, error) {
 		return validateOperation(ctx, record, input, v)
-	})
+	}, nil)
 
 	return ok, msgs, err
 }
@@ -588,26 +588,36 @@ func (r *Registry) DecidePull(ctx context.Context, recordCID string,
 		return true, nil, "", nil
 	}
 
-	var verdicts map[string]*policyv1.Verdict
+	var (
+		verdicts map[string]*policyv1.Verdict
+		skip     func(operationPolicy) bool
+	)
 
 	if r.readsVerdicts(policyconfig.OpPull) {
 		read, err := r.readVerdicts(recordCID)
-		if err != nil {
-			// A check nothing would act on cannot change the answer, so a
-			// failure to make it is reported and the record served. Shadow
-			// is for learning what a policy would do, not for failing reads
-			// while finding out.
-			if !r.actsAt(policyconfig.OpPull) {
-				logger.Warn("Could not read the verdicts a pull policy checks, and none is enforcing",
-					"cid", recordCID, "error", err)
 
-				return true, nil, "", nil
-			}
+		switch {
+		case err == nil:
+			verdicts = read
 
+		case r.actsOnVerdictsAt(policyconfig.OpPull):
 			return false, nil, "", err
-		}
 
-		verdicts = read
+		default:
+			// Nothing that would act reads them, so the failure changes no
+			// answer and the read goes on without them. Shadow is for
+			// learning what a policy would do, not for failing reads while
+			// finding out.
+			//
+			// Only the policies that read them drop out. The rest still
+			// decide: one that asked nothing of the verdict store refuses
+			// what it would have refused anyway, and a store that is down
+			// must not be a way to be served a record a policy excludes.
+			logger.Warn("Could not read the verdicts a pull policy checks, and none that reads them is enforcing",
+				"cid", recordCID, "error", err)
+
+			skip = func(p operationPolicy) bool { return p.verdicts.reads() }
+		}
 	}
 
 	input := pullInput(recordCID, verdicts)
@@ -615,16 +625,21 @@ func (r *Registry) DecidePull(ctx context.Context, recordCID string,
 	ok, msgs, refused, err := r.apply(ctx, policyconfig.OpPull, input,
 		func(ctx context.Context, v Validator) (bool, []string, error) {
 			return validateOperationByCID(ctx, input, v)
-		})
+		}, skip)
 
 	return ok, msgs, refused, err
 }
 
-// actsAt reports whether a refusal at op would change any answer: whether
-// some policy there is enforcing, the backfill latch having had its say.
-func (r *Registry) actsAt(op string) bool {
+// actsOnVerdictsAt reports whether verdicts that could not be read would
+// change any answer at op: whether some policy there both reads them and is
+// enforcing, the backfill latch having had its say.
+//
+// Reading them is half the test, not a detail. A policy that reads no verdict
+// decides the same whether or not the store answered, so letting it vote here
+// would fail a read closed over a question it never asked.
+func (r *Registry) actsOnVerdictsAt(op string) bool {
 	for _, p := range r.byOp[op] {
-		if p.validator == nil || p.mode != policyconfig.ModeEnforce {
+		if p.validator == nil || p.mode != policyconfig.ModeEnforce || !p.verdicts.reads() {
 			continue
 		}
 
@@ -641,6 +656,9 @@ func (r *Registry) actsAt(op string) bool {
 // run is how one policy is evaluated, which differs by what the caller has:
 // a record to measure and time out against, or only a CID.
 //
+// skip, when set, leaves out the policies the caller cannot evaluate. The
+// operation is then decided by the rest rather than abandoned.
+//
 // The third return is the mode of the strictest refusal: ModeEnforce when an
 // enforcing policy refused, ModeShadow when only a shadow one would have, and
 // empty when every policy passed. A shadow refusal changes no answer, so it
@@ -651,6 +669,7 @@ func (r *Registry) apply(
 	op string,
 	input *policyv1.OperationInput,
 	run func(context.Context, Validator) (bool, []string, error),
+	skip func(operationPolicy) bool,
 ) (bool, []string, policyconfig.Mode, error) {
 	var (
 		all     []string
@@ -659,6 +678,12 @@ func (r *Registry) apply(
 
 	for _, p := range r.byOp[op] {
 		if p.validator == nil || p.mode == policyconfig.ModeOff {
+			continue
+		}
+
+		// A policy the caller cannot supply the input for, which at pull is
+		// one reading a verdict store that did not answer.
+		if skip != nil && skip(p) {
 			continue
 		}
 
@@ -672,6 +697,18 @@ func (r *Registry) apply(
 
 		ok, msgs, err := run(ctx, p.validator)
 		if err != nil {
+			// Only a policy that would act can fail the operation. One in
+			// shadow is being watched, not obeyed, so its own failure is
+			// reported and the operation decided by the rest: a policy
+			// being trialled must not be able to break what it is not yet
+			// trusted to decide.
+			if mode != policyconfig.ModeEnforce {
+				logger.Warn("Shadow policy could not decide the record; ignoring it",
+					"policy_id", p.id, "op", op, "error", err)
+
+				continue
+			}
+
 			return false, nil, "", fmt.Errorf("decide record with policy %q: %w", p.id, err)
 		}
 

@@ -7,7 +7,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	ansresolver "github.com/agntcy/dir/client/utils/identity/resolvers/ans"
 	"github.com/agntcy/dir/reconciler/recordevents"
@@ -25,6 +24,7 @@ import (
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	policy "github.com/agntcy/dir/server/policy/config"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	"github.com/agntcy/dir/utils/env"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/viper"
@@ -120,7 +120,7 @@ type Config struct {
 func LoadConfig() (*Config, error) {
 	v := viper.NewWithOptions(
 		viper.KeyDelimiter("."),
-		viper.EnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_")),
+		viper.EnvKeyReplacer(env.KeyReplacer),
 	)
 
 	v.SetConfigName(DefaultConfigName)
@@ -405,6 +405,14 @@ func LoadConfig() (*Config, error) {
 		mapstructure.StringToTimeDurationHookFunc(),
 		mapstructure.StringToSliceHookFunc(","),
 	)
+
+	// The reconciler reads the server's policy block, so it inherited the
+	// settings removed from it. It never enforced reads, so carrying one is
+	// less costly here than on the server, but it is equally dead and the
+	// operator is equally entitled to be told.
+	if err := policy.CheckRetired(v, policy.KeyLocation{EnvPrefix: DefaultEnvPrefix}); err != nil {
+		return nil, fmt.Errorf("invalid reconciler config: %w", err)
+	}
 
 	config := &Config{}
 	if err := v.Unmarshal(config, viper.DecodeHook(decodeHooks)); err != nil {
