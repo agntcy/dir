@@ -81,6 +81,8 @@ policy:
 
 `refresh_interval` is how often the server rechecks which version of each evaluation policy is in force, and whether its verdicts yet cover the catalogue. A policy's version comes from its content: the reconciler registers the version of each policy it runs and the server follows it, so an edit to a policy needs no change to this configuration. It can also be set from the environment, as `DIRECTORY_SERVER_POLICY_REFRESH_INTERVAL` on the apiserver and `DIRECTORY_DAEMON_SERVER_POLICY_REFRESH_INTERVAL` on the daemon.
 
+`refresh_interval` and `policy.dir` are the only two settings in this block a variable can carry. The policies themselves are lists, and the block is what holds them, so a variable for `*_POLICY_OPERATIONS`, `*_POLICY_EVALUATIONS` or `*_POLICY` is refused at startup rather than applied — including when it is set but empty, which is what a template with a missing substitution leaves behind. An empty variable decoded to an empty list and replaced whatever the file configured, and over the block it emptied `policy.dir` and `refresh_interval` with it, so a node could start clean, report healthy, and serve everything it had been withholding. Write the policies in the configuration file.
+
 Everything else belongs to a policy. Each entry in `policy.operations` names the operations it decides, and carries its own [`mode`](dir-component-records-validation.md#modes):
 
 | Operation | Covers |
