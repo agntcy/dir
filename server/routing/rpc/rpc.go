@@ -17,6 +17,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var logger = logging.Logger("rpc")
@@ -70,8 +71,11 @@ type PullReferrerRequest struct {
 	Referrer  *ReferrerDescriptor
 }
 
+// PullReferrerResponse carries the referrer as protojson bytes, like PullResponse
+// carries the record. The msgpack codec cannot decode structpb.Value, which the
+// referrer's Data field uses, so the message itself must not cross the wire.
 type PullReferrerResponse struct {
-	Referrer *corev1.RecordReferrer
+	Data []byte
 }
 
 // NOTE: List-related types removed since List is a local-only operation
@@ -280,7 +284,7 @@ func (r *RPCAPI) PullReferrer(ctx context.Context, in *PullReferrerRequest, out 
 		return status.Errorf(codes.NotFound, "referrer %s not found for record %s", in.Referrer.Cid, in.RecordRef.GetCid())
 	}
 
-	blob, err := matched.Marshal()
+	blob, err := protojson.Marshal(matched)
 	if err != nil {
 		return status.Errorf(codes.Internal, "failed to marshal referrer: %v", err)
 	}
@@ -306,7 +310,7 @@ func (r *RPCAPI) PullReferrer(ctx context.Context, in *PullReferrerRequest, out 
 		"size", len(blob),
 	)
 
-	*out = PullReferrerResponse{Referrer: matched}
+	*out = PullReferrerResponse{Data: blob}
 
 	return nil
 }
@@ -431,7 +435,17 @@ func (s *Service) PullReferrer(
 		return nil, status.Errorf(codes.Internal, "failed to call remote peer: %v", err)
 	}
 
-	return resp.Referrer, nil
+	return referrerFromResponse(&resp)
+}
+
+// referrerFromResponse decodes the protojson referrer carried by a PullReferrer response.
+func referrerFromResponse(resp *PullReferrerResponse) (*corev1.RecordReferrer, error) {
+	referrer := &corev1.RecordReferrer{}
+	if err := protojson.Unmarshal(resp.Data, referrer); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to unmarshal referrer: %v", err)
+	}
+
+	return referrer, nil
 }
 
 func (s *Service) getReferrerStore() (types.ReferrerStoreAPI, error) {
