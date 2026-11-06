@@ -1595,6 +1595,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#migrating-from-policyenforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migrating from policy.enforcement
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#rolling-back" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2490,6 +2501,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#migrating-from-policyenforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migrating from policy.enforcement
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#rolling-back" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2705,7 +2727,7 @@
 <div class="highlight"><pre><span></span><code><span class="nt">policy</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">refresh_interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
 </code></pre></div>
-<p><code>refresh_interval</code> is how often the server rechecks which version of each evaluation policy is in force, and whether its verdicts yet cover the catalogue. A policy's version comes from its content: the reconciler registers the version of each policy it runs and the server follows it, so an edit to a policy needs no change to this configuration. It can also be set from the environment, as <code>DIRECTORY_SERVER_POLICY_REFRESH_INTERVAL</code>.</p>
+<p><code>refresh_interval</code> is how often the server rechecks which version of each evaluation policy is in force, and whether its verdicts yet cover the catalogue. A policy's version comes from its content: the reconciler registers the version of each policy it runs and the server follows it, so an edit to a policy needs no change to this configuration. It can also be set from the environment, as <code>DIRECTORY_SERVER_POLICY_REFRESH_INTERVAL</code> on the apiserver and <code>DIRECTORY_DAEMON_SERVER_POLICY_REFRESH_INTERVAL</code> on the daemon.</p>
 <p>Everything else belongs to a policy. Each entry in <code>policy.operations</code> names the operations it decides, and carries its own <a href="../dir-component-records-validation/#modes"><code>mode</code></a>:</p>
 <table>
 <thead>
@@ -2935,6 +2957,97 @@
 <li><strong>One policy at a time.</strong> A record is served only if the node's read policies are satisfied. The report is for the candidate alone, so add its count to what the other policies already hide to judge the whole.</li>
 </ul>
 <p>Run it with the same version as the node: opening the database applies the migrations it is missing, as starting the node does.</p>
+<h2 id="migrating-from-policyenforcement">Migrating from <code>policy.enforcement</code></h2>
+<p>Up to and including v1.8.0, a node enforced reads through a <code>policy.enforcement</code> block, which named the evaluation policies to require and set one mode for all reads at <code>search</code> and another at <code>fetch</code>. Policies at <code>pull</code> and <code>search</code> replace it: the condition that was implied by listing a policy is now written out, per read operation, with a mode of its own.</p>
+<p>A server carrying any of these settings refuses to start and names what to write instead, rather than starting without them. They were the only way to enforce reads, so ignoring them would leave an upgraded node reporting healthy while serving every record it used to withhold.</p>
+<p>This configuration:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">policy</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enforcement</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">search</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enforce</span>
+<span class="w">    </span><span class="nt">fetch</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shadow</span>
+<span class="w">    </span><span class="nt">policies</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">opa:require-license</span>
+<span class="w">    </span><span class="nt">refresh_interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
+</code></pre></div>
+<p>becomes:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">policy</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">refresh_interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
+<span class="w">  </span><span class="nt">operations</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cel</span>
+<span class="w">      </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;search&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">search-licensed-records</span>
+<span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enforce</span>
+<span class="w">      </span><span class="nt">expressions</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;verdicts[&quot;opa:require-license&quot;].compliant_and_current&#39;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cel</span>
+<span class="w">      </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;pull&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">serve-licensed-records</span>
+<span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shadow</span>
+<span class="w">      </span><span class="nt">expressions</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;verdicts[&quot;opa:require-license&quot;].compliant_and_current&#39;</span>
+</code></pre></div>
+<p>Point by point:</p>
+<table>
+<thead>
+<tr>
+<th>Removed</th>
+<th>Write instead</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enforcement.policies: [X]</code></td>
+<td><code>verdicts["X"].compliant_and_current</code> in the expressions of the policy that reads it. Several entries that all had to pass become one expression per line, since a policy's expressions are conjoined; several that any could satisfy become <code>\|\|</code>.</td>
+</tr>
+<tr>
+<td><code>enforcement.search: &lt;mode&gt;</code></td>
+<td>That <code>mode</code> on a policy at <code>op: ["search"]</code>.</td>
+</tr>
+<tr>
+<td><code>enforcement.fetch: &lt;mode&gt;</code></td>
+<td>That <code>mode</code> on a policy at <code>op: ["pull"]</code>. The operation is named <code>pull</code> throughout.</td>
+</tr>
+<tr>
+<td><code>enforcement.refresh_interval</code></td>
+<td><code>policy.refresh_interval</code>, one level up. From the environment, that is <code>*_POLICY_REFRESH_INTERVAL</code> in place of <code>*_POLICY_ENFORCEMENT_REFRESH_INTERVAL</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The environment variables that set these are refused the same way. The block is read in four places, each with its own prefix and its own place for it, and each refuses what it would have read:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>In the file</th>
+<th>From the environment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>apiserver</td>
+<td><code>policy.enforcement.*</code></td>
+<td><code>DIRECTORY_SERVER_POLICY_ENFORCEMENT_*</code></td>
+</tr>
+<tr>
+<td>daemon, for its server</td>
+<td><code>server.policy.enforcement.*</code></td>
+<td><code>DIRECTORY_DAEMON_SERVER_POLICY_ENFORCEMENT_*</code></td>
+</tr>
+<tr>
+<td>daemon, for its reconciler</td>
+<td><code>reconciler.policy.enforcement.*</code></td>
+<td><code>DIRECTORY_DAEMON_RECONCILER_POLICY_ENFORCEMENT_*</code></td>
+</tr>
+<tr>
+<td>reconciler on its own</td>
+<td><code>policy.enforcement.*</code></td>
+<td><code>RECONCILER_POLICY_ENFORCEMENT_*</code></td>
+</tr>
+</tbody>
+</table>
+<p>The reconciler is included because it is given the same policy block as the server, and the daemon appears twice because it configures both. The reconciler never decided reads, so a leftover there withheld nothing, but it is as dead as the others. A daemon carrying one in each is told about both at once.</p>
+<p>One metric was renamed with the operation: <code>dir_policy_gate_fetches_excluded_total</code> is now <code>dir_policy_gate_pulls_excluded_total</code>. Update dashboards and alerts that name it.</p>
+<p>Nothing about the verdicts changes, so a node that had completed its backfill keeps it: the policies are re-read and the records they cover are unchanged. Reads are decided the same way from the first request, with no second blackout.</p>
 <h2 id="rolling-back">Rolling Back</h2>
 <p>Set the affected policy's <code>mode</code> back to <code>shadow</code> or <code>off</code> and restart the server. Verdicts are kept. Reverting a policy file is an edit like any other: its records are hidden until they are evaluated under the restored rule.</p>
 <h2 id="auditing-excluded-records">Auditing Excluded Records</h2>
