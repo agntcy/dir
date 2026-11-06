@@ -13,6 +13,7 @@ import (
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/require"
 	"github.com/ugorji/go/codec"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -36,14 +37,16 @@ func TestPullReferrer_ResponseSurvivesMsgpack(t *testing.T) {
 	data, err := structpb.NewStruct(map[string]any{"algorithm": "ES256", "signature": "abc"})
 	require.NoError(t, err)
 
+	want := &corev1.RecordReferrer{
+		Type:        corev1.SignatureReferrerType,
+		ReferrerRef: &corev1.ReferrerRef{Cid: referrerCID},
+		Data:        data,
+	}
+
 	api := &RPCAPI{service: &Service{
-		store: &peerStore{present: true},
-		refStore: referrerStore{referrer: &corev1.RecordReferrer{
-			Type:        corev1.SignatureReferrerType,
-			ReferrerRef: &corev1.ReferrerRef{Cid: referrerCID},
-			Data:        data,
-		}},
-		gate: peerGate{servable: true},
+		store:    &peerStore{present: true},
+		refStore: referrerStore{referrer: want},
+		gate:     peerGate{servable: true},
 	}}
 
 	var out PullReferrerResponse
@@ -61,4 +64,9 @@ func TestPullReferrer_ResponseSurvivesMsgpack(t *testing.T) {
 	var got PullReferrerResponse
 	require.NoError(t, codec.NewDecoder(&wire, h).Decode(&got))
 	require.Equal(t, out, got)
+
+	// The receiving node decodes what the serving node held.
+	referrer, err := referrerFromResponse(&got)
+	require.NoError(t, err)
+	require.True(t, proto.Equal(want, referrer))
 }
