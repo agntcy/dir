@@ -5,6 +5,7 @@ package policy
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
@@ -331,4 +332,51 @@ func TestNewRegistry_LeavesPoliciesThatReadNoVerdictAlone(t *testing.T) {
 		Expressions: []string{`record.name != ""`},
 	}}, "")
 	require.NoError(t, err)
+}
+
+// failingValidator cannot decide anything, which is what a policy whose
+// provider is unreachable looks like from here.
+type failingValidator struct{}
+
+func (failingValidator) ValidateOperation(context.Context, *policyv1.OperationInput) (bool, []string, []string, error) {
+	return false, nil, nil, errors.New("policy provider unavailable")
+}
+
+func (failingValidator) ValidateEvaluation(context.Context, *policyv1.RecordState) (bool, []string, []string, error) {
+	return false, nil, nil, errors.New("policy provider unavailable")
+}
+
+// A policy in shadow is being watched, not obeyed, and that has to hold for
+// its failures as much as for its refusals: one that cannot decide is logged
+// and skipped, and the operation is settled by the policies that do act. The
+// same failure under enforce is the operation's failure.
+func TestDecide_OnlyAnEnforcingPolicyCanFailTheOperation(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		mode      policyconfig.Mode
+		wantError bool
+	}{
+		{policyconfig.ModeShadow, false},
+		{policyconfig.ModeEnforce, true},
+	} {
+		t.Run(string(tc.mode), func(t *testing.T) {
+			t.Parallel()
+
+			reg := With(policyconfig.OpPush, failingValidator{}, fakeValidator{valid: true})
+			reg.byOp[policyconfig.OpPush][0].mode = tc.mode
+
+			ok, _, err := reg.Decide(context.Background(), policyconfig.OpPush,
+				corev1.New(&typesv1alpha1.Record{Name: "test"}))
+
+			if tc.wantError {
+				require.Error(t, err)
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.True(t, ok, "the policy that could decide allowed the record")
+		})
+	}
 }

@@ -79,7 +79,7 @@ policy:
   refresh_interval: 30s
 ```
 
-`refresh_interval` is how often the server rechecks which version of each evaluation policy is in force, and whether its verdicts yet cover the catalogue. A policy's version comes from its content: the reconciler registers the version of each policy it runs and the server follows it, so an edit to a policy needs no change to this configuration. It can also be set from the environment, as `DIRECTORY_SERVER_POLICY_REFRESH_INTERVAL`.
+`refresh_interval` is how often the server rechecks which version of each evaluation policy is in force, and whether its verdicts yet cover the catalogue. A policy's version comes from its content: the reconciler registers the version of each policy it runs and the server follows it, so an edit to a policy needs no change to this configuration. It can also be set from the environment, as `DIRECTORY_SERVER_POLICY_REFRESH_INTERVAL` on the apiserver and `DIRECTORY_DAEMON_SERVER_POLICY_REFRESH_INTERVAL` on the daemon.
 
 Everything else belongs to a policy. Each entry in `policy.operations` names the operations it decides, and carries its own [`mode`](dir-component-records-validation.md#modes):
 
@@ -251,6 +251,68 @@ policy:
 - **One policy at a time.** A record is served only if the node's read policies are satisfied. The report is for the candidate alone, so add its count to what the other policies already hide to judge the whole.
 
 Run it with the same version as the node: opening the database applies the migrations it is missing, as starting the node does.
+
+## Migrating from `policy.enforcement`
+
+Up to and including v1.8.0, a node enforced reads through a `policy.enforcement` block, which named the evaluation policies to require and set one mode for all reads at `search` and another at `fetch`. Policies at `pull` and `search` replace it: the condition that was implied by listing a policy is now written out, per read operation, with a mode of its own.
+
+A server carrying any of these settings refuses to start and names what to write instead, rather than starting without them. They were the only way to enforce reads, so ignoring them would leave an upgraded node reporting healthy while serving every record it used to withhold.
+
+This configuration:
+
+```yaml
+policy:
+  enforcement:
+    search: enforce
+    fetch: shadow
+    policies:
+      - opa:require-license
+    refresh_interval: 30s
+```
+
+becomes:
+
+```yaml
+policy:
+  refresh_interval: 30s
+  operations:
+    - provider: cel
+      op: ["search"]
+      name: search-licensed-records
+      mode: enforce
+      expressions:
+        - 'verdicts["opa:require-license"].compliant_and_current'
+    - provider: cel
+      op: ["pull"]
+      name: serve-licensed-records
+      mode: shadow
+      expressions:
+        - 'verdicts["opa:require-license"].compliant_and_current'
+```
+
+Point by point:
+
+| Removed | Write instead |
+|---|---|
+| `enforcement.policies: [X]` | `verdicts["X"].compliant_and_current` in the expressions of the policy that reads it. Several entries that all had to pass become one expression per line, since a policy's expressions are conjoined; several that any could satisfy become `\|\|`. |
+| `enforcement.search: <mode>` | That `mode` on a policy at `op: ["search"]`. |
+| `enforcement.fetch: <mode>` | That `mode` on a policy at `op: ["pull"]`. The operation is named `pull` throughout. |
+| `enforcement.refresh_interval` | `policy.refresh_interval`, one level up. From the environment, that is `*_POLICY_REFRESH_INTERVAL` in place of `*_POLICY_ENFORCEMENT_REFRESH_INTERVAL`. |
+
+The environment variables that set these are refused the same way. The block is read in four places, each with its own prefix and its own place for it, and each refuses what it would have read:
+
+| Component | In the file | From the environment |
+|---|---|---|
+| apiserver | `policy.enforcement.*` | `DIRECTORY_SERVER_POLICY_ENFORCEMENT_*` |
+| daemon, for its server | `server.policy.enforcement.*` | `DIRECTORY_DAEMON_SERVER_POLICY_ENFORCEMENT_*` |
+| daemon, for its reconciler | `reconciler.policy.enforcement.*` | `DIRECTORY_DAEMON_RECONCILER_POLICY_ENFORCEMENT_*` |
+| reconciler on its own | `policy.enforcement.*` | `RECONCILER_POLICY_ENFORCEMENT_*` |
+
+The reconciler is included because it is given the same policy block as the server, and the daemon appears twice because it configures both. The reconciler never decided reads, so a leftover there withheld nothing, but it is as dead as the others. A daemon carrying one in each is told about both at once.
+
+One metric was renamed with the operation: `dir_policy_gate_fetches_excluded_total` is now `dir_policy_gate_pulls_excluded_total`. Update dashboards and alerts that name it.
+
+Nothing about the verdicts changes, so a node that had completed its backfill keeps it: the policies are re-read and the records they cover are unchanged. Reads are decided the same way from the first request, with no second blackout.
 
 ## Rolling Back
 
