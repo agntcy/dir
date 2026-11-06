@@ -700,6 +700,14 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 		return nil, fmt.Errorf("invalid server config: %w", err)
 	}
 
+	// Before the unmarshal, which is what would otherwise empty the block, so
+	// that the variable is named rather than left to a decoder error about a
+	// string where a list was expected — or, for the block itself, to nothing
+	// at all.
+	if err := policy.CheckFileOnly(policy.KeyLocation{EnvPrefix: DefaultEnvPrefix}); err != nil {
+		return nil, fmt.Errorf("invalid server config: %w", err)
+	}
+
 	config := &Config{}
 	if err := v.Unmarshal(config, viper.DecodeHook(decodeHooks)); err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)

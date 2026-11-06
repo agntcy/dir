@@ -414,6 +414,10 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("invalid reconciler config: %w", err)
 	}
 
+	if err := policy.CheckFileOnly(policy.KeyLocation{EnvPrefix: DefaultEnvPrefix}); err != nil {
+		return nil, fmt.Errorf("invalid reconciler config: %w", err)
+	}
+
 	config := &Config{}
 	if err := v.Unmarshal(config, viper.DecodeHook(decodeHooks)); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal configuration: %w", err)

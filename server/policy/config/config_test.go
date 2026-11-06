@@ -21,4 +21,10 @@ func TestConfigRefreshInterval(t *testing.T) {
 
 	require.Equal(t, DefaultRefreshInterval, (&Config{}).GetRefreshInterval())
 	require.Equal(t, time.Minute, (&Config{RefreshInterval: time.Minute}).GetRefreshInterval())
+
+	// Validate refuses a negative, but nothing on the serving path calls it,
+	// so the getter has to fall back rather than pass one on: the resolver
+	// reads this as an age to compare against, and negative makes every
+	// enforcement it holds stale on arrival.
+	require.Equal(t, DefaultRefreshInterval, (&Config{RefreshInterval: -time.Second}).GetRefreshInterval())
 }

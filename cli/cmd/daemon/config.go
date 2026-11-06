@@ -321,6 +321,13 @@ func loadConfig() (*DaemonConfig, error) {
 		return nil, err
 	}
 
+	// No file-naming branch here: a variable is the only way one of these is
+	// set, so there is never a file to send the operator to.
+	if err := policyconfig.CheckFileOnly(policyBlocks...); err != nil {
+		//nolint:wrapcheck // the error is complete, and the only prefix available here would be wrong
+		return nil, err
+	}
+
 	cfg := &DaemonConfig{}
 	if err := v.Unmarshal(cfg, viper.DecodeHook(decodeHooks)); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
