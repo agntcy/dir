@@ -305,12 +305,6 @@ func loadConfig() (*DaemonConfig, error) {
 		{KeyPrefix: "reconciler.", EnvPrefix: DefaultEnvPrefix},
 	}
 
-	// No file to name: a variable is the whole of what is wrong.
-	if err := policyconfig.CheckEnvOnly(policyBlocks...); err != nil {
-		//nolint:wrapcheck // the error is complete, and names the variable
-		return nil, err
-	}
-
 	if err := policyconfig.CheckRetired(v, policyBlocks...); err != nil {
 		// Which file to edit is the one thing the error cannot say and the
 		// callers say nothing about either. It is worth saying only about a

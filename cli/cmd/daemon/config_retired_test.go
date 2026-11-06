@@ -121,36 +121,6 @@ server:
 	assert.Contains(t, err.Error(), path)
 }
 
-// An empty variable for a list of policies used to empty the list: the
-// configured policies went, the daemon started, and nothing said so.
-func TestLoadConfig_RefusesAVariableForAListOfPolicies(t *testing.T) {
-	for _, env := range []string{
-		"DIRECTORY_DAEMON_SERVER_POLICY_OPERATIONS",
-		"DIRECTORY_DAEMON_SERVER_POLICY_EVALUATIONS",
-		"DIRECTORY_DAEMON_SERVER_POLICY",
-		"DIRECTORY_DAEMON_RECONCILER_POLICY_OPERATIONS",
-	} {
-		t.Run(env, func(t *testing.T) {
-			withConfigFile(t, `
-server:
-  listen_address: "localhost:8888"
-  policy:
-    operations:
-      - provider: cel
-        name: trusted
-        op: ["pull"]
-        mode: enforce
-        expressions: ['true']
-`)
-			t.Setenv(env, "")
-
-			_, err := loadConfig()
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), env)
-		})
-	}
-}
-
 // The retired refresh_interval sends the operator one level up, and a
 // variable is where theirs was. Viper reads a variable only for a key it
 // already knows, and this one is in neither the embedded config nor the

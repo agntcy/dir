@@ -410,12 +410,7 @@ func LoadConfig() (*Config, error) {
 	// settings removed from it. It never enforced reads, so carrying one is
 	// less costly here than on the server, but it is equally dead and the
 	// operator is equally entitled to be told.
-	policyBlock := policy.KeyLocation{EnvPrefix: DefaultEnvPrefix}
-	if err := policy.CheckEnvOnly(policyBlock); err != nil {
-		return nil, fmt.Errorf("invalid reconciler config: %w", err)
-	}
-
-	if err := policy.CheckRetired(v, policyBlock); err != nil {
+	if err := policy.CheckRetired(v, policy.KeyLocation{EnvPrefix: DefaultEnvPrefix}); err != nil {
 		return nil, fmt.Errorf("invalid reconciler config: %w", err)
 	}
 
