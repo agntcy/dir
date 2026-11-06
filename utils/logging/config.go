@@ -5,8 +5,8 @@ package logging
 
 import (
 	"fmt"
-	"strings"
 
+	"github.com/agntcy/dir/utils/env"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
@@ -30,7 +30,7 @@ type Config struct {
 func LoadConfig() (*Config, error) {
 	v := viper.NewWithOptions(
 		viper.KeyDelimiter("."),
-		viper.EnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_")),
+		viper.EnvKeyReplacer(env.KeyReplacer),
 	)
 
 	v.SetEnvPrefix(DefaultEnvPrefix)

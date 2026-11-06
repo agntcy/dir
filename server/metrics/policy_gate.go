@@ -28,8 +28,7 @@ type RecordCounter interface {
 // PolicyGate reports what the content-policy gate excludes and, in shadow
 // mode, what it would: the indexed records searches leave out, counted at
 // each scrape, and the reads by CID the pull policies refuse. It is the
-// gate's
-// types.PolicyGateObserver.
+// gate's types.PolicyGateObserver.
 type PolicyGate struct {
 	enforcement func() types.PolicyEnforcement
 	records     RecordCounter

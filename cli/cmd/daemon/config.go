@@ -5,6 +5,7 @@ package daemon
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -30,7 +31,9 @@ import (
 	synctask "github.com/agntcy/dir/reconciler/tasks/sync"
 	serverconfig "github.com/agntcy/dir/server/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 	storeconfig "github.com/agntcy/dir/server/store/oci/config"
+	"github.com/agntcy/dir/utils/env"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
@@ -151,6 +154,13 @@ func registerServerDefaults(v *viper.Viper) {
 
 	_ = v.BindEnv("server.policy.dir")
 	v.SetDefault("server.policy.dir", "policies")
+
+	// Bound although nothing defaults it, because viper reads a variable
+	// only for a key it already knows, and this one is absent from the
+	// embedded config. Unbound, the variable the migration from
+	// policy.enforcement.refresh_interval sends an operator to would be
+	// read by the apiserver, which binds it, and silently ignored here.
+	_ = v.BindEnv("server.policy.refresh_interval")
 }
 
 func registerReconcilerDefaults(v *viper.Viper) {
@@ -264,7 +274,7 @@ var defaultConfigYAML string
 func loadConfig() (*DaemonConfig, error) {
 	v := viper.NewWithOptions(
 		viper.KeyDelimiter("."),
-		viper.EnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_")),
+		viper.EnvKeyReplacer(env.KeyReplacer),
 	)
 
 	v.SetConfigType("yaml")
@@ -286,6 +296,30 @@ func loadConfig() (*DaemonConfig, error) {
 		mapstructure.StringToTimeDurationHookFunc(),
 		mapstructure.StringToSliceHookFunc(","),
 	)
+
+	// The daemon holds two copies of the policy block, the server's and the
+	// reconciler's, and reads both with its own environment prefix: neither
+	// half of either location can be borrowed from another loader.
+	policyBlocks := []policyconfig.KeyLocation{
+		{KeyPrefix: "server.", EnvPrefix: DefaultEnvPrefix},
+		{KeyPrefix: "reconciler.", EnvPrefix: DefaultEnvPrefix},
+	}
+
+	if err := policyconfig.CheckRetired(v, policyBlocks...); err != nil {
+		// Which file to edit is the one thing the error cannot say and the
+		// callers say nothing about either. It is worth saying only about a
+		// setting the file carries: the daemon writes daemon.config.yaml on
+		// first start, so there is nearly always a file to name, and naming
+		// it for a variable's mistake sends the operator to edit a config
+		// the key is not in.
+		var refused *policyconfig.RetiredError
+		if source := v.ConfigFileUsed(); source != "" && errors.As(err, &refused) && refused.InFile {
+			return nil, fmt.Errorf("%s: %w", source, err)
+		}
+
+		//nolint:wrapcheck // the error is complete, and the only prefix available here would be wrong
+		return nil, err
+	}
 
 	cfg := &DaemonConfig{}
 	if err := v.Unmarshal(cfg, viper.DecodeHook(decodeHooks)); err != nil {

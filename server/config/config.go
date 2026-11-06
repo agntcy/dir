@@ -19,6 +19,7 @@ import (
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
+	"github.com/agntcy/dir/utils/env"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
@@ -385,7 +386,7 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 
 	v := viper.NewWithOptions(
 		viper.KeyDelimiter("."),
-		viper.EnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_")),
+		viper.EnvKeyReplacer(env.KeyReplacer),
 	)
 
 	if options.file != "" {
@@ -694,6 +695,10 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 		mapstructure.StringToTimeDurationHookFunc(),
 		mapstructure.StringToSliceHookFunc(","),
 	)
+
+	if err := policy.CheckRetired(v, policy.KeyLocation{EnvPrefix: DefaultEnvPrefix}); err != nil {
+		return nil, fmt.Errorf("invalid server config: %w", err)
+	}
 
 	config := &Config{}
 	if err := v.Unmarshal(config, viper.DecodeHook(decodeHooks)); err != nil {
