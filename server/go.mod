@@ -14,7 +14,7 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 v1.6.8
 
 require (
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261020093159-f1c8d2a654e5.2
 	buf.build/go/protovalidate v1.4.0
 	cel.dev/cel-go v0.32.0
 	github.com/agntcy/dir/api v1.8.0
@@ -45,6 +45,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/spiffe/go-spiffe/v2 v2.9.0
 	github.com/stretchr/testify v1.12.1
+	github.com/ugorji/go/codec v1.3.1
 	golang.org/x/crypto v0.58.0
 	golang.org/x/time v0.16.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20261026165753-2ffab32bce7e
@@ -193,7 +194,6 @@ require (
 	github.com/stretchr/objx v0.5.3 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tchap/go-patricia/v2 v2.3.3 // indirect
-	github.com/ugorji/go/codec v1.3.1 // indirect
 	github.com/valyala/fastjson v1.6.10 // indirect
 	github.com/vektah/gqlparser/v2 v2.5.37 // indirect
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
