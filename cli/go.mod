@@ -57,7 +57,7 @@ require (
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v3 v3.0.1
 	oras.land/oras-go/v2 v2.7.0
-	zotregistry.dev/zot/v2 v2.1.22
+	zotregistry.dev/zot/v2 v2.1.23
 )
 
 require (
