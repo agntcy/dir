@@ -17,7 +17,7 @@ require (
 	github.com/agntcy/dir/api v1.8.0
 	github.com/agntcy/dir/utils v1.8.0
 	github.com/agntcy/oasf-sdk/pkg v1.1.0
-	github.com/fxamacker/cbor/v2 v2.9.6
+	github.com/fxamacker/cbor/v2 v2.10.0
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v2 v2.1.7
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
