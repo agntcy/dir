@@ -34,7 +34,7 @@ var scannerPackages = []scannerPackage{
 		binary: "skill-scanner",
 		pkg:    "cisco-ai-skill-scanner",
 		// renovate: datasource=pypi depName=cisco-ai-skill-scanner versioning=pep440
-		version: "2.3.1",
+		version: "2.3.2",
 	},
 	{
 		binary: "a2a-scanner",
