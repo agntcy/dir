@@ -214,8 +214,8 @@ github.com/agntcy/dir-runtime/store v1.5.0 h1:rC7hLZD2JO0OlItdk6c71Tv1CH3eSWXfRs
 github.com/agntcy/dir-runtime/store v1.5.0/go.mod h1:cxZW7sNUuXOtaoG+hMrtOkg492bVMv+I0FIhy7gmJdc=
 github.com/agntcy/dir-runtime/utils v1.5.0 h1:9Ik4ZocD0DYArUtDCdoce3J9MrNdB5Mm7q7K0RAS30o=
 github.com/agntcy/dir-runtime/utils v1.5.0/go.mod h1:y7IuugpFBuDDSfcEYvG3B7OfWDpUoqWcuOLDiqq1AhQ=
-github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260910081500-f0c6172a010a h1:PmcWcS60Q3QBRiAFlWMyUKTMLpVd7BbLtJ3tyfpJgK4=
-github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260910081500-f0c6172a010a/go.mod h1:yKdXbsWbDhZ7lmc7zsd/VJSjYIbFsoSTWSnhTxdAOzU=
+github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20261104144808-9f384c45b81f h1:IZIhxdEVux8dUYOHb2YzGM2TgO159SkJJALFObVA97A=
+github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20261104144808-9f384c45b81f/go.mod h1:yKdXbsWbDhZ7lmc7zsd/VJSjYIbFsoSTWSnhTxdAOzU=
 github.com/alecthomas/chroma v0.10.0 h1:7XDcGkCQopCNKjZHfYrNLraA+M7e0fMiJ/Mfikbfjek=
 github.com/alecthomas/chroma v0.10.0/go.mod h1:jtJATyUxlIORhUOFNA9NZDWGAQ8wpxQQqNSB4rjA/1s=
 github.com/alexbrainman/sspi v0.0.0-20250919150558-7d374ff0d59e h1:4dAU9FXIyQktpoUAgOJK3OTFc/xug0PCXYCqU0FgDKI=
