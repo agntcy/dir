@@ -53,12 +53,16 @@ type Resolver struct {
 	refreshedAt atomic.Int64
 	refreshing  atomic.Bool
 
-	// mu serializes refreshes and guards warned.
+	// mu serializes refreshes and guards warned and versions.
 	mu sync.Mutex
 
 	// warned holds the policies already reported as registered by no
 	// evaluator.
 	warned map[string]bool
+
+	// versions holds the last version seen for each registered policy, so a
+	// change can be reported when it happens.
+	versions map[string]string
 }
 
 // NewResolver resolves the enforcement once, so the server does not start
@@ -81,6 +85,7 @@ func NewResolver(
 		interval:    interval,
 		now:         time.Now,
 		warned:      map[string]bool{},
+		versions:    map[string]string{},
 	}
 
 	if err := resolver.Refresh(); err != nil {
@@ -232,6 +237,15 @@ func (r *Resolver) resolve(id string) (types.VersionedPolicy, bool, error) {
 
 		return types.VersionedPolicy{ID: id}, false, nil
 	}
+
+	// A change of version is reported once, when it is first seen; the first
+	// version seen is not a change.
+	if previous, seen := r.versions[id]; seen && previous != version {
+		logger.Info("Policy version changed; records are re-evaluated under the new version before they are served again",
+			"policy_id", id, "previous_version", previous, "version", version)
+	}
+
+	r.versions[id] = version
 
 	policy := types.VersionedPolicy{ID: id, Version: version}
 
