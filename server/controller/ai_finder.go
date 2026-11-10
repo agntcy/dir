@@ -147,16 +147,16 @@ func (c *aiFinderController) GetWellKnownCatalog(ctx context.Context, _ *catalog
 			Entries: []*catalogv1.CatalogEntry{
 				c.nestedCatalogEntry("a2a", "A2A Agents",
 					"Agents that publish an A2A agent card.",
-					catalogv1.ProtocolA2ACardJsonMediaType),
+					catalogv1.ProtocolA2ACardJsonMediaType, "a2a"),
 				c.nestedCatalogEntry("mcp", "MCP Servers",
 					"Agents that expose an MCP server connection.",
-					catalogv1.ProtocolMCPCardJsonMediaType),
+					catalogv1.ProtocolMCPCardJsonMediaType, "mcp"),
 				c.nestedCatalogEntry("skill", "Agent Skills",
 					"Agents that publish a reusable Agent Skill definition as SKILL.md.",
-					catalogv1.ProtocolAgentSkillsMdMediaType),
+					catalogv1.ProtocolAgentSkillsMdMediaType, "skills"),
 				c.nestedCatalogEntry("skill-bundle", "Agent Skill Bundles",
 					"Agents that publish an Agent Skill directory bundled as .gzip.",
-					catalogv1.ProtocolAgentSkillsBundleMediaType),
+					catalogv1.ProtocolAgentSkillsBundleMediaType, "skills"),
 			},
 		},
 	}, nil
@@ -324,12 +324,13 @@ func (c *aiFinderController) catalogHost() *catalogv1.HostInfo {
 }
 
 // nestedCatalogEntry is a well-known pointer at a filtered GET /v1/catalog document.
-func (c *aiFinderController) nestedCatalogEntry(name, displayName, description, mediaType string) *catalogv1.CatalogEntry {
+func (c *aiFinderController) nestedCatalogEntry(name, displayName, description, mediaType, tag string) *catalogv1.CatalogEntry {
 	return &catalogv1.CatalogEntry{
 		Identifier:  catalogv1.GetCatalogUrnFor("catalog", name),
 		DisplayName: displayName,
 		Type:        catalogv1.CatalogMediaType,
 		Description: new(description),
+		Tags:        []string{tag},
 		Artifact: &catalogv1.CatalogEntry_Url{
 			Url: c.collectionURL(mediaType),
 		},

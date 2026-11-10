@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **API**: `GET /v1/catalog` returns an AI Catalog document for a filtered page of entries, used by nested-catalog URLs in the well-known document (#2448)
 - **Search**: `RecordSummary` carries `trusted`, `verified` and an optional `safe`, matching the `TRUSTED`, `VERIFIED` and `SCAN_SAFE` filters and the AI Catalog badges; `safe` is unset when no scanner reached a verdict (#2399)
+- **API**: nested-catalog entries in the well-known AI Catalog are tagged with the content they list: `a2a`, `mcp` or `skills` (#2492)
 
 ### Changed
 - **Client**: **BREAKING**: `resolvers.Resolver.Resolve` now accepts `opts ...resolvers.Option`. External resolver implementations must add this variadic parameter; implementations that do not need claim input or validity output may ignore it. Existing call sites remain compatible (#2292)

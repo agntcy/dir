@@ -561,11 +561,14 @@ func TestWellKnown(t *testing.T) {
 	assert.Equal(t, "https://ai-catalog.example", catalog.GetHost().GetIdentifier())
 	require.Len(t, catalog.GetEntries(), 4)
 
-	expected := map[string]struct{ filter, identifier string }{
-		"A2A Agents":          {catalogv1.ProtocolA2ACardJsonMediaType, "urn:air:org.agntcy:catalog:a2a"},
-		"MCP Servers":         {catalogv1.ProtocolMCPCardJsonMediaType, "urn:air:org.agntcy:catalog:mcp"},
-		"Agent Skills":        {catalogv1.ProtocolAgentSkillsMdMediaType, "urn:air:org.agntcy:catalog:skill"},
-		"Agent Skill Bundles": {catalogv1.ProtocolAgentSkillsBundleMediaType, "urn:air:org.agntcy:catalog:skill-bundle"},
+	expected := map[string]struct {
+		filter, identifier string
+		tags               []string
+	}{
+		"A2A Agents":          {catalogv1.ProtocolA2ACardJsonMediaType, "urn:air:org.agntcy:catalog:a2a", []string{"a2a"}},
+		"MCP Servers":         {catalogv1.ProtocolMCPCardJsonMediaType, "urn:air:org.agntcy:catalog:mcp", []string{"mcp"}},
+		"Agent Skills":        {catalogv1.ProtocolAgentSkillsMdMediaType, "urn:air:org.agntcy:catalog:skill", []string{"skills"}},
+		"Agent Skill Bundles": {catalogv1.ProtocolAgentSkillsBundleMediaType, "urn:air:org.agntcy:catalog:skill-bundle", []string{"skills"}},
 	}
 
 	for _, entry := range catalog.GetEntries() {
@@ -573,6 +576,7 @@ func TestWellKnown(t *testing.T) {
 		require.True(t, ok, "unexpected nested catalog %q", entry.GetDisplayName())
 		assert.Equal(t, catalogv1.CatalogMediaType, entry.GetType())
 		assert.Equal(t, want.identifier, entry.GetIdentifier())
+		assert.Equal(t, want.tags, entry.GetTags())
 
 		nestedURL, err := url.Parse(entry.GetUrl())
 		require.NoError(t, err)
