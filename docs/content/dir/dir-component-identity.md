@@ -494,3 +494,9 @@ on verifies them again. `stale_grace` unset means the default `24h`; `0` keeps n
   [Unreachable subjects](#unreachable-subjects): seven days, or `ans.stale_grace` for `ans://`,
   which an operator sets to `0` to fail closed.
 - Keys are fetched with an SSRF-safe client, because the URLs come from record data.
+
+## Experimental AGNTCY verification
+
+For opt-in `agntcy://` subjects, see [AGNTCY Identity Claims](dir-component-identity-agntcy.md).
+This integration uses an unreleased verifier and draft HTTP/JWS protocol; the page
+lists prerequisites, trust configuration and required refresh scheduling.

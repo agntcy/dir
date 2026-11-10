@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	agntcyresolver "github.com/agntcy/dir/client/utils/identity/resolvers/agntcy"
 	ansresolver "github.com/agntcy/dir/client/utils/identity/resolvers/ans"
 )
 
@@ -62,6 +63,9 @@ type Config struct {
 	// Service. Off unless enabled; an ans:// claim then fails as an unsupported
 	// scheme.
 	ANS ANSConfig `json:"ans" mapstructure:"ans"`
+
+	// AGNTCY configures the experimental external identity verifier.
+	AGNTCY agntcyresolver.Config `json:"agntcy,omitzero" mapstructure:"agntcy"`
 }
 
 // ANSConfig is the ans:// block: the switch, the task's own grace for ans://
@@ -127,4 +131,18 @@ func (c *Config) trustDomains() map[string]string {
 	}
 
 	return domains
+}
+
+// validateAGNTCY rejects schedules that leave results stale between runs.
+func (c *Config) validateAGNTCY() error {
+	if c.AGNTCY.VerifierURL == "" {
+		return nil
+	}
+
+	age := c.AGNTCY.GetMaxVerificationAge()
+	if c.GetInterval() <= 0 || c.GetInterval() >= age {
+		return fmt.Errorf("identity.interval must be positive and less than identity.agntcy.max_verification_age (%s), got %s", age, c.GetInterval())
+	}
+
+	return nil
 }

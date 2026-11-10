@@ -293,7 +293,7 @@ type countingResolver struct {
 	calls int
 }
 
-func (c *countingResolver) Resolve(context.Context, string, []byte) ([]crypto.PublicKey, error) {
+func (c *countingResolver) Resolve(context.Context, string, []byte, ...resolvers.Option) ([]crypto.PublicKey, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -1070,7 +1070,7 @@ type interruptingResolver struct {
 	cancel context.CancelFunc
 }
 
-func (r *interruptingResolver) Resolve(context.Context, string, []byte) ([]crypto.PublicKey, error) {
+func (r *interruptingResolver) Resolve(context.Context, string, []byte, ...resolvers.Option) ([]crypto.PublicKey, error) {
 	r.cancel()
 
 	return nil, fmt.Errorf("lookup: %w", context.Canceled)
@@ -1172,6 +1172,7 @@ func TestNetworkResolversServeEveryScheme(t *testing.T) {
 	require.NoError(t, err)
 
 	set = set.with(clientidentity.SchemeSPIFFE, &countingResolver{}, staleGrace)
+	set[clientidentity.SchemeAGNTCY] = schemeResolver{resolver: &claimAuthority{}, grace: time.Hour, claimAware: true}
 
 	for _, scheme := range clientidentity.Schemes() {
 		assert.NotNil(t, set[scheme].resolver, scheme)
@@ -1179,7 +1180,14 @@ func TestNetworkResolversServeEveryScheme(t *testing.T) {
 	}
 
 	cached := set.cached()
+
 	for _, scheme := range clientidentity.Schemes() {
+		if scheme == clientidentity.SchemeAGNTCY {
+			assert.Same(t, set[scheme].resolver, cached[scheme].resolver)
+
+			continue
+		}
+
 		assert.IsType(t, &cachedResolver{}, cached[scheme].resolver, scheme)
 	}
 }

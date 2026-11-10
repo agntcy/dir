@@ -13,6 +13,9 @@ import (
 	"context"
 	"crypto"
 	"errors"
+	"time"
+
+	identityv1 "github.com/agntcy/dir/api/identity/v1"
 )
 
 // ErrNoKeys is returned when a subject publishes no usable public key.
@@ -60,7 +63,36 @@ type Resolver interface {
 	// Resolve returns at least one key, or an error. certificate is the
 	// claim's DER-encoded X.509 certificate, empty when the claim has none;
 	// only SPIFFE and ANS resolution read it.
-	Resolve(ctx context.Context, subject string, certificate []byte) ([]crypto.PublicKey, error)
+	Resolve(ctx context.Context, subject string, certificate []byte, opts ...Option) ([]crypto.PublicKey, error)
+}
+
+// Options carries optional record-specific input and an output validity bound.
+// Resolvers that need only subject keys may ignore these options.
+type Options struct {
+	Claim      *identityv1.Claim
+	ValidUntil *time.Time
+}
+
+type Option func(*Options)
+
+// WithClaim supplies the complete signed claim to a record-aware resolver.
+func WithClaim(claim *identityv1.Claim) Option {
+	return func(o *Options) { o.Claim = claim }
+}
+
+// WithValidUntil receives the deadline of accepted evidence, when bounded.
+func WithValidUntil(until *time.Time) Option {
+	return func(o *Options) { o.ValidUntil = until }
+}
+
+// ApplyOptions collects the options for a resolution request.
+func ApplyOptions(opts ...Option) Options {
+	var out Options
+	for _, opt := range opts {
+		opt(&out)
+	}
+
+	return out
 }
 
 // Fetcher retrieves a document over HTTPS. safefetch.Client implements it.

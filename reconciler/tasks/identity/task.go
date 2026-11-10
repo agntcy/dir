@@ -20,6 +20,8 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	clientidentity "github.com/agntcy/dir/client/utils/identity"
+	keyresolvers "github.com/agntcy/dir/client/utils/identity/resolvers"
+	agntcyresolver "github.com/agntcy/dir/client/utils/identity/resolvers/agntcy"
 	ansresolver "github.com/agntcy/dir/client/utils/identity/resolvers/ans"
 	spifferesolver "github.com/agntcy/dir/client/utils/identity/resolvers/spiffe"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
@@ -109,6 +111,15 @@ func (t *Task) Run(ctx context.Context) error {
 	started := time.Now()
 
 	t.unpinnedKeyWarned = false
+	if t.config.AGNTCY.VerifierURL != "" {
+		authority, err := agntcyresolver.New(t.config.AGNTCY, nil)
+		if err != nil {
+			return fmt.Errorf("reload AGNTCY verifier configuration: %w", err)
+		}
+
+		t.network[clientidentity.SchemeAGNTCY] = schemeResolver{resolver: authority, grace: t.config.AGNTCY.GetMaxVerificationAge(), claimAware: true}
+	}
+
 	t.network.forget()
 
 	resolvers := t.network.with(clientidentity.SchemeSPIFFE, spifferesolver.New(t.loadTrustBundles()), staleGrace).cached()
@@ -316,9 +327,15 @@ func (t *Task) verify(ctx context.Context, resolvers resolverSet, cid, expected 
 			continue
 		}
 
-		err := t.verifyClaim(ctx, resolvers, cid, expected, claim)
+		until, err := t.verifyClaim(ctx, resolvers, cid, expected, claim)
 		if err == nil {
+			var validUntil *time.Time
+			if !until.IsZero() {
+				validUntil = &until
+			}
+
 			return &gormdb.IdentityClaim{
+				ValidUntil: validUntil,
 				RecordCID:  cid,
 				Subject:    expected,
 				Status:     types.ClaimStatusVerified,
@@ -376,14 +393,14 @@ func oneLine(text string) string {
 // verifyClaim looks up the current keys of the claim's subject and verifies the
 // claim against them. The checks that need no key come first, so a claim that
 // cannot verify costs no lookup.
-func (t *Task) verifyClaim(ctx context.Context, resolvers resolverSet, cid, expected string, claim *identityv1.Claim) error {
+func (t *Task) verifyClaim(ctx context.Context, resolvers resolverSet, cid, expected string, claim *identityv1.Claim) (time.Time, error) {
 	if err := clientidentity.Check(claim, cid, expected); err != nil {
-		return fmt.Errorf("check claim: %w", err)
+		return time.Time{}, fmt.Errorf("check claim: %w", err)
 	}
 
 	resolver, err := resolvers.forSubject(claim.GetSubject())
 	if err != nil {
-		return err
+		return time.Time{}, err
 	}
 
 	var certificate []byte
@@ -391,20 +408,39 @@ func (t *Task) verifyClaim(ctx context.Context, resolvers resolverSet, cid, expe
 	if claim.GetCertificate() != "" {
 		certificate, err = base64.StdEncoding.DecodeString(claim.GetCertificate())
 		if err != nil {
-			return fmt.Errorf("decode claim certificate: %w", err)
+			return time.Time{}, fmt.Errorf("decode claim certificate: %w", err)
 		}
 	}
 
-	keys, err := resolver.Resolve(ctx, claim.GetSubject(), certificate)
+	var until time.Time
+
+	keys, err := resolver.Resolve(ctx, claim.GetSubject(), certificate, keyresolvers.WithClaim(claim), keyresolvers.WithValidUntil(&until))
 	if err != nil {
-		return fmt.Errorf("resolve keys of %s: %w", claim.GetSubject(), err)
+		return time.Time{}, fmt.Errorf("resolve keys of %s: %w", claim.GetSubject(), err)
 	}
 
 	if _, err := clientidentity.Verify(claim, cid, expected, keys...); err != nil {
-		return fmt.Errorf("verify claim: %w", err)
+		return time.Time{}, fmt.Errorf("verify claim: %w", err)
 	}
 
-	return nil
+	if expiry := claim.GetExpiresAt(); expiry != "" {
+		claimUntil, _ := time.Parse(time.RFC3339, expiry)
+		until = earlierDeadline(until, claimUntil)
+	}
+
+	if !until.IsZero() && !until.After(time.Now()) {
+		return time.Time{}, fmt.Errorf("identity verification result has expired")
+	}
+
+	return until, nil
+}
+
+func earlierDeadline(a, b time.Time) time.Time {
+	if a.IsZero() || !b.IsZero() && b.Before(a) {
+		return b
+	}
+
+	return a
 }
 
 // dropResult removes the stored result of a claim that is no longer attached to
@@ -425,7 +461,7 @@ func (t *Task) dropResult(cid, role string) {
 // or it was last checked more than maxAge ago (0 means any age).
 func (t *Task) previous(cid, role string, maxAge time.Duration) types.IdentityClaimObject {
 	prev, err := t.db.GetIdentityClaimByCID(cid, role)
-	if err != nil || (maxAge > 0 && time.Since(prev.GetVerifiedAt()) > maxAge) {
+	if err != nil || (maxAge > 0 && (types.IdentityClaimExpired(prev, time.Now()) || time.Since(prev.GetVerifiedAt()) > maxAge)) {
 		return nil
 	}
 

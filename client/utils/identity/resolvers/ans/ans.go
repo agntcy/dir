@@ -195,7 +195,7 @@ func (r *Resolver) Forget() {
 // transparency log attests the certificate's fingerprint for an agent whose
 // name is subject and whose status allows use. The checks that need no
 // network run first, so a claim that cannot verify costs no lookup.
-func (r *Resolver) Resolve(ctx context.Context, subject string, certificate []byte) ([]crypto.PublicKey, error) {
+func (r *Resolver) Resolve(ctx context.Context, subject string, certificate []byte, _ ...resolvers.Option) ([]crypto.PublicKey, error) {
 	name, err := parseAgentName(subject)
 	if err != nil {
 		return nil, resolvers.Final(err)

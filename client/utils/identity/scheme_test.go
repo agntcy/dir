@@ -24,6 +24,7 @@ func TestSchemeOf(t *testing.T) {
 		{subject: "https://acme.com/agents", want: SchemeWellKnown, wantOK: true},
 		{subject: "spiffe://acme.com/agents/finance", want: SchemeSPIFFE, wantOK: true},
 		{subject: "ans://v1.0.0.agent.acme.com", want: SchemeANS, wantOK: true},
+		{subject: "agntcy://Agent", want: SchemeAGNTCY, wantOK: true},
 		{subject: "http://acme.com"},
 		{subject: "ftp://acme.com"},
 		{subject: "mailto:a@b.c"},
@@ -52,6 +53,7 @@ func TestSchemeProperties(t *testing.T) {
 		{SchemeWellKnown, "https://", false},
 		{SchemeSPIFFE, "spiffe://", true},
 		{SchemeANS, "ans://", true},
+		{SchemeAGNTCY, "agntcy://", false},
 		{Scheme("ftp"), "", false},
 	}
 
@@ -66,7 +68,7 @@ func TestSchemeProperties(t *testing.T) {
 // Every scheme is listed once, and the error text names exactly the schemes
 // whose claims carry a certificate.
 func TestSchemesAndCertificateSchemes(t *testing.T) {
-	require.Equal(t, []Scheme{SchemeDNS, SchemeDID, SchemeWellKnown, SchemeSPIFFE, SchemeANS}, Schemes())
+	require.Equal(t, []Scheme{SchemeDNS, SchemeDID, SchemeWellKnown, SchemeSPIFFE, SchemeAGNTCY, SchemeANS}, Schemes())
 	assert.Equal(t, "spiffe:// and ans://", certificateSchemes())
 }
 

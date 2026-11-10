@@ -14,6 +14,7 @@ import (
 
 	clientidentity "github.com/agntcy/dir/client/utils/identity"
 	"github.com/agntcy/dir/client/utils/identity/resolvers"
+	agntcyresolver "github.com/agntcy/dir/client/utils/identity/resolvers/agntcy"
 	ansresolver "github.com/agntcy/dir/client/utils/identity/resolvers/ans"
 	didresolver "github.com/agntcy/dir/client/utils/identity/resolvers/did"
 	dnsresolver "github.com/agntcy/dir/client/utils/identity/resolvers/dns"
@@ -26,8 +27,9 @@ import (
 // that finds its keys, and how long a stored result survives lookups that get
 // no answer.
 type schemeResolver struct {
-	resolver resolvers.Resolver
-	grace    time.Duration
+	resolver   resolvers.Resolver
+	grace      time.Duration
+	claimAware bool
 }
 
 // resolverSet holds one entry per subject scheme the task serves; the schemes
@@ -43,6 +45,19 @@ func newNetworkResolvers(cfg Config) (resolverSet, error) {
 		clientidentity.SchemeDNS:       {resolver: dnsresolver.New(), grace: staleGrace},
 		clientidentity.SchemeDID:       {resolver: didresolver.New(nil), grace: staleGrace},
 		clientidentity.SchemeWellKnown: {resolver: wellknownresolver.New(nil), grace: staleGrace},
+	}
+
+	if err := cfg.validateAGNTCY(); err != nil {
+		return nil, err
+	}
+
+	if cfg.AGNTCY.VerifierURL != "" {
+		authority, err := agntcyresolver.New(cfg.AGNTCY, nil)
+		if err != nil {
+			return nil, fmt.Errorf("configure the agntcy resolver: %w", err)
+		}
+
+		set[clientidentity.SchemeAGNTCY] = schemeResolver{resolver: authority, grace: cfg.AGNTCY.GetMaxVerificationAge(), claimAware: true}
 	}
 
 	if !cfg.ANS.Enabled {
@@ -101,14 +116,14 @@ func (s resolverSet) with(scheme clientidentity.Scheme, resolver resolvers.Resol
 	return out
 }
 
-// cached returns the set with every resolver remembering its answers, so a
-// subject shared by many records is looked up once per run. Not safe for
+// cached remembers subject-key answers once per run. Claim-aware resolvers
+// bypass this cache because evidence binds a complete claim. Not safe for
 // concurrent use: a run is sequential.
 func (s resolverSet) cached() resolverSet {
 	out := make(resolverSet, len(s))
 
 	for scheme, entry := range s {
-		if entry.resolver != nil {
+		if entry.resolver != nil && !entry.claimAware {
 			entry.resolver = &cachedResolver{next: entry.resolver, seen: map[digest.Digest]lookup{}}
 		}
 
@@ -137,13 +152,13 @@ func cacheKey(subject string, certificate []byte) digest.Digest {
 	return digest.FromBytes(b)
 }
 
-func (c *cachedResolver) Resolve(ctx context.Context, subject string, certificate []byte) ([]crypto.PublicKey, error) {
+func (c *cachedResolver) Resolve(ctx context.Context, subject string, certificate []byte, opts ...resolvers.Option) ([]crypto.PublicKey, error) {
 	key := cacheKey(subject, certificate)
 	if l, ok := c.seen[key]; ok {
 		return l.keys, l.err
 	}
 
-	keys, err := c.next.Resolve(ctx, subject, certificate)
+	keys, err := c.next.Resolve(ctx, subject, certificate, opts...)
 	c.seen[key] = lookup{keys, err}
 
 	return keys, err //nolint:wrapcheck // the answer is passed through as it came
