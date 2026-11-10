@@ -28,6 +28,9 @@ const (
 	// SchemeANS is "ans://...": the key is the identity certificate the claim
 	// carries, attested by the agent's transparency log.
 	SchemeANS Scheme = "ans"
+
+	// SchemeAGNTCY is an agent subject verified by an external authority.
+	SchemeAGNTCY Scheme = "agntcy"
 )
 
 // schemeSpec is what this package knows about a scheme: the spelling that
@@ -45,6 +48,7 @@ var schemes = []schemeSpec{
 	{scheme: SchemeDID, prefix: "did:"},
 	{scheme: SchemeWellKnown, prefix: "https://"},
 	{scheme: SchemeSPIFFE, prefix: "spiffe://", certificate: true},
+	{scheme: SchemeAGNTCY, prefix: "agntcy://"},
 	{scheme: SchemeANS, prefix: "ans://", certificate: true},
 }
 

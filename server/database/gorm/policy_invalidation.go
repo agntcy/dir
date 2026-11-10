@@ -73,6 +73,6 @@ func signatureVerificationFactsChanged(before, after *SignatureVerification) boo
 // projection prefers the stored subject when there is one, so a claim that
 // resolves to a different subject changes what a policy reads.
 func identityClaimFactsChanged(before, after *IdentityClaim) bool {
-	return before.Status != after.Status ||
+	return before.GetStatus() != after.GetStatus() ||
 		before.Subject != after.Subject
 }

@@ -33,7 +33,7 @@ func New(fetch resolvers.Fetcher) *Resolver {
 }
 
 // Resolve implements resolvers.Resolver. It ignores certificate.
-func (w *Resolver) Resolve(ctx context.Context, subject string, _ []byte) ([]crypto.PublicKey, error) {
+func (w *Resolver) Resolve(ctx context.Context, subject string, _ []byte, _ ...resolvers.Option) ([]crypto.PublicKey, error) {
 	u, err := url.Parse(subject)
 	// User must be refused: in "https://acme.com@evil.com" the host is evil.com.
 	if err != nil || u.Scheme != "https" || u.User != nil || u.Hostname() == "" {

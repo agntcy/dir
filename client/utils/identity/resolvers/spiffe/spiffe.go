@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/agntcy/dir/client/utils/identity/resolvers"
 	"github.com/agntcy/dir/client/utils/jws"
 	"github.com/spiffe/go-spiffe/v2/bundle/x509bundle"
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
@@ -63,7 +64,7 @@ func LoadBundles(trustDomains map[string]string) (*x509bundle.Set, error) {
 // X.509-SVID, which must chain to the subject's trust bundle, carry exactly
 // the subject as its SPIFFE ID, and be within its validity window. The claim
 // carries only the leaf, so its issuer must be a root in the bundle.
-func (s *Resolver) Resolve(_ context.Context, subject string, certificate []byte) ([]crypto.PublicKey, error) {
+func (s *Resolver) Resolve(_ context.Context, subject string, certificate []byte, _ ...resolvers.Option) ([]crypto.PublicKey, error) {
 	id, err := spiffeid.FromString(subject)
 	if err != nil {
 		return nil, fmt.Errorf("invalid spiffe subject %q: %w", subject, err)

@@ -50,7 +50,7 @@ func New(fetch resolvers.Fetcher) *Resolver {
 }
 
 // Resolve implements resolvers.Resolver. It ignores certificate.
-func (d *Resolver) Resolve(ctx context.Context, subject string, _ []byte) ([]crypto.PublicKey, error) {
+func (d *Resolver) Resolve(ctx context.Context, subject string, _ []byte, _ ...resolvers.Option) ([]crypto.PublicKey, error) {
 	switch {
 	case strings.HasPrefix(subject, "did:web:"):
 		return d.resolveWeb(ctx, subject)
