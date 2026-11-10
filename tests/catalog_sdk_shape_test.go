@@ -23,25 +23,29 @@ const wellKnownShape = `{
       "identifier": "urn:air:org.agntcy:catalog:a2a",
       "displayName": "A2A Agents",
       "type": "application/ai-catalog+json",
-      "url": "https://ai-catalog.example/v1/catalog?filter=type%3Dapplication%2Fa2a-agent-card%2Bjson"
+      "url": "https://ai-catalog.example/v1/catalog?filter=type%3Dapplication%2Fa2a-agent-card%2Bjson",
+      "tags": ["a2a"]
     },
     {
       "identifier": "urn:air:org.agntcy:catalog:mcp",
       "displayName": "MCP Servers",
       "type": "application/ai-catalog+json",
-      "url": "https://ai-catalog.example/v1/catalog?filter=type%3Dapplication%2Fmcp-server-card%2Bjson"
+      "url": "https://ai-catalog.example/v1/catalog?filter=type%3Dapplication%2Fmcp-server-card%2Bjson",
+      "tags": ["mcp"]
     },
     {
       "identifier": "urn:air:org.agntcy:catalog:skill",
       "displayName": "Agent Skills",
       "type": "application/ai-catalog+json",
-      "url": "https://ai-catalog.example/v1/catalog?filter=type%3Dapplication%2Fagent-skills%2Bmd"
+      "url": "https://ai-catalog.example/v1/catalog?filter=type%3Dapplication%2Fagent-skills%2Bmd",
+      "tags": ["skills"]
     },
     {
       "identifier": "urn:air:org.agntcy:catalog:skill-bundle",
       "displayName": "Agent Skill Bundles",
       "type": "application/ai-catalog+json",
-      "url": "https://ai-catalog.example/v1/catalog?filter=type%3Dapplication%2Fagent-skills%2Bgzip"
+      "url": "https://ai-catalog.example/v1/catalog?filter=type%3Dapplication%2Fagent-skills%2Bgzip",
+      "tags": ["skills"]
     }
   ]
 }`
