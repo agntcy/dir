@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Search**: `RecordSummary` carries `trusted`, `verified` and an optional `safe`, matching the `TRUSTED`, `VERIFIED` and `SCAN_SAFE` filters and the AI Catalog badges; `safe` is unset when no scanner reached a verdict (#2399)
 
 ### Changed
+- **Client**: **BREAKING**: `resolvers.Resolver.Resolve` now accepts `opts ...resolvers.Option`. External resolver implementations must add this variadic parameter; implementations that do not need claim input or validity output may ignore it. Existing call sites remain compatible (#2292)
 - **API**: **BREAKING**: the well-known AI Catalog is a regular `AICatalog` document. `collections` and `WellKnownCatalog` are removed; protocol groupings are nested-catalog `entries` pointing at `GET /v1/catalog`. Identifiers use `urn:air:`, `mediaType` is dropped in favour of `type`, and `metadata` is renamed `extensions` with reverse-DNS keys (#2448)
 - **API**: **BREAKING**: `Workload.addresses` and `Workload.ports` are removed; read endpoints from `locators`. The `DiscoveredWorkload` CRD drops the Addresses and Ports print columns (#2299)
 

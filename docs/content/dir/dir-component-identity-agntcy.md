@@ -206,6 +206,14 @@ age is a cap, not a promise of that much validity.
 An outage may preserve the previous observation only until its deadline and the
 AGNTCY scheme grace (the configured maximum verification age). Expired results are reported as failed by
 status reads and excluded by verified search immediately, even between runs.
+This immediate expiry guarantee applies to identity status and verified-search
+filters. Stored policy verdicts are invalidated by the next successful
+reconciliation write; the policy read gate does not independently expire them
+at the identity deadline. Under normal operation this write occurs on the next
+reconciliation run. Interrupted runs, configuration reload failures or failed
+writes can delay it further, so the interval is not a strict freshness bound
+for stored policy verdicts.
+
 Authoritative rejections such as withdrawn keys or missing valid badges fail
 verification. Withdrawn claims remove the stored result on reconciliation.
 The column is added by the existing database auto-migration; existing rows with a
