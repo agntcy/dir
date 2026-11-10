@@ -1180,12 +1180,14 @@ func TestNetworkResolversServeEveryScheme(t *testing.T) {
 	}
 
 	cached := set.cached()
+
 	for _, scheme := range clientidentity.Schemes() {
 		if scheme == clientidentity.SchemeAGNTCY {
 			assert.Same(t, set[scheme].resolver, cached[scheme].resolver)
 
 			continue
 		}
+
 		assert.IsType(t, &cachedResolver{}, cached[scheme].resolver, scheme)
 	}
 }
