@@ -767,6 +767,8 @@
       
         
       
+        
+      
     
     
     
@@ -1027,6 +1029,40 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../dir-component-identity-agntcy/" class="md-nav__link">
+        
+  
+  
+  
+    
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 10v2H9v2H7v-2H5.8c-.4 1.2-1.5 2-2.8 2-1.7 0-3-1.3-3-3s1.3-3 3-3c1.3 0 2.4.8 2.8 2zm-8 0c-.6 0-1 .4-1 1s.4 1 1 1 1-.4 1-1-.4-1-1-1m13 4c2.7 0 8 1.3 8 4v2H8v-2c0-2.7 5.3-4 8-4m0-2c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    AGNTCY Identity Claims
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -1049,10 +1085,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_8" >
         
           
-          <label class="md-nav__link" for="__nav_2_2_7" id="__nav_2_2_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_2_8" id="__nav_2_2_8_label" tabindex="0">
             
   
   
@@ -1076,8 +1112,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2_2_7">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2471,7 +2507,7 @@ kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </sp
 <p>Deploy Directory (API server, Zot, PostgreSQL)</p>
 <p>The Directory chart includes the API server, Zot registry, and PostgreSQL. Pipe values from stdin using <code>-f -</code>:</p>
 <div class="highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>dir<span class="w"> </span>oci://ghcr.io/agntcy/dir/helm-charts/dir<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--version<span class="w"> </span>v1.8.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--version<span class="w"> </span>v1.9.0<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--namespace<span class="w"> </span>dir-dev-dir<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--create-namespace<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-f<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39;</span>
@@ -2480,7 +2516,7 @@ kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </sp
 <span class="s">apiserver:</span>
 <span class="s">  image:</span>
 <span class="s">    repository: ghcr.io/agntcy/dir-apiserver</span>
-<span class="s">    tag: v1.8.0</span>
+<span class="s">    tag: v1.9.0</span>
 <span class="s">    pullPolicy: IfNotPresent</span>
 <span class="s">  service:</span>
 <span class="s">    type: NodePort</span>
@@ -2675,7 +2711,7 @@ kind<span class="w"> </span>delete<span class="w"> </span>cluster<span class="w"
 <tr>
 <td><strong>Directory</strong></td>
 <td><code>oci://ghcr.io/agntcy/dir/helm-charts/dir</code></td>
-<td>v1.8.0</td>
+<td>v1.9.0</td>
 </tr>
 </tbody>
 </table>
