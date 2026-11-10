@@ -1,11 +1,27 @@
 import { sveltekit } from '@sveltejs/kit/vite';
+import adapter from '@sveltejs/adapter-static';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-	plugins: [tailwindcss(), sveltekit()],
+	plugins: [
+		tailwindcss(),
+		sveltekit({
+			adapter: adapter({
+				pages: '../static',
+				assets: '../static',
+				fallback: 'index.html'
+			}),
+			paths: {
+				base: ''
+			},
+			version: {
+				name: '0'
+			}
+		})
+	],
 	test: {
-		include: ['src/**/*.test.ts'],
+		include: ['src/**/*.test.ts', 'src/**/*.test.svelte.ts'],
 		environment: 'jsdom'
 	},
 	// Vitest runs in Node and would otherwise pick Svelte's "server" export.

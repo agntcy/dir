@@ -1,0 +1,1 @@
+import{A as e,G as t,W as n}from"./YT7-fPXn.js";var r=new class{#e=t(null);get stats(){return e(this.#e)}set stats(e){n(this.#e,e,!0)}set(e){this.stats=e}};export{r as t};

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../app.css';
-	import CatalogHeader from '$lib/components/CatalogHeader.svelte';
-	import { catalogTitleState } from '$lib/catalog-title.svelte';
+	import CatalogHeader from '#lib/components/CatalogHeader.svelte';
+	import { catalogTitleState } from '#lib/catalog-title.svelte.ts';
 	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
 
