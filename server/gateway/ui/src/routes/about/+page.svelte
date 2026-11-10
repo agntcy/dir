@@ -1,6 +1,6 @@
 <script lang="ts">
-	import TrustedBadge from '$lib/components/TrustedBadge.svelte';
-	import { catalogTitleState } from '$lib/catalog-title.svelte';
+	import TrustedBadge from '#lib/components/TrustedBadge.svelte';
+	import { catalogTitleState } from '#lib/catalog-title.svelte.ts';
 </script>
 
 <svelte:head>

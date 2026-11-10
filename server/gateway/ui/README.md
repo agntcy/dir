@@ -104,8 +104,7 @@ server/gateway/ui/
       utils.ts        Shared utility functions
     app.html          HTML shell
     app.css           Tailwind CSS with brand tokens
-  svelte.config.js    SvelteKit config (static adapter)
-  vite.config.ts      Vite config (Tailwind plugin, API proxy)
+  vite.config.ts      Vite config (SvelteKit static adapter, Tailwind plugin, API proxy)
 ```
 
 ## Adding a New Page

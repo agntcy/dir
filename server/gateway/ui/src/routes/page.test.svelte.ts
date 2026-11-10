@@ -1,29 +1,33 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import Page from './+page.svelte';
-import { readable, writable } from 'svelte/store';
 import * as navigation from '$app/navigation';
-import * as stores from '$app/stores';
 
-// Mock SvelteKit stores and navigation
+// Mock SvelteKit page state and navigation
 vi.mock('$app/navigation', () => ({
 	goto: vi.fn()
 }));
 
-const mockPage = writable({
+// $app/state exposes `page` as reactive state; the mock mirrors that with a
+// $state-backed object the tests mutate through setPageUrl.
+const mockPage = $state({
 	url: new URL('http://localhost/')
 });
 
-vi.mock('$app/stores', () => ({
-	page: {
-		subscribe: (fn: any) => mockPage.subscribe(fn)
+function setPageUrl(url: string) {
+	mockPage.url = new URL(url);
+}
+
+vi.mock('$app/state', () => ({
+	get page() {
+		return mockPage;
 	}
 }));
 
 describe('Catalog URL Syncing', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockPage.set({ url: new URL('http://localhost/') });
+		setPageUrl('http://localhost/');
 		
 		// Mock fetch globally
 		global.fetch = vi.fn().mockImplementation((url) => {
@@ -52,7 +56,7 @@ describe('Catalog URL Syncing', () => {
 
 	it('initializes component with search parameters from URL', async () => {
 		// Set URL to have search params
-		mockPage.set({ url: new URL('http://localhost/?page=2&q=foo&media=application%2Fa2a-agent-card%2Bjson') });
+		setPageUrl('http://localhost/?page=2&q=foo&media=application%2Fa2a-agent-card%2Bjson');
 		
 		render(Page);
 		
@@ -92,7 +96,7 @@ describe('Catalog URL Syncing', () => {
 		// goto should have been called
 		expect(navigation.goto).toHaveBeenCalledWith(
 			expect.stringContaining('?q=bar'),
-			expect.objectContaining({ keepFocus: true })
+			expect.objectContaining({ reset: false })
 		);
 	});
 });

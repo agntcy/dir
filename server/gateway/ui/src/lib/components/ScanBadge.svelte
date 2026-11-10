@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ScanManifest } from '$lib/types';
+	import type { ScanManifest } from '#lib/types.ts';
 
 	interface Props {
 		scan: ScanManifest;

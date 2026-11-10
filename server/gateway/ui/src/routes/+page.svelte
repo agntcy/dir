@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { AICardFilterCriteria, CatalogEntry, CatalogTag } from '$lib/types';
+	import type { AICardFilterCriteria, CatalogEntry, CatalogTag } from '#lib/types.ts';
 	import {
 		buildAICardFilterQuery,
 		CATALOG_PAGE_SIZE,
@@ -7,14 +7,14 @@
 		fetchCatalogTags,
 		pageTokenForPage,
 		type AICardsPage
-	} from '$lib/api';
-	import AICard from '$lib/components/AICard.svelte';
-	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
-	import DetailModal from '$lib/components/DetailModal.svelte';
-	import Pagination from '$lib/components/Pagination.svelte';
-	import { headerStatsState } from '$lib/header-stats.svelte';
+	} from '#lib/api.ts';
+	import AICard from '#lib/components/AICard.svelte';
+	import FilterSidebar from '#lib/components/FilterSidebar.svelte';
+	import DetailModal from '#lib/components/DetailModal.svelte';
+	import Pagination from '#lib/components/Pagination.svelte';
+	import { headerStatsState } from '#lib/header-stats.svelte.ts';
 	import { onMount, untrack } from 'svelte';
-	import { page } from '$app/stores';
+	import { page, type ReadonlyURL } from '$app/state';
 	import { goto } from '$app/navigation';
 
 	let aicards = $state<CatalogEntry[]>([]);
@@ -39,7 +39,7 @@
 				: `${filteredCount} results`
 	);
 
-	function parseCriteriaFromUrl(url: URL): AICardFilterCriteria {
+	function parseCriteriaFromUrl(url: ReadonlyURL): AICardFilterCriteria {
 		const params = url.searchParams;
 		return {
 			searchQuery: params.get('q') || '',
@@ -77,12 +77,12 @@
 		if (selectedId) p.set('entry', selectedId);
 		else p.delete('entry');
 
-		goto(url.pathname + url.search, { keepFocus: true, noScroll: true });
+		goto(url.pathname + url.search, { reset: false });
 	}
 
-	let latestCriteria = $derived(parseCriteriaFromUrl($page.url));
-	let currentPage = $derived(Number($page.url.searchParams.get('page')) || 1);
-	let selectedAicardId = $derived($page.url.searchParams.get('entry'));
+	let latestCriteria = $derived(parseCriteriaFromUrl(page.url));
+	let currentPage = $derived(Number(page.url.searchParams.get('page')) || 1);
+	let selectedAicardId = $derived(page.url.searchParams.get('entry'));
 
 	async function loadAICards(criteria: AICardFilterCriteria, page = 1) {
 		const requestId = ++loadRequestId;

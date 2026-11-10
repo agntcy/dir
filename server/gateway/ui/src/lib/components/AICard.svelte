@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { CatalogEntry } from '$lib/types';
-	import { extractEntryTypes, extractShortTag, getTrustStatus, getScanManifest, getUsageMetrics, formatDownloads } from '$lib/utils';
+	import type { CatalogEntry } from '#lib/types.ts';
+	import { extractEntryTypes, extractShortTag, getTrustStatus, getScanManifest, getUsageMetrics, formatDownloads } from '#lib/utils.ts';
 	import MediaTypeBadge from './MediaTypeBadge.svelte';
 	import ScanBadge from './ScanBadge.svelte';
 	import TrustedBadge from './TrustedBadge.svelte';
