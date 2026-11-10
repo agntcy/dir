@@ -1,2 +1,0 @@
-cryptography>=44,<47
-PyJWT>=2.10,<3
