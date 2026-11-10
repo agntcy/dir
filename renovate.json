@@ -306,8 +306,8 @@
     "gomodUpdateImportPaths",
     "helmUpdateSubChartArchives"
   ],
-  "prConcurrentLimit": 20,
-  "prHourlyLimit": 10,
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 5,
   "printConfig": false,
   "rebaseWhen": "behind-base-branch",
   "reviewersFromCodeOwners": true,
