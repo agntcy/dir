@@ -61,7 +61,8 @@ type Resolver struct {
 	warned map[string]bool
 
 	// versions holds the last version seen for each registered policy, so a
-	// change can be reported when it happens.
+	// change can be reported when it happens. It is only updated by a refresh
+	// that succeeds.
 	versions map[string]string
 }
 
@@ -157,9 +158,30 @@ func (r *Resolver) Refresh() error {
 		}
 	}
 
+	r.recordVersions(pass)
+
 	r.current.Store(&next)
 
 	return nil
+}
+
+// recordVersions remembers the version each registered policy was resolved to
+// in a refresh that succeeded, and reports a change of version under an
+// enforcement that is in force. A change while the policy is not enforced hides
+// no record, so it is not reported; the first version seen is not a change.
+func (r *Resolver) recordVersions(pass map[string]resolution) {
+	for id, resolved := range pass {
+		if !resolved.registered {
+			continue
+		}
+
+		if previous, seen := r.versions[id]; seen && previous != resolved.policy.Version && resolved.enforced {
+			logger.Info("Policy version changed; records are re-evaluated under the new version before they are served again",
+				"policy_id", id, "previous_version", previous, "version", resolved.policy.Version)
+		}
+
+		r.versions[id] = resolved.policy.Version
+	}
 }
 
 // resolveSearch joins a search policy to the versions of the policies it
@@ -195,8 +217,9 @@ func (r *Resolver) resolveSearch(pass map[string]resolution, p policy.SearchPoli
 
 // resolution is what one pass concluded about one policy.
 type resolution struct {
-	policy   types.VersionedPolicy
-	enforced bool
+	policy     types.VersionedPolicy
+	enforced   bool
+	registered bool
 }
 
 // resolveOnce is resolve, answered from pass when the policy has already been
@@ -210,22 +233,21 @@ func (r *Resolver) resolveOnce(pass map[string]resolution, id string) (resolutio
 		return cached, nil
 	}
 
-	policy, enforced, err := r.resolve(id)
+	resolved, err := r.resolve(id)
 	if err != nil {
 		return resolution{}, err
 	}
 
-	resolved := resolution{policy: policy, enforced: enforced}
 	pass[id] = resolved
 
 	return resolved, nil
 }
 
 // resolve works out what to enforce for one policy, and whether anything is.
-func (r *Resolver) resolve(id string) (types.VersionedPolicy, bool, error) {
+func (r *Resolver) resolve(id string) (resolution, error) {
 	version, registered, err := r.store.GetCurrentPolicyVersion(id)
 	if err != nil {
-		return types.VersionedPolicy{}, false, fmt.Errorf("get current version of policy %s: %w", id, err)
+		return resolution{}, fmt.Errorf("get current version of policy %s: %w", id, err)
 	}
 
 	if !registered {
@@ -235,26 +257,17 @@ func (r *Resolver) resolve(id string) (types.VersionedPolicy, bool, error) {
 			logger.Warn("Policy is configured but no evaluator has registered it; it is not enforced", "policy_id", id)
 		}
 
-		return types.VersionedPolicy{ID: id}, false, nil
+		return resolution{policy: types.VersionedPolicy{ID: id}}, nil
 	}
-
-	// A change of version is reported once, when it is first seen; the first
-	// version seen is not a change.
-	if previous, seen := r.versions[id]; seen && previous != version {
-		logger.Info("Policy version changed; records are re-evaluated under the new version before they are served again",
-			"policy_id", id, "previous_version", previous, "version", version)
-	}
-
-	r.versions[id] = version
 
 	policy := types.VersionedPolicy{ID: id, Version: version}
 
 	covered, err := r.covered(id, version)
 	if err != nil {
-		return types.VersionedPolicy{}, false, err
+		return resolution{}, err
 	}
 
-	return policy, covered, nil
+	return resolution{policy: policy, enforced: covered, registered: true}, nil
 }
 
 // covered reports whether the policy has been enforced before, or its
