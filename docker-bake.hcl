@@ -11,7 +11,7 @@ variable "IMAGE_NAME_SUFFIX" { default = "" }
 // renovate: datasource=pypi depName=cisco-ai-mcp-scanner versioning=pep440
 variable "MCP_SCANNER_VERSION" { default = "4.8.7" }
 // renovate: datasource=pypi depName=cisco-ai-skill-scanner versioning=pep440
-variable "SKILL_SCANNER_VERSION" { default = "2.3.1" }
+variable "SKILL_SCANNER_VERSION" { default = "2.3.2" }
 // renovate: datasource=pypi depName=cisco-ai-a2a-scanner versioning=pep440
 variable "A2A_SCANNER_VERSION" { default = "1.0.1" }
 
