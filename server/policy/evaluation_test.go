@@ -6,6 +6,8 @@ package policy
 import (
 	"context"
 	"errors"
+	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -18,14 +20,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// mapSource is safe for concurrent use: parallel subtests may share one.
+// records and err are set before use and only read; pulls is guarded.
 type mapSource struct {
 	records map[string]*corev1.Record
 	err     error
-	pulls   []string
+
+	mu    sync.Mutex
+	pulls []string
 }
 
 func (s *mapSource) Pull(_ context.Context, ref *corev1.RecordRef) (*corev1.Record, error) {
+	s.mu.Lock()
 	s.pulls = append(s.pulls, ref.GetCid())
+	s.mu.Unlock()
 
 	if s.err != nil {
 		return nil, s.err
@@ -37,6 +45,14 @@ func (s *mapSource) Pull(_ context.Context, ref *corev1.RecordRef) (*corev1.Reco
 	}
 
 	return record, nil
+}
+
+// pulled returns a copy of the CIDs pulled so far, in order.
+func (s *mapSource) pulled() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return slices.Clone(s.pulls)
 }
 
 // indexRecord is the indexed view an evaluator is handed. Only the CID is
@@ -84,7 +100,7 @@ func TestEvaluator_Evaluate(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, compliant)
 		assert.Empty(t, reason)
-		assert.Equal(t, []string{record.GetCid()}, src.pulls, "the record is read from the store by its CID")
+		assert.Equal(t, []string{record.GetCid()}, src.pulled(), "the record is read from the store by its CID")
 	})
 
 	t.Run("a record the policy rejects does not, and the reason is what it said", func(t *testing.T) {
