@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { catalogTitleState } from '$lib/catalog-title.svelte';
-	import { headerStatsState } from '$lib/header-stats.svelte';
+	import { catalogTitleState } from '#lib/catalog-title.svelte.ts';
+	import { headerStatsState } from '#lib/header-stats.svelte.ts';
 
 	const isAbout = $derived(page.url.pathname === '/about');
 </script>

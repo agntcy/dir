@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { CatalogTag, SuggestedTag } from '$lib/types';
-	import { ExtractorUnavailableError, extractTaxonomy, suggestTagsFromExtraction } from '$lib/api';
+	import type { CatalogTag, SuggestedTag } from '#lib/types.ts';
+	import { ExtractorUnavailableError, extractTaxonomy, suggestTagsFromExtraction } from '#lib/api.ts';
 	import { onDestroy } from 'svelte';
 
 	interface Props {

@@ -12,13 +12,15 @@
       "customType": "regex",
       "managerFilePatterns": [
         "/^cli/cmd/init/scanners\\.go$/",
-        "/(^|/)docker-bake\\.hcl$/"
+        "/(^|/)docker-bake\\.hcl$/",
+        "/^reconciler/Dockerfile$/"
       ],
       "matchStrings": [
-        "(?m)^\\s*(?://|#)\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\s*\\r?\\n\\s*(?:version:|variable\\s+\\S+\\s*\\{\\s*default\\s*=)\\s*\\\"(?<currentValue>[^\\\"\\s]+)\\\""
+        "(?m)^\\s*(?://|#)\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\s*\\r?\\n\\s*(?:version:|variable\\s+\\S+\\s*\\{\\s*default\\s*=)\\s*\\\"(?<currentValue>[^\\\"\\s]+)\\\"",
+        "(?m)^\\s*#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\s*\\r?\\n\\s*ARG\\s+\\S+=(?<currentValue>\\S+)\\s*$"
       ],
       "description": [
-        "Custom dependency manager for security scanner versions in dirctl init and docker-bake.hcl."
+        "Custom dependency manager for security scanner versions in dirctl init, docker-bake.hcl and reconciler Dockerfile ARG defaults."
       ]
     },
     {

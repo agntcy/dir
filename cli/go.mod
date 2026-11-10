@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/cli
 
-go 1.27.2
+go 1.27.3
 
 // Replace local modules
 replace (
@@ -24,11 +24,11 @@ require (
 	github.com/agntcy/dir-runtime/discovery v1.5.0
 	github.com/agntcy/dir-runtime/server v1.5.0
 	github.com/agntcy/dir-runtime/store v1.5.0
-	github.com/agntcy/dir/api v1.8.0
-	github.com/agntcy/dir/client v1.8.0
+	github.com/agntcy/dir/api v1.9.0
+	github.com/agntcy/dir/client v1.9.0
 	github.com/agntcy/dir/reconciler v1.8.0
 	github.com/agntcy/dir/server v1.8.0
-	github.com/agntcy/dir/utils v1.8.0
+	github.com/agntcy/dir/utils v1.9.0
 	github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260910081500-f0c6172a010a
 	github.com/briandowns/spinner v1.23.2
 	github.com/ipfs/go-cid v0.6.2
@@ -50,7 +50,7 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
 	go.yaml.in/yaml/v3 v3.0.5
-	golang.org/x/crypto v0.58.0
+	golang.org/x/crypto v0.58.1-0.20261009181718-2f1f834330b2
 	golang.org/x/mod v0.42.0
 	golang.org/x/term v0.47.0
 	google.golang.org/grpc v1.84.0

@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Client**: **BREAKING**: `resolvers.Resolver.Resolve` now accepts `opts ...resolvers.Option`. External resolver implementations must add this variadic parameter; implementations that do not need claim input or validity output may ignore it. Existing call sites remain compatible (#2292)
 - **API**: **BREAKING**: the well-known AI Catalog is a regular `AICatalog` document. `collections` and `WellKnownCatalog` are removed; protocol groupings are nested-catalog `entries` pointing at `GET /v1/catalog`. Identifiers use `urn:air:`, `mediaType` is dropped in favour of `type`, and `metadata` is renamed `extensions` with reverse-DNS keys (#2448)
 - **API**: **BREAKING**: `Workload.addresses` and `Workload.ports` are removed; read endpoints from `locators`. The `DiscoveredWorkload` CRD drops the Addresses and Ports print columns (#2299)
+- **Deps**: bump Go to 1.27.3, `golang.org/x/crypto` to the post-`openpgp`-removal pseudo-version (GO-2026-5932), zot to v2.1.23 (Helm chart v0.1.132), grpc-health-probe to v0.4.61, cisco-ai-skill-scanner to 2.3.2, the PostgreSQL and Alpine image digests, and the gateway UI to SvelteKit 3 with `undici`/`minimatch` patched. The reconciler scanner image now installs the patched `litellm` over mcp-scanner's exact pin and rebuilds skill-scanner's cel-go helper with the pinned Go toolchain instead of shipping the wheel's prebuilt binary
+
+### Security
+- **Reconciler**: the scanner image no longer carries the Go stdlib CVEs of skill-scanner's bundled cel-go helper or `litellm` CVE-2026-114612 / GHSA-g5ff-637f-6q2m
+- **UI**: `undici` CVE-2026-* advisories (8) and `minimatch` GHSA-g3hv-75wg-m249 are resolved; `@sveltejs/kit` GHSA-27mw-82g8-phjj and GHSA-pfhg-q3qv-9q6r by the SvelteKit 3 upgrade
 
 ## [v1.8.0] - 2026-10-15
 

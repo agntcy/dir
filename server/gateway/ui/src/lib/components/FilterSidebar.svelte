@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { AICardFilterCriteria, CatalogTag } from '$lib/types';
+	import type { AICardFilterCriteria, CatalogTag } from '#lib/types.ts';
 	import TagFilterSection from './TagFilterSection.svelte';
 
 	interface Props {

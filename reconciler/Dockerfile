@@ -3,7 +3,7 @@
 # xx is a helper for cross-compilation
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.10.0@sha256:40fe21f44bb8cddf1eb1226db190d0a984118f62ee02a91b77d99448d28264a6 AS xx
 
-FROM --platform=$BUILDPLATFORM golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27.3-bookworm@sha256:dc0963f32053e4bc451d24d87e3892d42d01021b61f093e98eb95c0352bb84b0 AS builder
 
 COPY --link --from=xx / /
 
@@ -36,6 +36,30 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     -o /bin/reconciler .
 
 RUN xx-verify /bin/reconciler
+
+# cel-helper rebuilds skill-scanner's cel-go decision helper with the pinned Go
+# toolchain. The PyPI wheel bundles a helper compiled with an older Go (go1.27.1
+# for 2.3.2) that carries fixed stdlib CVEs; skill-scanner honours
+# SKILL_SCANNER_CEL_GO_HELPER for a trusted local build, so the scanner stage
+# swaps the bundled binary for this one.
+FROM --platform=$BUILDPLATFORM golang:1.27.3-bookworm@sha256:dc0963f32053e4bc451d24d87e3892d42d01021b61f093e98eb95c0352bb84b0 AS cel-helper
+
+COPY --link --from=xx / /
+
+ARG TARGETPLATFORM
+ARG SKILL_SCANNER_VERSION
+
+ENV CGO_ENABLED=0
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    git clone --quiet --depth 1 --branch "${SKILL_SCANNER_VERSION}" \
+    https://github.com/cisco-ai-defense/skill-scanner.git /src \
+    && cd /src/tools/cel_runtime \
+    && xx-go build -trimpath -buildvcs=false \
+    -ldflags="-X main.helperVersion=${SKILL_SCANNER_VERSION}" \
+    -o /bin/skill-scanner-cel-go . \
+    && xx-verify /bin/skill-scanner-cel-go
 
 # Debug image - includes Delve for remote debugging. For local development only
 FROM builder AS debug
@@ -108,14 +132,27 @@ RUN apt-get update \
 ARG MCP_SCANNER_VERSION
 ARG SKILL_SCANNER_VERSION
 ARG A2A_SCANNER_VERSION
+# mcp-scanner <= 4.8.7 pins litellm==1.93.2 (CVE-2026-114612, GHSA-g5ff-637f-6q2m).
+# The pin is relaxed to a floor upstream (cisco-ai-defense/mcp-scanner#289) but
+# not released yet, so install the patched litellm after the resolver has run.
+# Drop this override once a mcp-scanner release ships the relaxed pin.
+# renovate: datasource=pypi depName=litellm versioning=pep440
+ARG LITELLM_VERSION=1.108.4
 # pip vendors CVE-carrying msgpack and setuptools copies and nothing needs it
 # at runtime, so drop it and its ensurepip wheel in the install layer.
+# The skill-scanner wheel's prebuilt cel-go helper is removed in favour of the
+# cel-helper stage build selected via SKILL_SCANNER_CEL_GO_HELPER below.
 RUN pip install --no-cache-dir \
     cisco-ai-mcp-scanner==${MCP_SCANNER_VERSION} \
     cisco-ai-skill-scanner==${SKILL_SCANNER_VERSION} \
     cisco-ai-a2a-scanner==${A2A_SCANNER_VERSION} \
+    && pip install --no-cache-dir litellm==${LITELLM_VERSION} \
     && python -m pip uninstall -y pip \
-    && rm -rf /usr/local/lib/python3.*/ensurepip/_bundled
+    && rm -rf /usr/local/lib/python3.*/ensurepip/_bundled \
+    && rm -f /usr/local/lib/python3.*/site-packages/skill_scanner/core/cel/_bin/skill-scanner-cel-go-*
+
+COPY --from=cel-helper /bin/skill-scanner-cel-go /usr/local/bin/skill-scanner-cel-go
+ENV SKILL_SCANNER_CEL_GO_HELPER=/usr/local/bin/skill-scanner-cel-go
 
 USER 55532:55532
 

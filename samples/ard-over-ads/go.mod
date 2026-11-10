@@ -1,6 +1,6 @@
 module protocol_interop
 
-go 1.27.2
+go 1.27.3
 
 // TODO: replace once v1.5 is out
 replace (
@@ -17,9 +17,9 @@ replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2
-	github.com/agntcy/dir/api v1.8.0
+	github.com/agntcy/dir/api v1.9.0
 	github.com/agntcy/dir/cli v1.8.0
-	github.com/agntcy/dir/client v1.8.0
+	github.com/agntcy/dir/client v1.9.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/sigstore/cosign/v3 v3.1.3
 	google.golang.org/protobuf v1.36.12
@@ -87,7 +87,7 @@ require (
 	github.com/agntcy/dir-runtime/utils v1.5.0 // indirect
 	github.com/agntcy/dir/reconciler v1.8.0 // indirect
 	github.com/agntcy/dir/server v1.8.0 // indirect
-	github.com/agntcy/dir/utils v1.8.0 // indirect
+	github.com/agntcy/dir/utils v1.9.0 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260910081500-f0c6172a010a // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/anchore/go-struct-converter v0.1.0 // indirect
@@ -619,7 +619,7 @@ require (
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.4 // indirect
-	golang.org/x/crypto v0.58.0 // indirect
+	golang.org/x/crypto v0.58.1-0.20261009181718-2f1f834330b2 // indirect
 	golang.org/x/exp v0.0.0-20261014143641-f0251eb4aa3e // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/net v0.62.0 // indirect

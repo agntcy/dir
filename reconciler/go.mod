@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/reconciler
 
-go 1.27.2
+go 1.27.3
 
 // Replace local modules
 replace (
@@ -15,10 +15,10 @@ replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2
-	github.com/agntcy/dir/api v1.8.0
-	github.com/agntcy/dir/client v1.8.0
+	github.com/agntcy/dir/api v1.9.0
+	github.com/agntcy/dir/client v1.9.0
 	github.com/agntcy/dir/server v1.8.0
-	github.com/agntcy/dir/utils v1.8.0
+	github.com/agntcy/dir/utils v1.9.0
 	github.com/csirmazbendeguz/regclient v0.0.0-20260429082137-82ab6d426079
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/lestrrat-go/jwx/v2 v2.1.7
@@ -220,7 +220,7 @@ require (
 	go.uber.org/zap v1.28.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/crypto v0.58.0 // indirect
+	golang.org/x/crypto v0.58.1-0.20261009181718-2f1f834330b2 // indirect
 	golang.org/x/exp v0.0.0-20261014143641-f0251eb4aa3e // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/net v0.62.0 // indirect
