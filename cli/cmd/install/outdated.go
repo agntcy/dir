@@ -211,10 +211,10 @@ func reportOutdated(cmd *cobra.Command, rows []pkgupdate.Row, structured bool) e
 
 	// Same leading columns as `install list`, so the two tables read as views of
 	// one manifest rather than two unrelated reports.
-	table := newTable("NAME", "AGENT", "KIND", "SCOPE", "INSTALLED", "LATEST", "STATUS")
+	table := presenter.NewTable("NAME", "AGENT", "KIND", "SCOPE", "INSTALLED", "LATEST", "STATUS")
 	for _, row := range shown {
-		table.row(row.Entry.Name, row.Entry.Agent, row.Entry.Kind(), shortScope(row.Entry.Scope),
-			orDash(row.Entry.Version), latestCell(row), statusCell(row))
+		table.Row(row.Entry.Name, row.Entry.Agent, row.Entry.Kind(), shortScope(row.Entry.Scope),
+			presenter.OrDash(row.Entry.Version), latestCell(row), statusCell(row))
 	}
 
 	presenter.Printf(cmd, "%s", table.String())

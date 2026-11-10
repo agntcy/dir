@@ -154,13 +154,13 @@ func runListCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to list: %w", err)
 	}
 
-	// Collect results and convert to any slice in a single loop
-	results := make([]any, 0, listOpts.Limit)
+	// Collect results
+	records := make([]*routingv1.ListResponse, 0, listOpts.Limit)
 	for result := range resultCh {
-		results = append(results, result)
+		records = append(records, result)
 	}
 
-	return presenter.PrintMessage(cmd, "local records", "Local records found", results)
+	return printListResults(cmd, records)
 }
 
 // listByCID lists a specific record by CID.
@@ -175,14 +175,14 @@ func listByCID(cmd *cobra.Command, c *client.Client, cid string) error {
 		return fmt.Errorf("failed to list: %w", err)
 	}
 
-	// Collect results and convert to any slice in a single loop
-	results := make([]any, 0, listOpts.Limit)
+	// Collect results matching the requested CID
+	records := make([]*routingv1.ListResponse, 0, listOpts.Limit)
 
 	for result := range resultCh {
 		if result.GetRecordRef().GetCid() == cid {
-			results = append(results, result)
+			records = append(records, result)
 		}
 	}
 
-	return presenter.PrintMessage(cmd, "local records", "Local records found", results)
+	return printListResults(cmd, records)
 }

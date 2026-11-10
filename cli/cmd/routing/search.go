@@ -184,10 +184,5 @@ func runRoutingSearch(cmd *cobra.Command, queries []*routingv1.RecordQuery) erro
 		return responses[i].GetMatchScore() > responses[j].GetMatchScore()
 	})
 
-	results := make([]any, len(responses))
-	for i, r := range responses {
-		results[i] = r
-	}
-
-	return presenter.PrintMessage(cmd, "remote records", "Remote records found", results)
+	return printSearchResults(cmd, responses)
 }

@@ -271,7 +271,7 @@ func installedVersions(rows []pkgstate.Entry) string {
 	var versions []string
 
 	for _, row := range rows {
-		version := orDash(row.Version)
+		version := presenter.OrDash(row.Version)
 		if seen[version] {
 			continue
 		}
