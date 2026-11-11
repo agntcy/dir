@@ -11,7 +11,7 @@
         <link rel="canonical" href="https://agntcy.github.io/dir/latest/dir/dir-component-runtime-discovery/">
       
       
-        <link rel="prev" href="../dir-component-identity/">
+        <link rel="prev" href="../dir-component-identity-agntcy/">
       
       
         <link rel="next" href="../dir-component-import/">
@@ -769,6 +769,8 @@
       
         
       
+        
+      
     
     
     
@@ -1027,6 +1029,40 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-identity-agntcy/" class="md-nav__link">
+        
+  
+  
+  
+    
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 10v2H9v2H7v-2H5.8c-.4 1.2-1.5 2-2.8 2-1.7 0-3-1.3-3-3s1.3-3 3-3c1.3 0 2.4.8 2.8 2zm-8 0c-.6 0-1 .4-1 1s.4 1 1 1 1-.4 1-1-.4-1-1-1m13 4c2.7 0 8 1.3 8 4v2H8v-2c0-2.7 5.3-4 8-4m0-2c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    AGNTCY Identity Claims
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -1053,10 +1089,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_7" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_8" checked>
         
           
-          <label class="md-nav__link" for="__nav_2_2_7" id="__nav_2_2_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_2_8" id="__nav_2_2_8_label" tabindex="0">
             
   
   
@@ -1080,8 +1116,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_7_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_2_2_7">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_8_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_2_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3229,6 +3265,11 @@ grpcurl<span class="w"> </span>-plaintext<span class="w"> </span>localhost:8080<
 <td>Process ID; the workload is listed only while this process is alive</td>
 </tr>
 <tr>
+<td><code>started_at</code></td>
+<td>no</td>
+<td>When the descriptor was written (RFC 3339). A process holding <code>pid</code> that started later is a different process that reused the PID, so the descriptor is treated as stale. Checked on Linux and macOS; elsewhere only <code>pid</code> is checked</td>
+</tr>
+<tr>
 <td><code>locators</code></td>
 <td>no</td>
 <td>Endpoints the process can be reached at, each <code>{"protocol": ..., "url": ...}</code> with a full URL, e.g. <code>{"protocol": "slim", "url": "slim://org/namespace/agent"}</code></td>
@@ -3260,7 +3301,7 @@ grpcurl<span class="w"> </span>-plaintext<span class="w"> </span>localhost:8080<
 <p>Every workload lists the endpoints it can be reached at in <code>locators</code>, each with a protocol and a full URL. For a process, they come from the descriptor's <code>locators</code>, plus one <code>tcp</code> locator per address and port. An agent that is not reachable over an address and port (for example one served over SLIM) only lists its locator. The A2A resolver probes <code>tcp</code>, <code>http</code> and <code>https</code> locators for an agent card and skips other protocols, while the OASF resolver still resolves <code>org.agntcy/agent-record</code>.</p>
 <h4 id="trust">Trust</h4>
 <p>A descriptor is an unauthenticated claim: discovery checks that the PID is alive, not that the process is the agent its descriptor or record names. Anyone who can write to the directory can register a workload, so keep it private to the user (discovery creates it with mode <code>0700</code>). Consumers that need to know an instance is genuine must verify it themselves, e.g. by probing the agent and checking a reply signed with the key its record names (see <a href="https://github.com/agntcy/dir-runtime/issues/94">#94</a>).</p>
-<p>Write descriptors atomically (write a dotfile or <code>&lt;id&gt;.json.tmp</code>, then rename it to <code>&lt;id&gt;.json</code>) and delete them on clean shutdown. Discovery never modifies or removes descriptor files.</p>
+<p>Write descriptors atomically (write a dotfile or <code>&lt;id&gt;.json.tmp</code>, then rename it to <code>&lt;id&gt;.json</code>) and delete them on clean shutdown. A process that is killed can't, so discovery removes the descriptor of a discoverable workload once its process is gone (or its PID was reused, see <code>started_at</code>), and logs it. Descriptors without the discovery label are never touched. Set <code>DISCOVERY_RUNTIME_PROCESS_KEEP_STALE=true</code> to leave stale descriptors in place, e.g. when discovery may only read the directory.</p>
 <h4 id="run-locally">Run Locally</h4>
 <div class="highlight"><pre><span></span><code><span class="c1"># Start a toy A2A agent serving an agent card on port 9999</span>
 mkdir<span class="w"> </span>-p<span class="w"> </span>/tmp/hello-agent/.well-known
@@ -3528,6 +3569,11 @@ They provide additional information about the workload's capabilities.</p>
 <td><code>DISCOVERY_RUNTIME_PROCESS_LABEL_VALUE</code></td>
 <td>Label value to filter process descriptors</td>
 <td><code>true</code></td>
+</tr>
+<tr>
+<td><code>DISCOVERY_RUNTIME_PROCESS_KEEP_STALE</code></td>
+<td>Leave descriptors of processes that are gone in place instead of removing them</td>
+<td><code>false</code></td>
 </tr>
 <tr>
 <td><code>DISCOVERY_RESOLVER_A2A_ENABLED</code></td>
