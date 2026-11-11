@@ -116,3 +116,14 @@ func TestLoadConfig_DoesNotNameACleanFileForAPolicyListVariable(t *testing.T) {
 	require.Error(t, err)
 	assert.NotContains(t, err.Error(), path)
 }
+
+// A negative interval loaded silently before: Validate refused it, but no
+// loader called Validate.
+func TestLoadConfig_RefusesANegativePolicyRefreshInterval(t *testing.T) {
+	withConfigFile(t, withPolicies)
+	t.Setenv("DIRECTORY_DAEMON_SERVER_POLICY_REFRESH_INTERVAL", "-5s")
+
+	_, err := loadConfig()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "refresh_interval must not be negative")
+}
