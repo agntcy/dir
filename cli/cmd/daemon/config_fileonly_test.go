@@ -116,3 +116,45 @@ func TestLoadConfig_DoesNotNameACleanFileForAPolicyListVariable(t *testing.T) {
 	require.Error(t, err)
 	assert.NotContains(t, err.Error(), path)
 }
+
+// A variable over a block that contains the policy block, or any other block,
+// emptied it as surely as one over the policy block itself. The reconciler
+// block is the dangerous one: nothing in it is needed to start, so the node
+// came up with policy evaluation off and served every record.
+// withEvaluationEnabled adds the setting the issue's daemon lost: the policy
+// evaluation task is off by default, so a variable that empties the reconciler
+// block turns it off and no verdict is ever produced.
+const withEvaluationEnabled = withPolicies + `
+reconciler:
+  policy_evaluation:
+    enabled: true
+`
+
+func TestLoadConfig_RefusesAVariableOverAnyBlock(t *testing.T) {
+	for _, variable := range []string{
+		"DIRECTORY_DAEMON_RECONCILER",
+		"DIRECTORY_DAEMON_RECONCILER_POLICY_EVALUATION",
+		"DIRECTORY_DAEMON_SERVER",
+	} {
+		for _, value := range []string{"", "x"} {
+			t.Run(variable+"="+value, func(t *testing.T) {
+				withConfigFile(t, withEvaluationEnabled)
+				t.Setenv(variable, value)
+
+				_, err := loadConfig()
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), variable+" is set")
+			})
+		}
+	}
+}
+
+// A setting under those blocks is still read from the environment.
+func TestLoadConfig_AcceptsASettingUnderABlock(t *testing.T) {
+	withConfigFile(t, withEvaluationEnabled)
+	t.Setenv("DIRECTORY_DAEMON_RECONCILER_POLICY_EVALUATION_ENABLED", "false")
+
+	cfg, err := loadConfig()
+	require.NoError(t, err)
+	assert.False(t, cfg.Reconciler.PolicyEvaluation.Enabled)
+}

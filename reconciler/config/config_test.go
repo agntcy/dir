@@ -326,3 +326,18 @@ func TestLoadConfig_PolicyEvaluationIsNotTheRetiredEnabled(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, cfg.PolicyEvaluation.Enabled)
 }
+
+// A variable over any block, not only the policy block, replaces every setting
+// under it. policy_evaluation is the block that switches verdicts on, and
+// emptying it turns the task off.
+func TestLoadConfig_RefusesAVariableOverABlock(t *testing.T) {
+	for _, value := range []string{"", "x"} {
+		t.Run("RECONCILER_POLICY_EVALUATION="+value, func(t *testing.T) {
+			t.Setenv("RECONCILER_POLICY_EVALUATION", value)
+
+			_, err := LoadConfig()
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "RECONCILER_POLICY_EVALUATION is set")
+		})
+	}
+}

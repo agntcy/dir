@@ -418,6 +418,12 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("invalid reconciler config: %w", err)
 	}
 
+	// The same holds for every other block: a variable over one replaces all
+	// of its settings, even when empty.
+	if err := env.CheckBlocks(DefaultEnvPrefix, v.AllKeys()); err != nil {
+		return nil, fmt.Errorf("invalid reconciler config: %w", err)
+	}
+
 	config := &Config{}
 	if err := v.Unmarshal(config, viper.DecodeHook(decodeHooks)); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal configuration: %w", err)

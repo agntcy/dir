@@ -328,6 +328,14 @@ func loadConfig() (*DaemonConfig, error) {
 		return nil, err
 	}
 
+	// A variable over any other block empties it just the same, and the
+	// reconciler block carries nothing the daemon needs to start, so emptying
+	// it is silent. The blocks are read from the keys viper already holds.
+	if err := env.CheckBlocks(DefaultEnvPrefix, v.AllKeys()); err != nil {
+		//nolint:wrapcheck // the error is complete, and the only prefix available here would be wrong
+		return nil, err
+	}
+
 	cfg := &DaemonConfig{}
 	if err := v.Unmarshal(cfg, viper.DecodeHook(decodeHooks)); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
