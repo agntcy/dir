@@ -7,20 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.9.0] - 2026-11-11
+
 ### Added
+- **Identity**: AGNTCY identity claims and badge verification. A record names an `agntcy://` Agent ID in `agntcy.dir/identity`; the reconciler checks the claim with an external verifier and, by default, requires an Agent Badge that binds that Agent ID to the record CID. The integration is opt-in. An expired claim that had verified invalidates the policy verdicts that depended on it (#2292)
 - **API**: `GET /v1/catalog` returns an AI Catalog document for a filtered page of entries, used by nested-catalog URLs in the well-known document (#2448)
 - **Search**: `RecordSummary` carries `trusted`, `verified` and an optional `safe`, matching the `TRUSTED`, `VERIFIED` and `SCAN_SAFE` filters and the AI Catalog badges; `safe` is unset when no scanner reached a verdict (#2399)
 - **API**: nested-catalog entries in the well-known AI Catalog are tagged with the content they list: `a2a`, `mcp` or `skills` (#2492)
+- **Policy**: reads are decided by operation policies at `pull` and `search`. Each policy names the verdicts it requires and carries its own mode (`off`, `shadow` or `enforce`); `shadow` logs the decision and still serves the record. A `search` policy is compiled into the query. Evaluation policies can read what this node has observed: signature, scan and identity claims, including `finding_count` and whether a scan report was produced locally or imported. `indexed_at` is the time this node first indexed the record. A metadata change supersedes only the cached verdicts that read it, and a policy version change is logged when its records are re-evaluated (#2425, #2434, #2450, #2416, #2426, #2430, #2447, #2429, #2431, #2432, #2489)
+- **Policy**: OPA and CEL policies are checked when they load. A verdict key must name a configured evaluation policy, and an evaluation policy cannot read verdicts (#2453, #2445)
+- **CLI**: `dirctl init` can install the security scanners (#2421)
+- **CLI**: `dirctl daemon` drops descriptors of processes that have exited and tells a reused PID from the original, configured with `runtime.adapter.process` (#2373)
+- **Reconciler**: the sync and publish jobs take `criteria.skills`. Publish also takes `criteria.trusted`: unset applies no signature filter, `true` keeps records with a verified signature, and `false` keeps records with none (#2391, #2395)
+- **Skill**: references for identity claims, content policies and runtime workloads, including the notes for upgrading a v1.8 node (#2378)
 
 ### Changed
 - **Client**: **BREAKING**: `resolvers.Resolver.Resolve` now accepts `opts ...resolvers.Option`. External resolver implementations must add this variadic parameter; implementations that do not need claim input or validity output may ignore it. Existing call sites remain compatible (#2292)
 - **API**: **BREAKING**: the well-known AI Catalog is a regular `AICatalog` document. `collections` and `WellKnownCatalog` are removed; protocol groupings are nested-catalog `entries` pointing at `GET /v1/catalog`. Identifiers use `urn:air:`, `mediaType` is dropped in favour of `type`, and `metadata` is renamed `extensions` with reverse-DNS keys (#2448)
 - **API**: **BREAKING**: `Workload.addresses` and `Workload.ports` are removed; read endpoints from `locators`. The `DiscoveredWorkload` CRD drops the Addresses and Ports print columns (#2299)
-- **Deps**: bump Go to 1.27.3, `golang.org/x/crypto` to the post-`openpgp`-removal pseudo-version (GO-2026-5932), zot to v2.1.23 (Helm chart v0.1.132), grpc-health-probe to v0.4.61, cisco-ai-skill-scanner to 2.3.2, the PostgreSQL and Alpine image digests, and the gateway UI to SvelteKit 3 with `undici`/`minimatch` patched. The reconciler scanner image now installs the patched `litellm` over mcp-scanner's exact pin and rebuilds skill-scanner's cel-go helper with the pinned Go toolchain instead of shipping the wheel's prebuilt binary
+- **Policy**: **BREAKING**: the `policy.enforcement` block is removed. The policies it named, and the single `search` and `fetch` modes, are written as policies at `pull` and `search`, each with its own mode. `fetch` is named `pull`, and `dir_policy_gate_fetches_excluded_total` is now `dir_policy_gate_pulls_excluded_total`. `refresh_interval` moves to `policy.refresh_interval`. A configuration or environment variable that still sets the retired block, or that sets `policy.operations`, `policy.evaluations` or the whole `policy` block, is refused at startup and the replacement is named. A read whose verdicts cannot be loaded is refused rather than served (#2455, #2458, #2465)
+- **Helm**: the dirctl chart's policy CronJobs are removed. Prune, sync and publish run as reconciler tasks (#2393)
+- **Reconciler**: the sync job no longer falls back to the `network_security` domain when none is configured. An empty domain list stays empty, and the job requires at least one domain or skill (#2392)
+- **CLI**: `dirctl runtime list --output json` and `--output jsonl` print each workload as discovery returns it. The text summary groups repeated locators, skills, domains and authors under one label and prints the runtime once (#2366)
+- **CLI**: `dirctl daemon` writes its default configuration to disk, and that default leaves the scanner off (#2418, #2420)
+- **Helm**: the OASF subchart is pulled from `oasf-server` v2. One server image serves every schema version, each schema mounted from `ghcr.io/agntcy/oasf-schema`. Schema 0.7.0 is no longer served (#2451)
+- **Deps**: bump Go to 1.27.3, `golang.org/x/crypto` to the post-`openpgp`-removal pseudo-version (GO-2026-5932), zot to v2.1.23 (Helm chart v0.1.132), grpc-health-probe to v0.4.61, cisco-ai-skill-scanner to 2.3.2, the PostgreSQL and Alpine image digests, and the gateway UI to SvelteKit 3 with `undici`/`minimatch` patched. The reconciler scanner image now installs the patched `litellm` over mcp-scanner's exact pin and rebuilds skill-scanner's cel-go helper with the pinned Go toolchain instead of shipping the wheel's prebuilt binary. Also `grpc-gateway` v2.33.0, `libp2p` v0.51.0, `oras-go` v2.7.0, SPIRE v1.15.5, `ans-sdk-go` v0.1.20, `prometheus/client_golang` v1.25.0, `zitadel/oidc` v3.51.14 and `golang.org/x/mod` v0.42.0 (#2413, #2442, #2444, #2410, #2409, #2386, #2385, #2388)
+
+### Fixed
+- **Server**: referrer pull responses are carried as protojson bytes (#2463)
+- **Importer**: the static enricher is selected by its correct name, and import writes a default configuration when `--config` is omitted (#2417)
+- **Reconciler**: the publish job rejects an invalid `limit` or `interval` (#2394)
+- **Docs**: `dirctl import` help documents directory input and the OASF type (#2032)
 
 ### Security
 - **Reconciler**: the scanner image no longer carries the Go stdlib CVEs of skill-scanner's bundled cel-go helper or `litellm` CVE-2026-114612 / GHSA-g5ff-637f-6q2m
 - **UI**: `undici` CVE-2026-* advisories (8) and `minimatch` GHSA-g3hv-75wg-m249 are resolved; `@sveltejs/kit` GHSA-27mw-82g8-phjj and GHSA-pfhg-q3qv-9q6r by the SvelteKit 3 upgrade
+- **Deps**: updates for `klauspost/compress` v1.20.2 (#2460), `golang.org/x/net` v0.62.0 (#2423), `github.com/go-jose/go-jose/v4` v4.1.6 (#2422) and `github.com/go-chi/chi/v5` v5.4.0 (#2401)
 
 ## [v1.8.0] - 2026-10-15
 
