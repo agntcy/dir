@@ -308,6 +308,16 @@ func (t *Task) indexRecord(ctx context.Context, tag string) error {
 
 	// If this record has signature referrers in the store (e.g. synced with referrers),
 	// mark it as signed so the signature task will verify it.
+	//
+	// There is deliberately no counterpart for scan report referrers, although
+	// regsync copies those too. A copied scan report is the publisher's
+	// assertion, not this node's conclusion, so it is never imported as a
+	// scan_reports row. Nor does it need a trigger like SetRecordSigned: the
+	// scan task's work query (GetRecordsNeedingScan) already selects every
+	// record with no scan_reports row, so a synced record is scanned here and
+	// gets its own row with source "local". Until then it reads as unscanned,
+	// even though `dirctl pull --scan-report` returns the copied report.
+	// TestRun_DoesNotImportASyncedScanReport pins this.
 	if refStore, ok := t.store.(types.ReferrerStoreAPI); ok {
 		var hasSignatures bool
 
