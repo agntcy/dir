@@ -18,7 +18,7 @@ replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2
 	github.com/agntcy/dir/api v1.9.0
-	github.com/agntcy/dir/cli v1.8.0
+	github.com/agntcy/dir/cli v1.9.0
 	github.com/agntcy/dir/client v1.9.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/sigstore/cosign/v3 v3.1.3
@@ -60,7 +60,7 @@ require (
 	github.com/CycloneDX/cyclonedx-go v0.11.0 // indirect
 	github.com/DataDog/zstd v1.5.7 // indirect
 	github.com/GoogleCloudPlatform/docker-credential-gcr/v2 v2.2.1 // indirect
-	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.34.0 // indirect
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.35.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.56.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.56.0 // indirect
 	github.com/Intevation/gval v1.3.0 // indirect
@@ -80,13 +80,13 @@ require (
 	github.com/agentnameservice/ans-sdk-go v0.1.20 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
-	github.com/agntcy/dir-importer v1.5.5 // indirect
-	github.com/agntcy/dir-runtime/discovery v1.5.0 // indirect
-	github.com/agntcy/dir-runtime/server v1.5.0 // indirect
-	github.com/agntcy/dir-runtime/store v1.5.0 // indirect
-	github.com/agntcy/dir-runtime/utils v1.5.0 // indirect
-	github.com/agntcy/dir/reconciler v1.8.0 // indirect
-	github.com/agntcy/dir/server v1.8.0 // indirect
+	github.com/agntcy/dir-importer v1.5.6 // indirect
+	github.com/agntcy/dir-runtime/discovery v1.6.0 // indirect
+	github.com/agntcy/dir-runtime/server v1.6.0 // indirect
+	github.com/agntcy/dir-runtime/store v1.6.0 // indirect
+	github.com/agntcy/dir-runtime/utils v1.6.0 // indirect
+	github.com/agntcy/dir/reconciler v1.9.0 // indirect
+	github.com/agntcy/dir/server v1.9.0 // indirect
 	github.com/agntcy/dir/utils v1.9.0 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260910081500-f0c6172a010a // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
@@ -201,7 +201,7 @@ require (
 	github.com/dylibso/observe-sdk/go v0.0.0-20240819160327-2d926c5d788a // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
-	github.com/envoyproxy/go-control-plane/envoy v1.37.0 // indirect
+	github.com/envoyproxy/go-control-plane/envoy v1.39.1-0.20260819172001-e6e3fd93e4be // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.3.3 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f // indirect
@@ -508,7 +508,7 @@ require (
 	github.com/samber/oops v1.21.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
-	github.com/sashabaranov/go-openai v1.42.1 // indirect
+	github.com/sashabaranov/go-openai v1.43.0 // indirect
 	github.com/sassoftware/go-rpmutils v0.4.0 // indirect
 	github.com/sassoftware/relic/v8 v8.2.0 // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.11.1 // indirect
@@ -587,7 +587,7 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/bridges/prometheus v0.71.0 // indirect
-	go.opentelemetry.io/contrib/detectors/gcp v1.44.0 // indirect
+	go.opentelemetry.io/contrib/detectors/gcp v1.45.0 // indirect
 	go.opentelemetry.io/contrib/exporters/autoexport v0.68.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.72.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.72.0 // indirect
@@ -625,7 +625,7 @@ require (
 	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
-	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/sys v0.50.0 // indirect
 	golang.org/x/telemetry v0.0.0-20261009151841-97e8ea77aa2a // indirect
 	golang.org/x/term v0.47.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
@@ -637,7 +637,7 @@ require (
 	google.golang.org/genproto v0.0.0-20260715232425-e75dac1f907d // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20261026165753-2ffab32bce7e // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20261019180522-ce908d29299b // indirect
-	google.golang.org/grpc v1.84.0 // indirect
+	google.golang.org/grpc v1.85.0 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.3 // indirect

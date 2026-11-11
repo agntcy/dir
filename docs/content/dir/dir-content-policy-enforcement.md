@@ -83,6 +83,8 @@ policy:
 
 `refresh_interval` and `policy.dir` are the only two settings in this block a variable can carry. The policies themselves are lists, and the block is what holds them, so a variable for `*_POLICY_OPERATIONS`, `*_POLICY_EVALUATIONS` or `*_POLICY` is refused at startup rather than applied — including when it is set but empty, which is what a template with a missing substitution leaves behind. An empty variable decoded to an empty list and replaced whatever the file configured, and over the block it emptied `policy.dir` and `refresh_interval` with it, so a node could start clean, report healthy, and serve everything it had been withholding. Write the policies in the configuration file.
 
+The same applies one level up. A variable for any block of settings, such as `DIRECTORY_DAEMON_RECONCILER` or `RECONCILER_POLICY_EVALUATION`, would replace every setting under it, so the apiserver, the reconciler and the daemon refuse to start while one is set, empty or not. Set the individual settings instead.
+
 Everything else belongs to a policy. Each entry in `policy.operations` names the operations it decides, and carries its own [`mode`](dir-component-records-validation.md#modes):
 
 | Operation | Covers |
