@@ -464,6 +464,31 @@ func TestResolver_ACoveredPolicyStaysEnforcedAfterARestart(t *testing.T) {
 	assert.Equal(t, []types.VersionedPolicy{{ID: "opa:a", Version: "h1"}}, covered(restarted.Current()))
 }
 
+// A refresh that fails does not record the version it was resolving, so the
+// refresh that applies that version is the one that sees the change.
+func TestResolver_AFailedRefreshDoesNotRecordAVersion(t *testing.T) {
+	t.Parallel()
+
+	c := newClock()
+	store := newVersions()
+	store.register("opa:a", "h1")
+	store.lack(1)
+
+	resolver := newResolver(t, store, c, "opa:a")
+
+	store.register("opa:a", "h2")
+	store.lack(0)
+	store.failMethod("MarkPolicyBackfilled", errors.New("database unavailable"))
+
+	require.ErrorContains(t, resolver.Refresh(), "database unavailable")
+	assert.Equal(t, "h1", resolver.versions["opa:a"])
+
+	store.failMethod("MarkPolicyBackfilled", nil)
+
+	refresh(t, resolver)
+	assert.Equal(t, "h2", resolver.versions["opa:a"])
+}
+
 // Every call the resolver makes can fail the start, so the server never runs
 // without knowing what it enforces.
 func TestResolver_EveryStoreCallCanFailTheStart(t *testing.T) {
