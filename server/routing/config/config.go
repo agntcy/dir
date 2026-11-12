@@ -31,8 +31,8 @@ var (
 	// ForceReachabilityPublic default (disabled; let AutoNAT decide reachability).
 	DefaultForceReachabilityPublic = false
 
-	// AllowPrivateIPs default (disabled; only public addresses are used).
-	DefaultAllowPrivateIPs = false
+	// DisablePrivateIPs default (private addresses are allowed).
+	DefaultDisablePrivateIPs = false
 )
 
 type Config struct {
@@ -121,11 +121,11 @@ type Config struct {
 	// with ForceReachabilityPrivate.
 	ForceReachabilityPublic bool `json:"force_reachability_public,omitempty" mapstructure:"force_reachability_public"`
 
-	// AllowPrivateIPs lets the DHT and host use and advertise private, loopback
-	// and unspecified IP addresses, and enables mDNS LAN discovery. Leave false
-	// for internet deployments; enable for private networks (Kubernetes, LAN,
-	// local development).
-	AllowPrivateIPs bool `json:"allow_private_ips,omitempty" mapstructure:"allow_private_ips"`
+	// DisablePrivateIPs restricts the DHT and host to public IP addresses
+	// (drops private, loopback and unspecified ones) and disables mDNS LAN
+	// discovery. Enable on internet-facing nodes to avoid dialing private
+	// addresses; leave false for private networks (Kubernetes, LAN, local dev).
+	DisablePrivateIPs bool `json:"disable_private_ips,omitempty" mapstructure:"disable_private_ips"`
 
 	// GossipSub configuration for label announcements
 	GossipSub GossipSubConfig `json:"gossipsub" mapstructure:"gossipsub"`

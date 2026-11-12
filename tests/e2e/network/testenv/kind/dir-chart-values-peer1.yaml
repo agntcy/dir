@@ -8,7 +8,6 @@ apiserver:
     publication:
       scheduler_interval: "1s"
     routing:
-      allow_private_ips: true
       refresh_interval: "1s"
       # This peer is configured to use the bootstrap peer as a DHT node for discovery.
       bootstrap_peers:

@@ -17,7 +17,6 @@ server:
       auth_config:
         insecure: true
   routing:
-    allow_private_ips: true
     refresh_interval: "1s"
     listen_address: "/ip4/127.0.0.1/tcp/18300"
     key_path: "${BOOTSTRAP_KEY_PATH}"

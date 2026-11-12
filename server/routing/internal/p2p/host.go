@@ -141,7 +141,7 @@ func newHost(opts *options) (host.Host, error) {
 		// them via identify.
 		libp2p.AddrsFactory(
 			func(addrs []ma.Multiaddr) []ma.Multiaddr {
-				if !opts.AllowPrivateIPs {
+				if opts.DisablePrivateIPs {
 					addrs = dropPrivateAddrs(addrs)
 				}
 

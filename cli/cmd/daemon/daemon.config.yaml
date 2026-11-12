@@ -38,9 +38,8 @@ server:
     listen_address: "/ip4/0.0.0.0/tcp/8999"
     key_path: "node.key"
     datastore_dir: "routing"
-    # Use and advertise private IPs and enable mDNS LAN discovery.
-    # Set to false for nodes on the public internet.
-    allow_private_ips: true
+    # Set to true on internet-facing nodes to use only public IPs and disable mDNS.
+    # disable_private_ips: false
     # bootstrap_peers:
     #   - "/dns4/remote-dir.example.com/tcp/8999/p2p/<peer-id>"
 

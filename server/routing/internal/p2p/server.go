@@ -135,10 +135,7 @@ func start(ctx context.Context, opts *options) <-chan status {
 
 		logger.Debug("Host created", "id", host.ID(), "addresses", host.Addrs())
 
-		// mDNS only finds LAN peers, so it is useless when private IPs are not allowed.
-		if opts.AllowPrivateIPs {
-			setupMDNS(host)
-		}
+		setupMDNS(host, opts.DisablePrivateIPs)
 
 		// Create DHT
 		var customDhtOpts []dht.Option
@@ -151,7 +148,7 @@ func start(ctx context.Context, opts *options) <-chan status {
 			}
 		}
 
-		kdht, err := newDHT(ctx, host, opts.BootstrapPeers, opts.RefreshInterval, opts.AllowPrivateIPs, customDhtOpts...)
+		kdht, err := newDHT(ctx, host, opts.BootstrapPeers, opts.RefreshInterval, opts.DisablePrivateIPs, customDhtOpts...)
 		if err != nil {
 			statusCh <- status{Err: err}
 
@@ -331,7 +328,12 @@ func (n *mdnsNotifee) HandlePeerFound(pi peer.AddrInfo) {
 // setupMDNS enables mDNS discovery for local network peers.
 // Peers on the same LAN will discover each other in < 1 second without bootstrap nodes.
 // This is useful for development, testing, and enterprise LAN deployments.
-func setupMDNS(h host.Host) {
+// mDNS only finds LAN peers, so it is skipped when private IPs are disabled.
+func setupMDNS(h host.Host, disablePrivateIPs bool) {
+	if disablePrivateIPs {
+		return
+	}
+
 	notifee := &mdnsNotifee{host: h}
 
 	service := mdns.NewMdnsService(h, MDNSServiceName, notifee)

@@ -19,7 +19,6 @@ server:
     verification:
       enabled: true
   routing:
-    allow_private_ips: true
     listen_address: "/ip4/127.0.0.1/tcp/0"
     refresh_interval: "1s"
   database:

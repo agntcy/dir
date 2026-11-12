@@ -172,9 +172,9 @@ config:
     # Address to use for routing
     # listen_address: "/ip4/0.0.0.0/tcp/5555"
 
-    # Use and advertise private IPs and enable mDNS LAN discovery.
-    # Default false: only public addresses are used. Enable for private networks.
-    # allow_private_ips: false
+    # Use and advertise only public IPs and disable mDNS LAN discovery.
+    # Default false: private addresses are allowed. Enable on internet-facing nodes.
+    # disable_private_ips: false
 
     # Path to private key file for peer ID.
     # key_path: /tmp/agntcy-dir/node.privkey
