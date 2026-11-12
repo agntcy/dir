@@ -48,12 +48,12 @@ func (s staticFacts) Facts(context.Context, string) (types.PolicyFacts, error) {
 }
 
 type sigRow struct {
-	status, subject, issuer string
-	updated                 time.Time
+	key, status, subject, issuer string
+	updated                     time.Time
 }
 
 func (sigRow) GetRecordCID() string               { return "" }
-func (sigRow) GetSignerKey() string               { return "" }
+func (s sigRow) GetSignerKey() string             { return s.key }
 func (s sigRow) GetStatus() string                { return s.status }
 func (sigRow) GetErrorMessage() string            { return "" }
 func (sigRow) GetSignerType() string              { return "" }
@@ -134,14 +134,26 @@ func TestProject_Signature(t *testing.T) {
 			when:   older,
 		},
 		{
-			name: "the latest verified signer is the one reported",
+			name: "the verified signer with the lowest key wins over a later verification",
 			facts: types.PolicyFacts{Signed: true, Signatures: []types.SignatureVerificationObject{
-				sigRow{status: types.SignatureStatusVerified, subject: "first", updated: older},
-				sigRow{status: types.SignatureStatusVerified, subject: "second", issuer: "https://issuer.example", updated: newer},
+				sigRow{key: "a-key", status: types.SignatureStatusVerified, subject: "first", issuer: "https://issuer.example", updated: older},
+				sigRow{key: "z-key", status: types.SignatureStatusVerified, subject: "second", updated: newer},
 			}},
 			status: policyv1.SignatureStatus_SIGNATURE_STATUS_VERIFIED,
 			source: policyv1.FactSource_FACT_SOURCE_LOCAL,
-			signer: "second",
+			signer: "first",
+			issuer: "https://issuer.example",
+			when:   older,
+		},
+		{
+			name: "the verified signer stays stable when verification order is reversed",
+			facts: types.PolicyFacts{Signed: true, Signatures: []types.SignatureVerificationObject{
+				sigRow{key: "z-key", status: types.SignatureStatusVerified, subject: "second", updated: older},
+				sigRow{key: "a-key", status: types.SignatureStatusVerified, subject: "first", issuer: "https://issuer.example", updated: newer},
+			}},
+			status: policyv1.SignatureStatus_SIGNATURE_STATUS_VERIFIED,
+			source: policyv1.FactSource_FACT_SOURCE_LOCAL,
+			signer: "first",
 			issuer: "https://issuer.example",
 			when:   newer,
 		},
