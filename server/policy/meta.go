@@ -63,19 +63,21 @@ func signatureFacts(facts types.PolicyFacts) *policyv1.SignatureFacts {
 	}
 }
 
-// pickSignature returns the latest verified signer and the latest revoked
-// one. Any other stored status is not a conclusion.
+// pickSignature returns a deterministic verified signer and revoked signer.
+// The signer key is stable for a given signer and unique within a record, so
+// it provides a total order that does not depend on verification time or row
+// order. Any other stored status is not a conclusion.
 func pickSignature(rows []types.SignatureVerificationObject) (types.SignatureVerificationObject, types.SignatureVerificationObject) {
 	var verified, failed types.SignatureVerificationObject
 
 	for _, row := range rows {
 		switch row.GetStatus() {
 		case types.SignatureStatusVerified:
-			if verified == nil || row.GetUpdatedAt().After(verified.GetUpdatedAt()) {
+			if verified == nil || row.GetSignerKey() < verified.GetSignerKey() {
 				verified = row
 			}
 		case types.SignatureStatusFailed:
-			if failed == nil || row.GetUpdatedAt().After(failed.GetUpdatedAt()) {
+			if failed == nil || row.GetSignerKey() < failed.GetSignerKey() {
 				failed = row
 			}
 		}

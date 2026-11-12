@@ -49,7 +49,7 @@ func (s staticFacts) Facts(context.Context, string) (types.PolicyFacts, error) {
 
 type sigRow struct {
 	key, status, subject, issuer string
-	updated                     time.Time
+	updated                      time.Time
 }
 
 func (sigRow) GetRecordCID() string               { return "" }
