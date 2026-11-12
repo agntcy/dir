@@ -8,6 +8,7 @@ apiserver:
     publication:
       scheduler_interval: "1s"
     routing:
+      allow_private_ips: true
       refresh_interval: "1s"
     ratelimit:
       enabled: "true"

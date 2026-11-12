@@ -13,6 +13,7 @@ apiserver:
     publication:
       scheduler_interval: "1s"
     routing:
+      allow_private_ips: true
       # This peer acts as a DHT bootstrap peer for the other peers in the test,
       # so it doesn't have any bootstrap peers configured.
       refresh_interval: "1s"

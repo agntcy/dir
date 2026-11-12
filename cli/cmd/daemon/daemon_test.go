@@ -277,13 +277,41 @@ func TestLoadConfigRepublishIntervalEnvOverride(t *testing.T) {
 
 	cfg, err := loadConfig()
 	require.NoError(t, err)
-	require.Equal(t, 36*time.Hour, cfg.Server.Routing.RepublishInterval)
+	require.Equal(t, 24*time.Hour, cfg.Server.Routing.RepublishInterval)
 
 	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_REPUBLISH_INTERVAL", "10m")
 
 	cfg, err = loadConfig()
 	require.NoError(t, err)
 	require.Equal(t, 10*time.Minute, cfg.Server.Routing.RepublishInterval)
+}
+
+// TestLoadConfigDHTEnvOverride asserts that the DHT tuning keys, which are
+// commented out in the embedded daemon.config.yaml, can be set by environment.
+func TestLoadConfigDHTEnvOverride(t *testing.T) {
+	originalOpts := opts
+	opts = &Options{DataDir: t.TempDir()}
+	t.Cleanup(func() {
+		opts = originalOpts
+	})
+
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_REFRESH_INTERVAL", "5m")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_RECORD_TTL", "12h")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_CLEANUP_INTERVAL", "6h")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_MAX_LABEL_AGE", "3h")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_BUCKET_SIZE", "15")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_CONCURRENCY", "3")
+
+	cfg, err := loadConfig()
+	require.NoError(t, err)
+
+	r := cfg.Server.Routing
+	require.Equal(t, 5*time.Minute, r.RefreshInterval)
+	require.Equal(t, 12*time.Hour, r.RecordTTL)
+	require.Equal(t, 6*time.Hour, r.CleanupInterval)
+	require.Equal(t, 3*time.Hour, r.MaxLabelAge)
+	require.Equal(t, 15, r.BucketSize)
+	require.Equal(t, 3, r.Concurrency)
 }
 
 // TestLoadConfigANSEnvOverride asserts that the ans:// identity scheme, which
