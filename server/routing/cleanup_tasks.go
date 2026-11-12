@@ -53,38 +53,27 @@ type CleanupManager struct {
 	server            *p2p.Server
 	publishFunc       pubsub.PublishEventHandler // Publishing callback (captures routeRemote state)
 	republishInterval time.Duration              // How often local CID providers are republished
+	cleanupInterval   time.Duration              // How often stale remote labels are removed
+	maxLabelAge       time.Duration              // Age after which a remote label is stale
 }
 
 // NewCleanupManager creates a new cleanup manager with the required dependencies.
-// The publishFunc is injected from routeRemote.Publish to avoid circular dependencies
-// while still providing access to DHT and GossipSub publishing logic.
-//
-// Parameters:
-//   - dstore: Datastore for label storage
-//   - storeAPI: Store API for record operations
-//   - server: P2P server for DHT operations
-//   - publishFunc: Callback for publishing (from routeRemote.Publish, see pubsub.PublishEventHandler)
-//   - republishInterval: how often local CID providers are republished; if <= 0,
-//     the default RepublishInterval constant (36h) is used.
+// The intervals come from params, which already has its defaults applied.
 func NewCleanupManager(
 	dstore types.Datastore,
 	storeAPI types.StoreAPI,
 	server *p2p.Server,
 	publishFunc pubsub.PublishEventHandler,
-	republishInterval time.Duration,
+	params dhtParams,
 ) *CleanupManager {
-	// Guard against zero/negative values: time.NewTicker panics on <= 0, and a
-	// missing config value should fall back to the default interval.
-	if republishInterval <= 0 {
-		republishInterval = RepublishInterval
-	}
-
 	return &CleanupManager{
 		dstore:            dstore,
 		storeAPI:          storeAPI,
 		server:            server,
 		publishFunc:       publishFunc,
-		republishInterval: republishInterval,
+		republishInterval: params.RepublishInterval,
+		cleanupInterval:   params.CleanupInterval,
+		maxLabelAge:       params.MaxLabelAge,
 	}
 }
 
@@ -118,9 +107,9 @@ func (c *CleanupManager) StartLabelRepublishTask(ctx context.Context, wg *sync.W
 // This is critical for the pull-based architecture to remove cached labels from offline or deleted remote content.
 // The wg parameter is used to track this goroutine in the parent's WaitGroup.
 func (c *CleanupManager) StartRemoteLabelCleanupTask(ctx context.Context, wg *sync.WaitGroup) {
-	ticker := time.NewTicker(CleanupInterval)
+	ticker := time.NewTicker(c.cleanupInterval)
 
-	cleanupLogger.Info("Starting remote label cleanup task", "interval", CleanupInterval)
+	cleanupLogger.Info("Starting remote label cleanup task", "interval", c.cleanupInterval)
 
 	defer func() {
 		ticker.Stop()
@@ -322,7 +311,7 @@ func (c *CleanupManager) cleanupStaleRemoteLabels(ctx context.Context) error {
 		}
 
 		// Check if label is stale using the IsStale method
-		if metadata.IsStale(MaxLabelAge) {
+		if metadata.IsStale(c.maxLabelAge) {
 			cleanupLogger.Debug("Found stale remote label",
 				"key", result.Key, "age", metadata.Age(), "peer", keyPeerID)
 

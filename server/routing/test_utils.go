@@ -42,6 +42,7 @@ func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route
 				BootstrapPeers:  bootPeers,
 				RefreshInterval: refreshInterval, // Fast refresh for testing
 				DatastoreDir:    t.TempDir(),     // Use isolated BadgerDB for each test
+				AllowPrivateIPs: true,            // Test peers talk over loopback
 			},
 		},
 	)

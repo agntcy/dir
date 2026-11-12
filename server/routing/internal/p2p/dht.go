@@ -12,16 +12,30 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	ma "github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
 )
 
 // newDHT creates a DHT to be served over libp2p host.
 // DHT will serve as a bootstrap peer if no bootstrap peers provided.
-func newDHT(ctx context.Context, host host.Host, bootstrapPeers []peer.AddrInfo, refreshPeriod time.Duration, options ...dht.Option) (*dht.IpfsDHT, error) {
-	// If no bootstrap nodes provided, we are the bootstrap node.
+func newDHT(ctx context.Context, host host.Host, bootstrapPeers []peer.AddrInfo, refreshPeriod time.Duration, allowPrivateIPs bool, options ...dht.Option) (*dht.IpfsDHT, error) {
+	// If no bootstrap nodes provided, we are the bootstrap node and always serve.
+	// Otherwise AutoNAT decides: server while reachable (or unknown), client once private.
 	if len(bootstrapPeers) == 0 {
 		options = append(options, dht.Mode(dht.ModeServer))
 	} else {
-		options = append(options, dht.BootstrapPeers(bootstrapPeers...))
+		options = append(options,
+			dht.Mode(dht.ModeAutoServer),
+			dht.BootstrapPeers(bootstrapPeers...),
+		)
+	}
+
+	if !allowPrivateIPs {
+		options = append(options,
+			dht.QueryFilter(dht.PublicQueryFilter),
+			dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
+			dht.AddressFilter(dropPrivateAddrs),
+		)
 	}
 
 	// Set refresh period
@@ -81,4 +95,20 @@ func newDHT(ctx context.Context, host host.Host, bootstrapPeers []peer.AddrInfo,
 	}
 
 	return kdht, nil
+}
+
+// dropPrivateAddrs removes private, loopback and unspecified IP addresses.
+// Non-IP addresses (e.g. the /dir/ and /oci/ app addresses) are kept.
+func dropPrivateAddrs(addrs []ma.Multiaddr) []ma.Multiaddr {
+	out := make([]ma.Multiaddr, 0, len(addrs))
+
+	for _, a := range addrs {
+		if manet.IsPrivateAddr(a) || manet.IsIPLoopback(a) || manet.IsIPUnspecified(a) {
+			continue
+		}
+
+		out = append(out, a)
+	}
+
+	return out
 }

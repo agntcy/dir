@@ -30,6 +30,9 @@ var (
 
 	// ForceReachabilityPublic default (disabled; let AutoNAT decide reachability).
 	DefaultForceReachabilityPublic = false
+
+	// AllowPrivateIPs default (disabled; only public addresses are used).
+	DefaultAllowPrivateIPs = false
 )
 
 type Config struct {
@@ -59,13 +62,35 @@ type Config struct {
 	DatastoreDir string `json:"datastore_dir,omitempty" mapstructure:"datastore_dir"`
 
 	// Refresh interval for DHT routing tables.
-	// If not set or zero, uses the default RefreshInterval constant.
-	// This is primarily used for testing with faster intervals.
+	// If not set or zero, uses the default RefreshInterval constant (10m).
 	RefreshInterval time.Duration `json:"refresh_interval,omitempty" mapstructure:"refresh_interval"`
+
+	// RecordTTL is how long DHT provider records are kept before they expire.
+	// If not set or zero, uses the default RecordTTL constant (48h).
+	// Must be greater than RepublishInterval.
+	RecordTTL time.Duration `json:"record_ttl,omitempty" mapstructure:"record_ttl"`
+
+	// CleanupInterval is how often stale remote labels are removed.
+	// If not set or zero, uses the default CleanupInterval constant (48h).
+	CleanupInterval time.Duration `json:"cleanup_interval,omitempty" mapstructure:"cleanup_interval"`
+
+	// MaxLabelAge is the age after which a remote label is considered stale.
+	// If not set or zero, uses the default MaxLabelAge constant (48h).
+	// Keep it above RepublishInterval so labels are refreshed before they go stale.
+	MaxLabelAge time.Duration `json:"max_label_age,omitempty" mapstructure:"max_label_age"`
+
+	// BucketSize is the Kademlia k parameter.
+	// If not set or zero, uses the default BucketSize constant (10).
+	// Must be the same on every node of the network.
+	BucketSize int `json:"bucket_size,omitempty" mapstructure:"bucket_size"`
+
+	// Concurrency is the Kademlia alpha parameter (parallel lookup requests).
+	// If not set or zero, uses the default Concurrency constant (5).
+	Concurrency int `json:"concurrency,omitempty" mapstructure:"concurrency"`
 
 	// RepublishInterval controls how often local CID provider announcements are
 	// republished to keep content discoverable (DHT provider records + GossipSub
-	// labels). If not set or zero, uses the default RepublishInterval constant (36h).
+	// labels). If not set or zero, uses the default RepublishInterval constant (24h).
 	// Lower values let newly joined nodes converge on existing content sooner, at
 	// the cost of more frequent announcement traffic.
 	RepublishInterval time.Duration `json:"republish_interval,omitempty" mapstructure:"republish_interval"`
@@ -95,6 +120,12 @@ type Config struct {
 	// reservations. Enable only on genuinely public nodes. Mutually exclusive
 	// with ForceReachabilityPrivate.
 	ForceReachabilityPublic bool `json:"force_reachability_public,omitempty" mapstructure:"force_reachability_public"`
+
+	// AllowPrivateIPs lets the DHT and host use and advertise private, loopback
+	// and unspecified IP addresses, and enables mDNS LAN discovery. Leave false
+	// for internet deployments; enable for private networks (Kubernetes, LAN,
+	// local development).
+	AllowPrivateIPs bool `json:"allow_private_ips,omitempty" mapstructure:"allow_private_ips"`
 
 	// GossipSub configuration for label announcements
 	GossipSub GossipSubConfig `json:"gossipsub" mapstructure:"gossipsub"`

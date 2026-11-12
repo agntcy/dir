@@ -537,12 +537,21 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	_ = v.BindEnv("routing.datastore_dir")
 	v.SetDefault("routing.datastore_dir", "")
 
-	// Note: No defaults set for the intervals below. A zero value means the
-	// routing package falls back to its RefreshInterval/RepublishInterval
-	// constants.
+	// Note: No defaults set for the DHT settings below. A zero value means the
+	// routing package falls back to its constants (see server/routing/constants.go).
 	_ = v.BindEnv("routing.refresh_interval")
 
 	_ = v.BindEnv("routing.republish_interval")
+
+	_ = v.BindEnv("routing.record_ttl")
+
+	_ = v.BindEnv("routing.cleanup_interval")
+
+	_ = v.BindEnv("routing.max_label_age")
+
+	_ = v.BindEnv("routing.bucket_size")
+
+	_ = v.BindEnv("routing.concurrency")
 
 	//
 	// Routing GossipSub configuration
@@ -573,6 +582,9 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 
 	_ = v.BindEnv("routing.force_reachability_public")
 	v.SetDefault("routing.force_reachability_public", routing.DefaultForceReachabilityPublic)
+
+	_ = v.BindEnv("routing.allow_private_ips")
+	v.SetDefault("routing.allow_private_ips", routing.DefaultAllowPrivateIPs)
 
 	//
 	// Database configuration

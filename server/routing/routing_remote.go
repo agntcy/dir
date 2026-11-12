@@ -19,7 +19,6 @@ import (
 	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/routing/pubsub"
 	"github.com/agntcy/dir/server/routing/rpc"
-	validators "github.com/agntcy/dir/server/routing/validators"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/conv"
 	"github.com/agntcy/dir/utils/logging"
@@ -28,7 +27,6 @@ import (
 	"github.com/ipfs/go-datastore/query"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/records"
-	record "github.com/libp2p/go-libp2p-record"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
@@ -168,9 +166,11 @@ func newRemote(parentCtx context.Context,
 		isBootstrapNode: isBootstrapNode,
 	}
 
-	refreshInterval := RefreshInterval
-	if opts.Config().Routing.RefreshInterval > 0 {
-		refreshInterval = opts.Config().Routing.RefreshInterval
+	params, err := resolveDHTParams(opts.Config().Routing)
+	if err != nil {
+		cancel()
+
+		return nil, fmt.Errorf("invalid routing configuration: %w", err)
 	}
 
 	// Use parent context for p2p server (should live as long as the server)
@@ -179,33 +179,33 @@ func newRemote(parentCtx context.Context,
 		p2p.WithDirectoryAPIAddress(opts.Config().Routing.DirectoryAPIAddress),
 		p2p.WithDirectoryOCIAddress(opts.Config().AdvertisedOCIAddress()),
 		p2p.WithBootstrapAddrs(opts.Config().Routing.BootstrapPeers),
-		p2p.WithRefreshInterval(refreshInterval),
+		p2p.WithRefreshInterval(params.RefreshInterval),
 		p2p.WithRandevous(ProtocolRendezvous), // enable libp2p auto-discovery
 		p2p.WithIdentityKeyPath(opts.Config().Routing.KeyPath),
 		p2p.WithRelayService(opts.Config().Routing.RelayService),
 		p2p.WithStaticRelays(opts.Config().Routing.StaticRelays),
 		p2p.WithForceReachabilityPrivate(opts.Config().Routing.ForceReachabilityPrivate),
 		p2p.WithForceReachabilityPublic(opts.Config().Routing.ForceReachabilityPublic),
+		p2p.WithAllowPrivateIPs(opts.Config().Routing.AllowPrivateIPs),
 		p2p.WithCustomDHTOpts(
 			func(h host.Host) ([]dht.Option, error) {
-				providerMgr, err := records.NewProviderManager(parentCtx, h.ID(), h.Peerstore(), dstore)
+				providerMgr, err := records.NewProviderManager(parentCtx, h.ID(), h.Peerstore(), dstore,
+					records.ProvideValidity(params.RecordTTL),
+				)
 				if err != nil {
 					return nil, fmt.Errorf("failed to create provider manager: %w", err)
 				}
 
-				labelValidators := validators.CreateLabelValidators()
-				validator := record.NamespacedValidator{
-					types.LabelTypeSkill.String():  labelValidators[types.LabelTypeSkill.String()],
-					types.LabelTypeDomain.String(): labelValidators[types.LabelTypeDomain.String()],
-					types.LabelTypeModule.String(): labelValidators[types.LabelTypeModule.String()],
-				}
-
+				// No IP diversity filter: private deployments share subnets.
 				return []dht.Option{
 					dht.Datastore(dstore),                           // custom DHT datastore
 					dht.ProtocolPrefix(protocol.ID(ProtocolPrefix)), // custom DHT protocol prefix
-					dht.Validator(validator),                        // custom validators for label namespaces
-					dht.MaxRecordAge(RecordTTL),                     // set consistent TTL for all DHT records
-					dht.Mode(dht.ModeServer),
+					dht.MaxRecordAge(params.RecordTTL),              // set consistent TTL for all DHT records
+					dht.BucketSize(params.BucketSize),
+					dht.Concurrency(params.Concurrency),
+					// Only provider records are used today. Remove DisableValues once
+					// the DHT should also store value records (e.g. labels).
+					dht.DisableValues(),
 					dht.ProviderStore(&handler{
 						ProviderManager: providerMgr,
 						hostID:          h.ID().String(),
@@ -257,7 +257,7 @@ func newRemote(parentCtx context.Context,
 
 	// Pass Publish as callback to avoid circular dependency
 	// The method value captures routeAPI's state (server, pubsubManager)
-	routeAPI.cleanupManager = NewCleanupManager(dstore, storeAPI, server, routeAPI.Publish, opts.Config().Routing.RepublishInterval)
+	routeAPI.cleanupManager = NewCleanupManager(dstore, storeAPI, server, routeAPI.Publish, params)
 
 	// Initialize DHT autosync if enabled (deny-by-default). The manager pulls and
 	// ingests records/referrers announced by trusted peers, off the notification

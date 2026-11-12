@@ -137,6 +137,15 @@ func registerServerDefaults(v *viper.Viper) {
 	_ = v.BindEnv("server.routing.directory_oci_address")
 	v.SetDefault("server.routing.directory_oci_address", "")
 
+	// DHT tuning keys are commented out in daemon.config.yaml. No defaults: a
+	// zero value means the routing package uses its constants.
+	_ = v.BindEnv("server.routing.refresh_interval")
+	_ = v.BindEnv("server.routing.record_ttl")
+	_ = v.BindEnv("server.routing.cleanup_interval")
+	_ = v.BindEnv("server.routing.max_label_age")
+	_ = v.BindEnv("server.routing.bucket_size")
+	_ = v.BindEnv("server.routing.concurrency")
+
 	// Extractor config likewise has no defaults and is absent from
 	// daemon.config.yaml, so register it here for AutomaticEnv. Mirrors
 	// server/config. An empty remote_addr falls back to the locally provisioned
