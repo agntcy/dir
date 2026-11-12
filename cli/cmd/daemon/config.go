@@ -341,6 +341,10 @@ func loadConfig() (*DaemonConfig, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
+	if err := cfg.Server.Policy.ValidateRefreshInterval(); err != nil {
+		return nil, fmt.Errorf("invalid daemon config: server %w", err)
+	}
+
 	cfg.Server.Connection = cfg.Server.Connection.WithDefaults()
 	resolveRelativePaths(cfg)
 
