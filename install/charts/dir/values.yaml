@@ -309,8 +309,9 @@ apiserver:
       #   private networks (Kubernetes-internal peers, LAN).
       allow_private_ips: false
       # DHT tuning. Unset keys use the defaults shown.
-      # bucket_size must be the same on every node of the network.
+      # bucket_size should be the same on every node of the network.
       # record_ttl must be greater than republish_interval.
+      # max_label_age must be greater than republish_interval.
       # refresh_interval: "10m"
       # record_ttl: "48h"
       # cleanup_interval: "48h"

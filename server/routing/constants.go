@@ -25,7 +25,7 @@ const (
 
 // Default DHT lookup parameters, tuned for a small and stable network.
 // Overridable through routing.bucket_size and routing.concurrency.
-// BucketSize must be the same on every node of the network.
+// BucketSize should be the same on every node of the network.
 const (
 	// BucketSize is the Kademlia k parameter (default 20).
 	BucketSize = 10
