@@ -101,9 +101,9 @@ func listPackages(cmd *cobra.Command, manifest *pkgstate.Manifest, structured bo
 
 	// The first four columns match `install outdated`, which then continues with
 	// the installed version, so both tables identify a row the same way.
-	table := newTable("NAME", "AGENT", "KIND", "SCOPE", "VERSION", "FLAGS")
+	table := presenter.NewTable("NAME", "AGENT", "KIND", "SCOPE", "VERSION", "FLAGS")
 	for _, row := range rows {
-		table.row(row.Name, row.Agent, row.Kind, shortScope(row.Scope), orDash(row.Version), flags(row))
+		table.Row(row.Name, row.Agent, row.Kind, shortScope(row.Scope), presenter.OrDash(row.Version), flags(row))
 	}
 
 	presenter.Printf(cmd, "%s", table.String())
@@ -147,7 +147,7 @@ func listOnePackage(cmd *cobra.Command, manifest *pkgstate.Manifest, name string
 // lives in.
 func printArtifacts(cmd *cobra.Command, row listedArtifacts) {
 	presenter.Printf(cmd, "%s %s [%s, %s]%s\n",
-		row.Name, orDash(row.Version), row.Agent, shortScope(row.Scope), flagSuffix(row.listedPackage))
+		row.Name, presenter.OrDash(row.Version), row.Agent, shortScope(row.Scope), flagSuffix(row.listedPackage))
 
 	if len(row.Artifacts) == 0 {
 		presenter.Printf(cmd, "  (no artifacts recorded)\n")
@@ -165,7 +165,7 @@ func printArtifacts(cmd *cobra.Command, row listedArtifacts) {
 			}
 		case agentcfg.ArtifactMCP:
 			presenter.Printf(cmd, "  mcp    %s in %s%s\n",
-				artifact.Server, orDash(artifact.Path), presenceMark(artifact))
+				artifact.Server, presenter.OrDash(artifact.Path), presenceMark(artifact))
 		}
 	}
 }

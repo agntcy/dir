@@ -69,9 +69,9 @@ func runPrune(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	table := newTable("NAME", "VERSION", "AGENT", "SCOPE")
+	table := presenter.NewTable("NAME", "VERSION", "AGENT", "SCOPE")
 	for _, entry := range stale {
-		table.row(entry.Name, orDash(entry.Version), entry.Agent, shortScope(entry.Scope))
+		table.Row(entry.Name, presenter.OrDash(entry.Version), entry.Agent, shortScope(entry.Scope))
 	}
 
 	presenter.Printf(cmd, "%s", table.String())
