@@ -22,3 +22,22 @@ func TestConfigRefreshInterval(t *testing.T) {
 	require.Equal(t, DefaultRefreshInterval, (&Config{}).GetRefreshInterval())
 	require.Equal(t, time.Minute, (&Config{RefreshInterval: time.Minute}).GetRefreshInterval())
 }
+
+func TestValidateRefreshInterval(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		interval time.Duration
+		wantErr  bool
+	}{
+		{"unset", 0, false},
+		{"positive", time.Minute, false},
+		{"negative", -5 * time.Second, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := (&Config{RefreshInterval: tc.interval}).ValidateRefreshInterval()
+			if tc.wantErr != (err != nil) {
+				t.Fatalf("ValidateRefreshInterval(%v) error = %v, wantErr %v", tc.interval, err, tc.wantErr)
+			}
+		})
+	}
+}

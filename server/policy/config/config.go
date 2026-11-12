@@ -55,6 +55,15 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("policy: %w", err)
 	}
 
+	return c.ValidateRefreshInterval()
+}
+
+// ValidateRefreshInterval refuses a negative RefreshInterval. The resolver
+// treats an enforcement as stale once its age reaches the interval, so a
+// negative value would make every request start a refresh. The loaders call
+// this on their own, without the rest of Validate, so that a nonsensical
+// interval stops the start instead of loading silently.
+func (c *Config) ValidateRefreshInterval() error {
 	if c.RefreshInterval < 0 {
 		return errors.New("policy: refresh_interval must not be negative")
 	}

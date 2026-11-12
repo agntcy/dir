@@ -714,3 +714,12 @@ func TestAdvertisedOCIAddress(t *testing.T) {
 		})
 	}
 }
+
+// A negative interval would make the gate treat every enforcement as stale and
+// refresh on each request, so the loader refuses it rather than starting.
+func TestLoadConfig_RefusesANegativePolicyRefreshInterval(t *testing.T) {
+	t.Setenv("DIRECTORY_SERVER_POLICY_REFRESH_INTERVAL", "-5s")
+
+	_, err := LoadConfig()
+	assert.ErrorContains(t, err, "refresh_interval must not be negative")
+}

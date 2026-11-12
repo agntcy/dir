@@ -719,6 +719,10 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
+	if err := config.Policy.ValidateRefreshInterval(); err != nil {
+		return nil, fmt.Errorf("invalid server config: %w", err)
+	}
+
 	// Apply connection management defaults if not configured
 	// This happens after unmarshal so YAML config takes precedence over defaults
 	config.Connection = config.Connection.WithDefaults()
