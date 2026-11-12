@@ -36,6 +36,9 @@ type DatabaseAPI interface {
 	// ScanReportDatabaseAPI handles persistence of security scan results.
 	ScanReportDatabaseAPI
 
+	// SecurityScanDatabaseAPI handles persistence of security scan history.
+	SecurityScanDatabaseAPI
+
 	// PolicyEvaluationDatabaseAPI handles persistence of content-policy verdicts.
 	PolicyEvaluationDatabaseAPI
 
@@ -279,6 +282,98 @@ type ScanReportObject interface {
 	GetFindingCount() int
 }
 
+// Security scan status values. Where a ScanStatus* value is the result of a
+// scanner run, these are its progress: a security_scans row moves from pending
+// or running to succeeded or failed.
+const (
+	// SecurityScanStatusPending means a manual scan was requested and no
+	// scanner has started on it yet. Only manual scans are ever pending.
+	SecurityScanStatusPending = "pending"
+
+	// SecurityScanStatusRunning means a scanner is working on the record:
+	// its run has started and not returned.
+	SecurityScanStatusRunning = "running"
+
+	// SecurityScanStatusSucceeded means the scanner reached a verdict,
+	// complete or partial.
+	SecurityScanStatusSucceeded = "succeeded"
+
+	// SecurityScanStatusFailed means the scanner could not produce a verdict,
+	// or the run was interrupted.
+	SecurityScanStatusFailed = "failed"
+)
+
+// Security scan trigger values. What started a security_scans row.
+const (
+	// SecurityScanTriggerScheduled means the reconciler's periodic pass
+	// started the scan.
+	SecurityScanTriggerScheduled = "scheduled"
+
+	// SecurityScanTriggerManual means a user asked for the scan.
+	SecurityScanTriggerManual = "manual"
+)
+
+// SecurityScanFailureInterrupted is the failure reason FailStuckScans writes on
+// a scan that stayed running too long, for example because the reconciler
+// restarted mid-scan.
+const SecurityScanFailureInterrupted = "interrupted"
+
+// SecurityScanObject is one scan attempt in a record's scan history.
+//
+// Unlike ScanReportObject, which holds a record's current state per scanner
+// and is replaced on every scan, a new row is kept for each attempt. Rows from
+// one pass over a record share a ScanID.
+//
+//nolint:interfacebloat // one getter per stored column, like the row it reads.
+type SecurityScanObject interface {
+	GetID() uint
+
+	// GetScanID groups the rows of one pass over a record: one row per scanner
+	// that ran, or a single placeholder while a manual scan is pending.
+	GetScanID() string
+
+	GetRecordCID() string
+
+	// GetScannerType is "MCP", "SKILL", or "A2A". Empty on a pending
+	// placeholder, since which scanners apply is only known when they run.
+	GetScannerType() string
+
+	// GetScannerVersion is the scanner's version string, empty when the
+	// scanner did not report one.
+	GetScannerVersion() string
+
+	// GetTrigger is one of the SecurityScanTrigger* values.
+	GetTrigger() string
+
+	// GetStatus is one of the SecurityScanStatus* values.
+	GetStatus() string
+
+	// GetIsSafe, GetMaxSeverity, GetFindingCount and GetPartial copy the
+	// verdict. They hold no verdict unless the status is succeeded.
+	GetIsSafe() bool
+	GetMaxSeverity() string
+	GetFindingCount() int
+	GetPartial() bool
+
+	// GetFailureReason is a scanner.FailureReason, empty unless failed.
+	GetFailureReason() string
+
+	// GetFailureDetail is human-readable context for the failure reason.
+	GetFailureDetail() string
+
+	// GetRequestedBy is the caller's identity for a manual scan, empty for a
+	// scheduled one.
+	GetRequestedBy() string
+
+	// GetCreatedAt is when the scan was requested or started.
+	GetCreatedAt() time.Time
+
+	// GetStartedAt and GetFinishedAt are zero until the scan starts and
+	// finishes.
+	GetStartedAt() time.Time
+	GetFinishedAt() time.Time
+}
+
 // ScanSchedule controls when a scan result stops suppressing a rescan.
 //
 // Materialised into a timestamp at write time, because the exponential date
@@ -367,6 +462,49 @@ type ScanReportDatabaseAPI interface {
 	// GetRecordsNeedingScan returns records with no scan result still
 	// suppressing a rescan, bounded by ttl.
 	GetRecordsNeedingScan(ttl time.Duration) ([]coretypes.Record, error)
+}
+
+// SecurityScanDatabaseAPI handles persistence of security scan history.
+//
+// A row is kept for each scan attempt. A scanner's final row is written in the
+// same transaction as its scan_reports upsert, so history and current state
+// agree about the latest scan.
+type SecurityScanDatabaseAPI interface {
+	// CreatePendingScan asks for a manual scan of a record. It returns an
+	// existing scan instead when one is pending or running, or finished within
+	// cooldown; created reports whether a new one was made.
+	CreatePendingScan(recordCID, requestedBy string, cooldown time.Duration) (scan SecurityScanObject, created bool, err error)
+
+	// ListPendingScans returns up to limit manual scans no scanner has
+	// started, oldest first, without changing them. A limit of zero or
+	// less returns all of them.
+	ListPendingScans(limit int) ([]SecurityScanObject, error)
+
+	// StartScannerRun records that a scanner started on a record and returns
+	// the row's ID. The first scanner of a manual scan takes over its pending
+	// placeholder.
+	StartScannerRun(scanID, recordCID, scannerType, trigger, requestedBy string) (uint, error)
+
+	// FinishScannerRun writes a scanner's outcome and upserts the record's
+	// scan_reports row in one transaction.
+	FinishScannerRun(id uint, scannerVersion string, report ScanReportObject, schedule ScanSchedule) error
+
+	// DiscardScannerRun removes the row of a scanner that did not apply to
+	// the record, handing a manual scan's placeholder back if no other
+	// scanner of that scan has a row.
+	DiscardScannerRun(id uint) error
+
+	// CloseScanPlaceholder fails a manual scan's placeholder that no scanner
+	// took over.
+	CloseScanPlaceholder(scanID, failureReason, failureDetail string) error
+
+	// FailStuckScans marks scans running for longer than olderThan as failed,
+	// and returns how many.
+	FailStuckScans(olderThan time.Duration) (int64, error)
+
+	// ListScans returns a record's scans newest first, optionally filtered by
+	// status.
+	ListScans(recordCID, status string, offset, limit int) ([]SecurityScanObject, error)
 }
 
 // PolicyFacts is what this node has stored about one record: the rows an
