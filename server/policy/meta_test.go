@@ -68,22 +68,22 @@ func (s sigRow) GetUpdatedAt() time.Time          { return s.updated }
 func (sigRow) GetSignature() string               { return "" }
 
 type scanRow struct {
-	scanner, status, severity, source string
-	safe                              bool
-	findings                          int
-	updated                           time.Time
+	scanner, status, severity, source, reason string
+	safe                                      bool
+	findings                                  int
+	updated                                   time.Time
 }
 
-func (scanRow) GetRecordCID() string      { return "" }
-func (s scanRow) GetScannerType() string  { return s.scanner }
-func (s scanRow) GetIsSafe() bool         { return s.safe }
-func (s scanRow) GetMaxSeverity() string  { return s.severity }
-func (s scanRow) GetUpdatedAt() time.Time { return s.updated }
-func (s scanRow) GetStatus() string       { return s.status }
-func (scanRow) GetFailureReason() string  { return "" }
-func (scanRow) GetFailureDetail() string  { return "" }
-func (s scanRow) GetSource() string       { return s.source }
-func (s scanRow) GetFindingCount() int    { return s.findings }
+func (scanRow) GetRecordCID() string       { return "" }
+func (s scanRow) GetScannerType() string   { return s.scanner }
+func (s scanRow) GetIsSafe() bool          { return s.safe }
+func (s scanRow) GetMaxSeverity() string   { return s.severity }
+func (s scanRow) GetUpdatedAt() time.Time  { return s.updated }
+func (s scanRow) GetStatus() string        { return s.status }
+func (s scanRow) GetFailureReason() string { return s.reason }
+func (scanRow) GetFailureDetail() string   { return "" }
+func (s scanRow) GetSource() string        { return s.source }
+func (s scanRow) GetFindingCount() int     { return s.findings }
 
 type claimRow struct {
 	role, subject, status string
@@ -326,6 +326,51 @@ func TestProject_Scan(t *testing.T) {
 		}}).GetScan()
 
 		assert.Equal(t, policyv1.FactSource_FACT_SOURCE_UNSPECIFIED, got.GetSource())
+	})
+
+	t.Run("failed scanners agreeing carries the failure reason", func(t *testing.T) {
+		t.Parallel()
+
+		got := project(nil, types.PolicyFacts{Scans: []types.ScanReportObject{
+			scanRow{scanner: "MCP", status: types.ScanStatusFailed, reason: "source-unreachable", updated: early},
+			scanRow{scanner: "SKILL", status: types.ScanStatusFailed, reason: "source-unreachable", updated: late},
+		}}).GetScan()
+
+		assert.Equal(t, policyv1.ScanStatus_SCAN_STATUS_FAILED, got.GetStatus())
+		assert.Equal(t, policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SOURCE_UNREACHABLE, got.GetFailureReason())
+		require.Len(t, got.GetScanners(), 2)
+		assert.Equal(t, policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SOURCE_UNREACHABLE, got.GetScanners()[0].GetFailureReason())
+		assert.Equal(t, policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SOURCE_UNREACHABLE, got.GetScanners()[1].GetFailureReason())
+	})
+
+	t.Run("failed scanners disagreeing leaves aggregate failure reason unspecified", func(t *testing.T) {
+		t.Parallel()
+
+		got := project(nil, types.PolicyFacts{Scans: []types.ScanReportObject{
+			scanRow{scanner: "MCP", status: types.ScanStatusFailed, reason: "scanner-crashed", updated: early},
+			scanRow{scanner: "SKILL", status: types.ScanStatusFailed, reason: "source-unreachable", updated: late},
+		}}).GetScan()
+
+		assert.Equal(t, policyv1.ScanStatus_SCAN_STATUS_FAILED, got.GetStatus())
+		assert.Equal(t, policyv1.ScanFailureReason_SCAN_FAILURE_REASON_UNSPECIFIED, got.GetFailureReason())
+		require.Len(t, got.GetScanners(), 2)
+		assert.Equal(t, policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SCANNER_CRASHED, got.GetScanners()[0].GetFailureReason())
+		assert.Equal(t, policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SOURCE_UNREACHABLE, got.GetScanners()[1].GetFailureReason())
+	})
+
+	t.Run("partial scan leaves aggregate failure reason unspecified", func(t *testing.T) {
+		t.Parallel()
+
+		got := project(nil, types.PolicyFacts{Scans: []types.ScanReportObject{
+			scanRow{scanner: "MCP", status: types.ScanStatusCompleted, severity: "NONE", safe: true, updated: early},
+			scanRow{scanner: "SKILL", status: types.ScanStatusFailed, reason: "source-unreachable", updated: late},
+		}}).GetScan()
+
+		assert.Equal(t, policyv1.ScanStatus_SCAN_STATUS_PARTIAL, got.GetStatus())
+		assert.Equal(t, policyv1.ScanFailureReason_SCAN_FAILURE_REASON_UNSPECIFIED, got.GetFailureReason())
+		require.Len(t, got.GetScanners(), 2)
+		assert.Equal(t, policyv1.ScanFailureReason_SCAN_FAILURE_REASON_UNSPECIFIED, got.GetScanners()[0].GetFailureReason())
+		assert.Equal(t, policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SOURCE_UNREACHABLE, got.GetScanners()[1].GetFailureReason())
 	})
 }
 
