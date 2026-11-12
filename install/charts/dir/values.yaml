@@ -304,10 +304,10 @@ apiserver:
       #   on genuinely public nodes. Mutually exclusive with
       #   force_reachability_private.
       force_reachability_public: false
-      # allow_private_ips: use and advertise private IPs and enable mDNS LAN
-      #   discovery. Default false: only public addresses are used. Enable for
-      #   private networks (Kubernetes-internal peers, LAN).
-      allow_private_ips: false
+      # disable_private_ips: use and advertise only public IPs and disable mDNS
+      #   LAN discovery. Default false: private addresses are allowed. Enable on
+      #   internet-facing nodes to avoid dialing private addresses.
+      disable_private_ips: false
       # DHT tuning. Unset keys use the defaults shown.
       # bucket_size should be the same on every node of the network.
       # record_ttl must be greater than republish_interval.

@@ -583,8 +583,8 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	_ = v.BindEnv("routing.force_reachability_public")
 	v.SetDefault("routing.force_reachability_public", routing.DefaultForceReachabilityPublic)
 
-	_ = v.BindEnv("routing.allow_private_ips")
-	v.SetDefault("routing.allow_private_ips", routing.DefaultAllowPrivateIPs)
+	_ = v.BindEnv("routing.disable_private_ips")
+	v.SetDefault("routing.disable_private_ips", routing.DefaultDisablePrivateIPs)
 
 	//
 	// Database configuration

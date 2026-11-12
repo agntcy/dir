@@ -29,7 +29,6 @@ store:
       access_token:
       refresh_token:
 routing:
-  allow_private_ips: true
   listen_address: /ip4/0.0.0.0/tcp/8999
   directory_api_address:
   bootstrap_peers:

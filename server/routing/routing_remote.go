@@ -186,7 +186,7 @@ func newRemote(parentCtx context.Context,
 		p2p.WithStaticRelays(opts.Config().Routing.StaticRelays),
 		p2p.WithForceReachabilityPrivate(opts.Config().Routing.ForceReachabilityPrivate),
 		p2p.WithForceReachabilityPublic(opts.Config().Routing.ForceReachabilityPublic),
-		p2p.WithAllowPrivateIPs(opts.Config().Routing.AllowPrivateIPs),
+		p2p.WithDisablePrivateIPs(opts.Config().Routing.DisablePrivateIPs),
 		p2p.WithCustomDHTOpts(
 			func(h host.Host) ([]dht.Option, error) {
 				providerMgr, err := records.NewProviderManager(parentCtx, h.ID(), h.Peerstore(), dstore,

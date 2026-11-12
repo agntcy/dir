@@ -18,7 +18,7 @@ import (
 
 // newDHT creates a DHT to be served over libp2p host.
 // DHT will serve as a bootstrap peer if no bootstrap peers provided.
-func newDHT(ctx context.Context, host host.Host, bootstrapPeers []peer.AddrInfo, refreshPeriod time.Duration, allowPrivateIPs bool, options ...dht.Option) (*dht.IpfsDHT, error) {
+func newDHT(ctx context.Context, host host.Host, bootstrapPeers []peer.AddrInfo, refreshPeriod time.Duration, disablePrivateIPs bool, options ...dht.Option) (*dht.IpfsDHT, error) {
 	// If no bootstrap nodes provided, we are the bootstrap node and always serve.
 	// Otherwise AutoNAT decides: server while reachable (or unknown), client once private.
 	if len(bootstrapPeers) == 0 {
@@ -30,7 +30,7 @@ func newDHT(ctx context.Context, host host.Host, bootstrapPeers []peer.AddrInfo,
 		)
 	}
 
-	if !allowPrivateIPs {
+	if disablePrivateIPs {
 		options = append(options,
 			dht.QueryFilter(dht.PublicQueryFilter),
 			dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
