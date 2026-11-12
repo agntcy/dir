@@ -96,10 +96,10 @@ func activeSecurityScanStatuses() []string {
 
 // CreatePendingScan asks for a manual scan of a record.
 //
-// It returns an existing scan instead of creating one when the record already
-// has a scan pending or running, or when a scan finished within cooldown, so
-// repeated requests do not queue repeated work. created reports which happened.
-func (d *DB) CreatePendingScan(recordCID, requestedBy string, cooldown time.Duration) (types.SecurityScanObject, bool, error) {
+// It returns the existing scan instead of creating one when the record already
+// has a scan pending or running, so repeated requests do not queue repeated
+// work. created reports which happened.
+func (d *DB) CreatePendingScan(recordCID, requestedBy string) (types.SecurityScanObject, bool, error) {
 	var (
 		result  *SecurityScan
 		created bool
@@ -122,23 +122,6 @@ func (d *DB) CreatePendingScan(recordCID, requestedBy string, cooldown time.Dura
 		}
 
 		now := time.Now()
-
-		if cooldown > 0 {
-			var recent SecurityScan
-
-			err = tx.Where("record_cid = ? AND finished_at >= ?", recordCID, now.Add(-cooldown)).
-				Order("finished_at DESC").Order("id DESC").
-				Take(&recent).Error
-			if err == nil {
-				result = &recent
-
-				return nil
-			}
-
-			if !errors.Is(err, gorm.ErrRecordNotFound) {
-				return fmt.Errorf("find recent scan: %w", err)
-			}
-		}
 
 		placeholder := &SecurityScan{
 			ScanID:      uuid.NewString(),
@@ -357,26 +340,6 @@ func (d *DB) CloseScanPlaceholder(scanID, failureReason, failureDetail string) e
 	}
 
 	return nil
-}
-
-// FailStuckScans marks running scans that started more than olderThan ago as
-// failed with reason interrupted, for example after the reconciler restarted
-// mid-scan. It returns how many it marked. Rows are kept, not deleted.
-func (d *DB) FailStuckScans(olderThan time.Duration) (int64, error) {
-	now := time.Now()
-
-	res := d.gormDB.Model(&SecurityScan{}).
-		Where("status = ? AND started_at < ?", types.SecurityScanStatusRunning, now.Add(-olderThan)).
-		Updates(map[string]any{
-			"status":         types.SecurityScanStatusFailed,
-			"failure_reason": types.SecurityScanFailureInterrupted,
-			"finished_at":    now,
-		})
-	if res.Error != nil {
-		return 0, fmt.Errorf("fail stuck scans: %w", res.Error)
-	}
-
-	return res.RowsAffected, nil
 }
 
 // ListScans returns a record's scans, newest first. An empty status returns

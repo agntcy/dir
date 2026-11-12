@@ -313,10 +313,9 @@ const (
 	SecurityScanTriggerManual = "manual"
 )
 
-// SecurityScanFailureInterrupted is the failure reason FailStuckScans writes on
-// a scan that stayed running too long, for example because the reconciler
-// restarted mid-scan.
-const SecurityScanFailureInterrupted = "interrupted"
+// SecurityScanFailureNotApplicable is the failure reason of a manual scan that
+// no scanner applies to, for example a record with nothing to scan.
+const SecurityScanFailureNotApplicable = "not-applicable"
 
 // SecurityScanObject is one scan attempt in a record's scan history.
 //
@@ -470,10 +469,10 @@ type ScanReportDatabaseAPI interface {
 // same transaction as its scan_reports upsert, so history and current state
 // agree about the latest scan.
 type SecurityScanDatabaseAPI interface {
-	// CreatePendingScan asks for a manual scan of a record. It returns an
-	// existing scan instead when one is pending or running, or finished within
-	// cooldown; created reports whether a new one was made.
-	CreatePendingScan(recordCID, requestedBy string, cooldown time.Duration) (scan SecurityScanObject, created bool, err error)
+	// CreatePendingScan asks for a manual scan of a record. It returns the
+	// existing scan instead when one is pending or running; created reports
+	// whether a new one was made.
+	CreatePendingScan(recordCID, requestedBy string) (scan SecurityScanObject, created bool, err error)
 
 	// ListPendingScans returns up to limit manual scans no scanner has
 	// started, oldest first, without changing them. A limit of zero or
@@ -497,10 +496,6 @@ type SecurityScanDatabaseAPI interface {
 	// CloseScanPlaceholder fails a manual scan's placeholder that no scanner
 	// took over.
 	CloseScanPlaceholder(scanID, failureReason, failureDetail string) error
-
-	// FailStuckScans marks scans running for longer than olderThan as failed,
-	// and returns how many.
-	FailStuckScans(olderThan time.Duration) (int64, error)
 
 	// ListScans returns a record's scans newest first, optionally filtered by
 	// status.
