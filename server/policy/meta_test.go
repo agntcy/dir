@@ -13,6 +13,7 @@ import (
 	policyv1 "github.com/agntcy/dir/api/policy/v1"
 	securityv1 "github.com/agntcy/dir/api/security/v1"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/scanner"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -372,6 +373,46 @@ func TestProject_Scan(t *testing.T) {
 		assert.Equal(t, policyv1.ScanFailureReason_SCAN_FAILURE_REASON_UNSPECIFIED, got.GetScanners()[0].GetFailureReason())
 		assert.Equal(t, policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SOURCE_UNREACHABLE, got.GetScanners()[1].GetFailureReason())
 	})
+}
+
+func TestScanFailureReasonOf(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		in   string
+		want policyv1.ScanFailureReason
+	}{
+		{name: "empty", in: "", want: policyv1.ScanFailureReason_SCAN_FAILURE_REASON_UNSPECIFIED},
+		{name: "unknown", in: "unknown-reason", want: policyv1.ScanFailureReason_SCAN_FAILURE_REASON_UNSPECIFIED},
+		{name: "none", in: string(scanner.FailureNone), want: policyv1.ScanFailureReason_SCAN_FAILURE_REASON_UNSPECIFIED},
+		{name: "source-not-declared", in: string(scanner.FailureSourceNotDeclared), want: policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SOURCE_NOT_DECLARED},
+		{name: "endpoint-not-declared", in: string(scanner.FailureEndpointNotDeclared), want: policyv1.ScanFailureReason_SCAN_FAILURE_REASON_ENDPOINT_NOT_DECLARED},
+		{name: "artifact-missing", in: string(scanner.FailureArtifactMissing), want: policyv1.ScanFailureReason_SCAN_FAILURE_REASON_ARTIFACT_MISSING},
+		{name: "source-unreachable", in: string(scanner.FailureSourceUnreachable), want: policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SOURCE_UNREACHABLE},
+		{name: "endpoint-url-invalid", in: string(scanner.FailureEndpointURLInvalid), want: policyv1.ScanFailureReason_SCAN_FAILURE_REASON_ENDPOINT_URL_INVALID},
+		{name: "endpoint-unreachable", in: string(scanner.FailureEndpointUnreachable), want: policyv1.ScanFailureReason_SCAN_FAILURE_REASON_ENDPOINT_UNREACHABLE},
+		{name: "scanner-timeout", in: string(scanner.FailureScannerTimeout), want: policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SCANNER_TIMEOUT},
+		{name: "scanner-crashed", in: string(scanner.FailureScannerCrashed), want: policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SCANNER_CRASHED},
+		{name: "scanner-unavailable", in: string(scanner.FailureScannerUnavailable), want: policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SCANNER_UNAVAILABLE},
+		{name: "scanner-failed", in: string(scanner.FailureScannerFailed), want: policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SCANNER_FAILED},
+		{name: "scanner-unparsable-output", in: string(scanner.FailureScannerUnparsable), want: policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SCANNER_UNPARSABLE_OUTPUT},
+		{name: "llm-not-configured", in: string(scanner.FailureLLMNotConfigured), want: policyv1.ScanFailureReason_SCAN_FAILURE_REASON_LLM_NOT_CONFIGURED},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tc.want, scanFailureReasonOf(tc.in))
+		})
+	}
+}
+
+func TestScanFailureReason_EdgeCases(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, policyv1.ScanFailureReason_SCAN_FAILURE_REASON_UNSPECIFIED, scanFailureReason(policyv1.ScanStatus_SCAN_STATUS_COMPLETED, nil))
+	assert.Equal(t, policyv1.ScanFailureReason_SCAN_FAILURE_REASON_UNSPECIFIED, scanFailureReason(policyv1.ScanStatus_SCAN_STATUS_FAILED, nil))
 }
 
 func TestProject_Identity(t *testing.T) {
