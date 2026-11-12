@@ -51,6 +51,9 @@ func mapScannerSeverity(s string) FindingSeverity {
 //
 // Exposed verbatim as `dirctl search --scan-failure-reason` values, so these
 // strings are part of the CLI contract, not an internal detail.
+//
+// Mirrored as policyv1.ScanFailureReason in proto/agntcy/dir/policy/v1/policy_input.proto;
+// keep the two in sync.
 type FailureReason string
 
 const (
