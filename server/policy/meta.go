@@ -144,7 +144,7 @@ func scanFacts(rows []types.ScanReportObject) *policyv1.ScanFacts {
 	facts.IsSafe = sawVerdict && allSafe
 	facts.ScannedAt = timestampOf(latest)
 	facts.Source = scanSource(sorted)
-	facts.FailureReason = scanFailureReason(facts.Status, sorted)
+	facts.FailureReason = scanFailureReason(facts.GetStatus(), sorted)
 
 	return facts
 }
@@ -311,6 +311,8 @@ func severityOf(name string) securityv1.Severity {
 
 func scanFailureReasonOf(name string) policyv1.ScanFailureReason {
 	switch scanner.FailureReason(name) {
+	case scanner.FailureNone:
+		return policyv1.ScanFailureReason_SCAN_FAILURE_REASON_UNSPECIFIED
 	case scanner.FailureSourceNotDeclared:
 		return policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SOURCE_NOT_DECLARED
 	case scanner.FailureEndpointNotDeclared:
