@@ -98,7 +98,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 				ShouldSucceed()
 
 			gomega.Expect(output2).To(gomega.ContainSubstring(cid))
-			gomega.Expect(output2).To(gomega.ContainSubstring("match_score"))
+			gomega.Expect(output2).To(gomega.ContainSubstring("SCORE"))
 
 			utils.ResetCLIState()
 
@@ -107,7 +107,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 				ShouldSucceed()
 
 			gomega.Expect(output3).To(gomega.ContainSubstring(cid))
-			gomega.Expect(output3).To(gomega.ContainSubstring("match_score"))
+			gomega.Expect(output3).To(gomega.ContainSubstring("SCORE"))
 
 			ginkgo.GinkgoWriter.Printf("✅ Both peers can search with specific skill queries")
 		})
