@@ -51,6 +51,7 @@ func TestResolveDHTParams(t *testing.T) {
 		},
 		{name: "negative value", cfg: routingconfig.Config{BucketSize: -1}, wantErr: true},
 		{name: "republish not below ttl", cfg: routingconfig.Config{RepublishInterval: RecordTTL}, wantErr: true},
+		{name: "label age not above republish", cfg: routingconfig.Config{MaxLabelAge: RepublishInterval}, wantErr: true},
 	}
 
 	for _, tt := range tests {

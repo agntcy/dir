@@ -46,6 +46,12 @@ func resolveDHTParams(cfg routingconfig.Config) (dhtParams, error) {
 			p.RepublishInterval, p.RecordTTL)
 	}
 
+	// Remote labels must be refreshed by a republish before they are considered stale.
+	if p.MaxLabelAge <= p.RepublishInterval {
+		return dhtParams{}, fmt.Errorf("max_label_age (%s) must be greater than republish_interval (%s)",
+			p.MaxLabelAge, p.RepublishInterval)
+	}
+
 	return p, nil
 }
 
