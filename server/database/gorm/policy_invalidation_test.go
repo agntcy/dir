@@ -347,6 +347,23 @@ func TestUpsertScanReport_RetryBookkeepingAloneChangesNothing(t *testing.T) {
 	assert.Equal(t, 2, row.ConsecutiveFailures, "the retry counter should still have advanced")
 }
 
+func TestUpsertScanReport_ChangingFailureReasonSupersedes(t *testing.T) {
+	t.Parallel()
+
+	db := setupInvalidationDB(t)
+
+	failure := scanReport(types.ScanStatusFailed, "", false)
+	failure.FailureReason = "scanner-crashed"
+
+	upsertScan(t, db, failure)
+	seedVerdict(t, db)
+
+	failure.FailureReason = "source-unreachable"
+	upsertScan(t, db, failure)
+
+	assertSuperseded(t, db)
+}
+
 func loadScanReport(t *testing.T, db *DB) *ScanReport {
 	t.Helper()
 

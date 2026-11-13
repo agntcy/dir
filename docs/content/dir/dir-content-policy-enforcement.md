@@ -42,7 +42,7 @@ A policy in `policy.evaluations` says what this node believes about a record, so
 | `record` | dynamic | The record's OASF content, read by field name. |
 | `record_cid` | string | The record's content identifier. |
 | `meta.signature` | object | What is known about the record's signing: `status`, `signer_identity`, `signer_issuer`, `verified_at`. |
-| `meta.scan` | object | What the scanners found: `status`, `is_safe`, `max_severity`, `finding_count`, `scanned_at`. |
+| `meta.scan` | object | What the scanners found: `status`, `is_safe`, `max_severity`, `finding_count`, `failure_reason`, `scanned_at`, `scanners`. |
 | `meta.identity` | object | `meta.identity.identity` and `meta.identity.owner`, each a claim with a `status` and `subject`. |
 | `indexed_at` | optional timestamp | When this node first indexed the record. Absent for a record that is not indexed, so a policy unwraps it with `orValue` or `hasValue()`. |
 
