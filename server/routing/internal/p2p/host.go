@@ -8,7 +8,6 @@ import (
 	"net/url"
 
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	connmgr "github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
@@ -119,7 +118,7 @@ func addStringProtocol(name string, code int) error {
 }
 
 // newHost creates a new host libp2p host.
-func newHost(listenAddr, dirAPIAddr, ociAddr string, key crypto.PrivKey, enableRelayService, forceReachabilityPrivate, forceReachabilityPublic bool) (host.Host, error) {
+func newHost(opts *options) (host.Host, error) {
 	// Create connection manager to limit and manage peer connections.
 	// This prevents resource exhaustion and enables smart peer pruning based on priority.
 	connMgr, err := connmgr.NewConnManager(
@@ -135,20 +134,24 @@ func newHost(listenAddr, dirAPIAddr, ociAddr string, key crypto.PrivKey, enableR
 	// multiaddrs once; the AddrsFactory below runs on every address query. Values
 	// are percent-encoded so URL-form addresses (e.g. "ghcr.io/org/repo") survive
 	// the multiaddr separator. Invalid values are logged once and skipped.
-	appAddrs := buildAppAddrs(dirAPIAddr, ociAddr)
+	appAddrs := buildAppAddrs(opts.DirectoryAPIAddress, opts.DirectoryOCIAddress)
 
 	hostOpts := []libp2p.Option{
 		// Advertise the app-level endpoints as host multiaddrs so peers learn
 		// them via identify.
 		libp2p.AddrsFactory(
 			func(addrs []ma.Multiaddr) []ma.Multiaddr {
+				if opts.DisablePrivateIPs {
+					addrs = dropPrivateAddrs(addrs)
+				}
+
 				return append(addrs, appAddrs...)
 			},
 		),
 		// Use the keypair we generated
-		libp2p.Identity(key),
+		libp2p.Identity(opts.Key),
 		// Multiple listen addresses
-		libp2p.ListenAddrStrings(listenAddr),
+		libp2p.ListenAddrStrings(opts.ListenAddress),
 		// support TLS connections
 		libp2p.Security(libp2ptls.ID, libp2ptls.New),
 		// support any other default transports (TCP)
@@ -170,11 +173,14 @@ func newHost(listenAddr, dirAPIAddr, ociAddr string, key crypto.PrivKey, enableR
 		// Note: AutoNAT client (for detecting our own NAT status) runs automatically.
 		// This service is highly rate-limited and should not cause any performance issues.
 		libp2p.EnableNATService(),
+		// AutoNAT v2 checks reachability per address so unreachable addrs are not
+		// advertised. The DHT mode still follows AutoNAT v1 (kad-dht ModeAutoServer).
+		libp2p.EnableAutoNATv2(),
 	}
 
 	// Enable a circuit-relay v2 service on publicly-reachable nodes so they can
 	// relay traffic for NAT'd peers (and let DCUtR coordinate hole punching).
-	if enableRelayService {
+	if opts.RelayService {
 		hostOpts = append(hostOpts, libp2p.EnableRelayService())
 	}
 
@@ -189,13 +195,13 @@ func newHost(listenAddr, dirAPIAddr, ociAddr string, key crypto.PrivKey, enableR
 	// ForceReachabilityPrivate makes a NAT'd node proactively reserve a relay and
 	// advertise a circuit address (direct dials + DCUtR are still preferred).
 	switch {
-	case forceReachabilityPublic:
-		if forceReachabilityPrivate {
+	case opts.ForceReachabilityPublic:
+		if opts.ForceReachabilityPrivate {
 			logger.Warn("Both force_reachability_public and force_reachability_private are set; using public")
 		}
 
 		hostOpts = append(hostOpts, libp2p.ForceReachabilityPublic())
-	case forceReachabilityPrivate:
+	case opts.ForceReachabilityPrivate:
 		hostOpts = append(hostOpts, libp2p.ForceReachabilityPrivate())
 	}
 

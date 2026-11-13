@@ -38,6 +38,8 @@ server:
     listen_address: "/ip4/0.0.0.0/tcp/8999"
     key_path: "node.key"
     datastore_dir: "routing"
+    # Set to true on internet-facing nodes to use only public IPs and disable mDNS.
+    # disable_private_ips: false
     # bootstrap_peers:
     #   - "/dns4/remote-dir.example.com/tcp/8999/p2p/<peer-id>"
 
@@ -48,13 +50,27 @@ server:
     # directory_api_address: "dir.example.com:8888"
     # directory_oci_address: "ghcr.io/org/agents"
 
-    # How often local CID provider announcements are republished. Lower values
-    # let newly joined nodes converge on existing content sooner, at the cost of
-    # more announcement traffic and more work for every subscriber.
-    republish_interval: "36h"
+    # How often local CID provider records are re-announced to the DHT so they
+    # do not expire on remote peers. Must be lower than record_ttl.
+    dht_reprovide_interval: "12h"
+
+    # DHT tuning. Unset keys use the defaults shown.
+    # bucket_size should be the same on every node of the network.
+    # record_ttl must be greater than dht_reprovide_interval.
+    # max_label_age must be greater than dht_reprovide_interval.
+    # refresh_interval: "10m"
+    # record_ttl: "24h"
+    # cleanup_interval: "24h"
+    # max_label_age: "24h"
+    # bucket_size: 10
+    # concurrency: 5
 
     gossipsub:
       enabled: true
+      # How often local records are re-announced over GossipSub, independently
+      # of the DHT. Lower values let new nodes learn labels sooner, at the cost
+      # of sending every local record to every subscriber on each round.
+      reprovide_interval: "1h"
     # DHT-based record + referrer autosync (deny-by-default; disabled unless set).
     # When enabled, records announced by an allow-listed peer are pulled and
     # ingested locally over the libp2p/DHT transport.

@@ -272,6 +272,10 @@ apiserver:
       # Default: true (recommended for production)
       gossipsub:
         enabled: true
+        # How often local records are re-announced over GossipSub, independently
+        # of the DHT (default 1h). Each round sends every local record to every
+        # subscriber.
+        # reprovide_interval: "1h"
 
       # DHT-based record + referrer autosync.
       # Deny-by-default: when enabled, only records announced by a peer in
@@ -304,6 +308,21 @@ apiserver:
       #   on genuinely public nodes. Mutually exclusive with
       #   force_reachability_private.
       force_reachability_public: false
+      # disable_private_ips: use and advertise only public IPs and disable mDNS
+      #   LAN discovery. Default false: private addresses are allowed. Enable on
+      #   internet-facing nodes to avoid dialing private addresses.
+      disable_private_ips: false
+      # DHT tuning. Unset keys use the defaults shown.
+      # bucket_size should be the same on every node of the network.
+      # record_ttl must be greater than dht_reprovide_interval.
+      # max_label_age must be greater than dht_reprovide_interval.
+      # refresh_interval: "10m"
+      # record_ttl: "24h"
+      # cleanup_interval: "24h"
+      # max_label_age: "24h"
+      # bucket_size: 10
+      # concurrency: 5
+      # dht_reprovide_interval: "12h"
 
     # Sync configuration
     sync:

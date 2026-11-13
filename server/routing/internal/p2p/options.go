@@ -36,6 +36,7 @@ type options struct {
 	StaticRelays             []peer.AddrInfo
 	ForceReachabilityPrivate bool
 	ForceReachabilityPublic  bool
+	DisablePrivateIPs        bool
 }
 
 type Option func(*options) error
@@ -226,6 +227,16 @@ func WithForceReachabilityPrivate(force bool) Option {
 func WithForceReachabilityPublic(force bool) Option {
 	return func(opts *options) error {
 		opts.ForceReachabilityPublic = force
+
+		return nil
+	}
+}
+
+// WithDisablePrivateIPs restricts the DHT and host to public IP addresses
+// and disables mDNS. By default private addresses are allowed.
+func WithDisablePrivateIPs(disable bool) Option {
+	return func(opts *options) error {
+		opts.DisablePrivateIPs = disable
 
 		return nil
 	}

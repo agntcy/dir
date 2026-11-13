@@ -95,3 +95,30 @@ func TestAutosyncConfig_AllowSet_InvalidPeerID(t *testing.T) {
 	assert.Contains(t, err.Error(), "peerlist[1]")
 	assert.Contains(t, err.Error(), "not-a-valid-peer-id")
 }
+
+func TestCheckRemovedKeys(t *testing.T) {
+	notInConfig := func(string) bool { return false }
+	inConfig := func(key string) bool { return key == "routing.republish_interval" }
+
+	t.Run("nothing set", func(t *testing.T) {
+		require.NoError(t, CheckRemovedKeys(notInConfig, "", "routing.", "DIRECTORY_TEST"))
+	})
+
+	t.Run("set in a named config file", func(t *testing.T) {
+		err := CheckRemovedKeys(inConfig, "/etc/dir/server.yaml", "routing.", "DIRECTORY_TEST")
+		require.ErrorContains(t, err, "routing.republish_interval (set in /etc/dir/server.yaml)")
+		require.ErrorContains(t, err, "routing.dht_reprovide_interval and routing.gossipsub.reprovide_interval")
+	})
+
+	t.Run("set in an unnamed config", func(t *testing.T) {
+		err := CheckRemovedKeys(inConfig, "", "routing.", "DIRECTORY_TEST")
+		require.ErrorContains(t, err, "set in the configuration file")
+	})
+
+	t.Run("set by environment", func(t *testing.T) {
+		t.Setenv("DIRECTORY_TEST_ROUTING_REPUBLISH_INTERVAL", "")
+
+		err := CheckRemovedKeys(notInConfig, "", "routing.", "DIRECTORY_TEST")
+		require.ErrorContains(t, err, "set in DIRECTORY_TEST_ROUTING_REPUBLISH_INTERVAL")
+	})
+}

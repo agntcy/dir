@@ -264,11 +264,12 @@ func TestLoadConfigPolicyBlocks(t *testing.T) {
 	require.NoError(t, cfg.Server.Policy.Validate())
 }
 
-// TestLoadConfigRepublishIntervalEnvOverride asserts that the routing republish
-// interval can be overridden by environment alone. AutomaticEnv only resolves
-// keys viper already knows, so this depends on the key being declared in the
-// embedded daemon.config.yaml.
-func TestLoadConfigRepublishIntervalEnvOverride(t *testing.T) {
+// TestLoadConfigReprovideIntervalEnvOverride asserts that the DHT and GossipSub
+// reprovide intervals can be overridden by environment alone. AutomaticEnv only
+// resolves keys viper already knows, so this depends on dht_reprovide_interval
+// being declared in the embedded daemon.config.yaml and on the GossipSub key
+// being registered in registerServerDefaults.
+func TestLoadConfigReprovideIntervalEnvOverride(t *testing.T) {
 	originalOpts := opts
 	opts = &Options{DataDir: t.TempDir()}
 	t.Cleanup(func() {
@@ -277,13 +278,76 @@ func TestLoadConfigRepublishIntervalEnvOverride(t *testing.T) {
 
 	cfg, err := loadConfig()
 	require.NoError(t, err)
-	require.Equal(t, 36*time.Hour, cfg.Server.Routing.RepublishInterval)
+	require.Equal(t, 12*time.Hour, cfg.Server.Routing.DHTReprovideInterval)
+	require.Equal(t, time.Hour, cfg.Server.Routing.GossipSub.ReprovideInterval)
 
-	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_REPUBLISH_INTERVAL", "10m")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_DHT_REPROVIDE_INTERVAL", "10m")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_GOSSIPSUB_REPROVIDE_INTERVAL", "5m")
 
 	cfg, err = loadConfig()
 	require.NoError(t, err)
-	require.Equal(t, 10*time.Minute, cfg.Server.Routing.RepublishInterval)
+	require.Equal(t, 10*time.Minute, cfg.Server.Routing.DHTReprovideInterval)
+	require.Equal(t, 5*time.Minute, cfg.Server.Routing.GossipSub.ReprovideInterval)
+}
+
+// TestLoadConfigRefusesRemovedRepublishInterval asserts that the removed
+// republish_interval key fails the load, naming where it was set, instead of
+// being silently ignored.
+func TestLoadConfigRefusesRemovedRepublishInterval(t *testing.T) {
+	originalOpts := opts
+
+	t.Cleanup(func() {
+		opts = originalOpts
+	})
+
+	t.Run("environment", func(t *testing.T) {
+		opts = &Options{DataDir: t.TempDir()}
+		t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_REPUBLISH_INTERVAL", "24h")
+
+		_, err := loadConfig()
+		require.ErrorContains(t, err, "DIRECTORY_DAEMON_SERVER_ROUTING_REPUBLISH_INTERVAL")
+		require.ErrorContains(t, err, "server.routing.dht_reprovide_interval")
+	})
+
+	t.Run("config file", func(t *testing.T) {
+		dir := t.TempDir()
+		file := filepath.Join(dir, DefaultConfigFile)
+		require.NoError(t, os.WriteFile(file, []byte("server:\n  routing:\n    republish_interval: \"24h\"\n"), 0o600))
+
+		opts = &Options{DataDir: dir, ConfigFile: file}
+
+		_, err := loadConfig()
+		require.ErrorContains(t, err, file)
+		require.ErrorContains(t, err, "server.routing.republish_interval")
+	})
+}
+
+// TestLoadConfigDHTEnvOverride asserts that the DHT tuning keys, which are
+// commented out in the embedded daemon.config.yaml, can be set by environment.
+func TestLoadConfigDHTEnvOverride(t *testing.T) {
+	originalOpts := opts
+	opts = &Options{DataDir: t.TempDir()}
+	t.Cleanup(func() {
+		opts = originalOpts
+	})
+
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_REFRESH_INTERVAL", "5m")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_RECORD_TTL", "12h")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_CLEANUP_INTERVAL", "6h")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_MAX_LABEL_AGE", "3h")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_BUCKET_SIZE", "15")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_CONCURRENCY", "3")
+
+	cfg, err := loadConfig()
+	require.NoError(t, err)
+
+	r := cfg.Server.Routing
+	require.Equal(t, 5*time.Minute, r.RefreshInterval)
+	require.Equal(t, 12*time.Hour, r.RecordTTL)
+	require.Equal(t, 6*time.Hour, r.CleanupInterval)
+	require.Equal(t, 3*time.Hour, r.MaxLabelAge)
+	require.Equal(t, 15, r.BucketSize)
+	require.Equal(t, 3, r.Concurrency)
 }
 
 // TestLoadConfigANSEnvOverride asserts that the ans:// identity scheme, which

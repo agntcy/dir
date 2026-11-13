@@ -45,71 +45,79 @@ func (f *remoteLabelFilter) Filter(e query.Entry) bool {
 	return keyPeerID != f.localPeerID
 }
 
-// CleanupManager handles all background cleanup and republishing tasks for the routing system.
-// This includes CID provider republishing, GossipSub label republishing, stale remote label cleanup, and orphaned record cleanup.
+// ProvideFunc announces a local CID to the DHT.
+type ProvideFunc func(ctx context.Context, cid string) error
+
+// CleanupManager handles the background tasks of the routing system: DHT reprovide,
+// GossipSub reprovide, stale remote label cleanup and orphaned record cleanup.
 type CleanupManager struct {
-	dstore            types.Datastore
-	storeAPI          types.StoreAPI
-	server            *p2p.Server
-	publishFunc       pubsub.PublishEventHandler // Publishing callback (captures routeRemote state)
-	republishInterval time.Duration              // How often local CID providers are republished
+	dstore                  types.Datastore
+	storeAPI                types.StoreAPI
+	server                  *p2p.Server
+	provideFunc             ProvideFunc                // DHT announcement (captures routeRemote state)
+	announceFunc            pubsub.PublishEventHandler // GossipSub announcement (captures routeRemote state)
+	dhtReprovideInterval    time.Duration              // How often local CIDs are re-announced to the DHT
+	gossipReprovideInterval time.Duration              // How often local records are re-announced over GossipSub
+	cleanupInterval         time.Duration              // How often stale remote labels are removed
+	maxLabelAge             time.Duration              // Age after which a remote label is stale
 }
 
 // NewCleanupManager creates a new cleanup manager with the required dependencies.
-// The publishFunc is injected from routeRemote.Publish to avoid circular dependencies
-// while still providing access to DHT and GossipSub publishing logic.
-//
-// Parameters:
-//   - dstore: Datastore for label storage
-//   - storeAPI: Store API for record operations
-//   - server: P2P server for DHT operations
-//   - publishFunc: Callback for publishing (from routeRemote.Publish, see pubsub.PublishEventHandler)
-//   - republishInterval: how often local CID providers are republished; if <= 0,
-//     the default RepublishInterval constant (36h) is used.
+// The intervals come from params, which already has its defaults applied.
 func NewCleanupManager(
 	dstore types.Datastore,
 	storeAPI types.StoreAPI,
 	server *p2p.Server,
-	publishFunc pubsub.PublishEventHandler,
-	republishInterval time.Duration,
+	provideFunc ProvideFunc,
+	announceFunc pubsub.PublishEventHandler,
+	params dhtParams,
 ) *CleanupManager {
-	// Guard against zero/negative values: time.NewTicker panics on <= 0, and a
-	// missing config value should fall back to the default interval.
-	if republishInterval <= 0 {
-		republishInterval = RepublishInterval
-	}
-
 	return &CleanupManager{
-		dstore:            dstore,
-		storeAPI:          storeAPI,
-		server:            server,
-		publishFunc:       publishFunc,
-		republishInterval: republishInterval,
+		dstore:                  dstore,
+		storeAPI:                storeAPI,
+		server:                  server,
+		provideFunc:             provideFunc,
+		announceFunc:            announceFunc,
+		dhtReprovideInterval:    params.DHTReprovideInterval,
+		gossipReprovideInterval: params.GossipReprovideInterval,
+		cleanupInterval:         params.CleanupInterval,
+		maxLabelAge:             params.MaxLabelAge,
 	}
 }
 
-// StartLabelRepublishTask starts a background task that periodically republishes local
-// CID provider announcements to keep content discoverable (provider records expire after ProviderRecordTTL).
+// StartDHTReprovideTask periodically re-announces local CIDs to the DHT so their
+// provider records do not expire on remote peers.
 // The wg parameter is used to track this goroutine in the parent's WaitGroup.
-func (c *CleanupManager) StartLabelRepublishTask(ctx context.Context, wg *sync.WaitGroup) {
-	ticker := time.NewTicker(c.republishInterval)
+func (c *CleanupManager) StartDHTReprovideTask(ctx context.Context, wg *sync.WaitGroup) {
+	runEvery(ctx, wg, "DHT reprovide", c.dhtReprovideInterval, c.reprovideDHT)
+}
 
-	cleanupLogger.Info("Started CID provider republishing task", "interval", c.republishInterval)
+// StartGossipReprovideTask periodically re-announces local records over GossipSub.
+// The wg parameter is used to track this goroutine in the parent's WaitGroup.
+func (c *CleanupManager) StartGossipReprovideTask(ctx context.Context, wg *sync.WaitGroup) {
+	runEvery(ctx, wg, "GossipSub reprovide", c.gossipReprovideInterval, c.reprovideGossip)
+}
+
+// runEvery calls fn on every tick of interval until ctx is cancelled.
+func runEvery(ctx context.Context, wg *sync.WaitGroup, name string, interval time.Duration, fn func(context.Context)) {
+	ticker := time.NewTicker(interval)
+
+	cleanupLogger.Info("Started task", "task", name, "interval", interval)
 
 	defer func() {
 		ticker.Stop()
 		wg.Done()
-		cleanupLogger.Debug("CID provider republishing task stopped")
+		cleanupLogger.Debug("Task stopped", "task", name)
 	}()
 
 	for {
 		select {
 		case <-ctx.Done():
-			cleanupLogger.Info("CID provider republishing task stopping (context cancelled)")
+			cleanupLogger.Info("Task stopping (context cancelled)", "task", name)
 
 			return
 		case <-ticker.C:
-			c.republishLocalProviders(ctx)
+			fn(ctx)
 		}
 	}
 }
@@ -118,9 +126,9 @@ func (c *CleanupManager) StartLabelRepublishTask(ctx context.Context, wg *sync.W
 // This is critical for the pull-based architecture to remove cached labels from offline or deleted remote content.
 // The wg parameter is used to track this goroutine in the parent's WaitGroup.
 func (c *CleanupManager) StartRemoteLabelCleanupTask(ctx context.Context, wg *sync.WaitGroup) {
-	ticker := time.NewTicker(CleanupInterval)
+	ticker := time.NewTicker(c.cleanupInterval)
 
-	cleanupLogger.Info("Starting remote label cleanup task", "interval", CleanupInterval)
+	cleanupLogger.Info("Starting remote label cleanup task", "interval", c.cleanupInterval)
 
 	defer func() {
 		ticker.Stop()
@@ -142,107 +150,123 @@ func (c *CleanupManager) StartRemoteLabelCleanupTask(ctx context.Context, wg *sy
 	}
 }
 
-// republishLocalProviders republishes all local CID provider announcements and labels
-// to ensure they remain discoverable. This maintains both DHT provider records and
-// GossipSub label announcements for optimal network propagation.
-func (c *CleanupManager) republishLocalProviders(ctx context.Context) {
-	cleanupLogger.Info("Starting CID provider and label republishing cycle")
-
-	// Query all local records from the datastore
-	results, err := c.dstore.Query(ctx, query.Query{
-		Prefix: "/records/",
-	})
+// localRecordCIDs returns the CIDs of the records published by this node.
+func (c *CleanupManager) localRecordCIDs(ctx context.Context) ([]string, error) {
+	results, err := c.dstore.Query(ctx, query.Query{Prefix: "/records/", KeysOnly: true})
 	if err != nil {
-		cleanupLogger.Error("Failed to query local records for republishing", "error", err)
-
-		return
+		return nil, fmt.Errorf("failed to query local records: %w", err)
 	}
 	defer results.Close()
 
-	republishedCount := 0
-	labelRepublishedCount := 0
-	errorCount := 0
-
-	var orphanedCIDs []string
+	var cids []string
 
 	for result := range results.Next() {
 		if result.Error != nil {
-			cleanupLogger.Warn("Error reading local record for republishing", "error", result.Error)
+			cleanupLogger.Warn("Error reading local record", "error", result.Error)
 
 			continue
 		}
 
-		// Extract CID from record key: /records/CID123 → CID123
-		cidStr := path.Base(result.Key)
-		if cidStr == "" {
-			continue
+		// Record key: /records/CID123 → CID123
+		if cid := path.Base(result.Key); cid != "" {
+			cids = append(cids, cid)
 		}
-
-		// Verify the record still exists in storage
-		ref := &corev1.RecordRef{Cid: cidStr}
-
-		_, err := c.storeAPI.Lookup(ctx, ref)
-		if err != nil {
-			cleanupLogger.Warn("Record no longer exists in storage, marking as orphaned", "cid", cidStr, "error", err)
-			orphanedCIDs = append(orphanedCIDs, cidStr)
-			errorCount++
-
-			continue
-		}
-
-		// Pull the record from storage for republishing
-		record, err := c.storeAPI.Pull(ctx, ref)
-		if err != nil {
-			cleanupLogger.Warn("Failed to pull record for republishing",
-				"cid", cidStr,
-				"error", err)
-
-			errorCount++
-
-			continue
-		}
-
-		// Wrap record with adapter for interface-based publishing
-		adapter, err := record.Decode()
-		if err != nil {
-			cleanupLogger.Warn("Failed to create record adapter for republishing",
-				"cid", cidStr,
-				"error", err)
-
-			errorCount++
-
-			continue
-		}
-
-		// Use injected publishing function (handles both DHT and GossipSub)
-		// This reuses routeRemote.Publish logic without circular dependency
-		if err := c.publishFunc(ctx, adapter); err != nil {
-			cleanupLogger.Warn("Failed to republish record to network",
-				"cid", cidStr,
-				"error", err)
-
-			errorCount++
-
-			continue
-		}
-
-		cleanupLogger.Debug("Successfully republished record to network", "cid", cidStr)
-
-		republishedCount++
-		labelRepublishedCount++ // Count label republishing (done inside publishFunc)
 	}
 
-	// Clean up orphaned local records and their labels
+	return cids, nil
+}
+
+// reprovideDHT re-announces every local CID to the DHT. It only needs the CID,
+// so records are not pulled from storage. Records that no longer exist in
+// storage are treated as orphaned and their local labels are removed.
+func (c *CleanupManager) reprovideDHT(ctx context.Context) {
+	cids, err := c.localRecordCIDs(ctx)
+	if err != nil {
+		cleanupLogger.Error("Failed to list local records for DHT reprovide", "error", err)
+
+		return
+	}
+
+	var (
+		provided, failed int
+		orphanedCIDs     []string
+	)
+
+	for _, cidStr := range cids {
+		if _, err := c.storeAPI.Lookup(ctx, &corev1.RecordRef{Cid: cidStr}); err != nil {
+			cleanupLogger.Warn("Record no longer exists in storage, marking as orphaned", "cid", cidStr, "error", err)
+
+			orphanedCIDs = append(orphanedCIDs, cidStr)
+
+			continue
+		}
+
+		if err := c.provideFunc(ctx, cidStr); err != nil {
+			cleanupLogger.Warn("Failed to reprovide CID to the DHT", "cid", cidStr, "error", err)
+
+			failed++
+
+			continue
+		}
+
+		provided++
+	}
+
 	if len(orphanedCIDs) > 0 {
 		cleanedCount := c.cleanupOrphanedLocalLabels(ctx, orphanedCIDs)
 		cleanupLogger.Info("Cleaned up orphaned local records", "count", cleanedCount)
 	}
 
-	cleanupLogger.Info("Completed republishing cycle",
-		"dhtRepublished", republishedCount,
-		"gossipSubRepublished", labelRepublishedCount,
-		"errors", errorCount,
+	cleanupLogger.Info("Completed DHT reprovide cycle",
+		"provided", provided,
+		"errors", failed,
 		"orphaned", len(orphanedCIDs))
+}
+
+// reprovideGossip re-announces every local record over GossipSub. Unlike the DHT,
+// the announcement carries the record labels, so each record is pulled from storage.
+// Orphaned records are left to the DHT reprovide task.
+func (c *CleanupManager) reprovideGossip(ctx context.Context) {
+	cids, err := c.localRecordCIDs(ctx)
+	if err != nil {
+		cleanupLogger.Error("Failed to list local records for GossipSub reprovide", "error", err)
+
+		return
+	}
+
+	var announced, failed int
+
+	for _, cidStr := range cids {
+		record, err := c.storeAPI.Pull(ctx, &corev1.RecordRef{Cid: cidStr})
+		if err != nil {
+			cleanupLogger.Warn("Failed to pull record for GossipSub reprovide", "cid", cidStr, "error", err)
+
+			failed++
+
+			continue
+		}
+
+		adapter, err := record.Decode()
+		if err != nil {
+			cleanupLogger.Warn("Failed to decode record for GossipSub reprovide", "cid", cidStr, "error", err)
+
+			failed++
+
+			continue
+		}
+
+		if err := c.announceFunc(ctx, adapter); err != nil {
+			cleanupLogger.Warn("Failed to reprovide record over GossipSub", "cid", cidStr, "error", err)
+
+			failed++
+
+			continue
+		}
+
+		announced++
+	}
+
+	cleanupLogger.Info("Completed GossipSub reprovide cycle", "announced", announced, "errors", failed)
 }
 
 // cleanupStaleRemoteLabels removes remote labels that haven't been seen recently.
@@ -322,7 +346,7 @@ func (c *CleanupManager) cleanupStaleRemoteLabels(ctx context.Context) error {
 		}
 
 		// Check if label is stale using the IsStale method
-		if metadata.IsStale(MaxLabelAge) {
+		if metadata.IsStale(c.maxLabelAge) {
 			cleanupLogger.Debug("Found stale remote label",
 				"key", result.Key, "age", metadata.Age(), "peer", keyPeerID)
 
