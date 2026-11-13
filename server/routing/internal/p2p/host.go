@@ -173,7 +173,8 @@ func newHost(opts *options) (host.Host, error) {
 		// Note: AutoNAT client (for detecting our own NAT status) runs automatically.
 		// This service is highly rate-limited and should not cause any performance issues.
 		libp2p.EnableNATService(),
-		// AutoNAT v2 checks reachability per address; its result drives the DHT mode.
+		// AutoNAT v2 checks reachability per address so unreachable addrs are not
+		// advertised. The DHT mode still follows AutoNAT v1 (kad-dht ModeAutoServer).
 		libp2p.EnableAutoNATv2(),
 	}
 
