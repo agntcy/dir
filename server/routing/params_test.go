@@ -12,13 +12,14 @@ import (
 
 func TestResolveDHTParams(t *testing.T) {
 	defaults := dhtParams{
-		RefreshInterval:   RefreshInterval,
-		RecordTTL:         RecordTTL,
-		RepublishInterval: RepublishInterval,
-		CleanupInterval:   CleanupInterval,
-		MaxLabelAge:       MaxLabelAge,
-		BucketSize:        BucketSize,
-		Concurrency:       Concurrency,
+		RefreshInterval:         RefreshInterval,
+		RecordTTL:               RecordTTL,
+		DHTReprovideInterval:    DHTReprovideInterval,
+		GossipReprovideInterval: GossipReprovideInterval,
+		CleanupInterval:         CleanupInterval,
+		MaxLabelAge:             MaxLabelAge,
+		BucketSize:              BucketSize,
+		Concurrency:             Concurrency,
 	}
 
 	tests := []struct {
@@ -31,27 +32,34 @@ func TestResolveDHTParams(t *testing.T) {
 		{
 			name: "overrides are applied",
 			cfg: routingconfig.Config{
-				RefreshInterval:   time.Minute,
-				RecordTTL:         12 * time.Hour,
-				RepublishInterval: 6 * time.Hour,
-				CleanupInterval:   time.Hour,
-				MaxLabelAge:       12 * time.Hour,
-				BucketSize:        20,
-				Concurrency:       10,
+				RefreshInterval:      time.Minute,
+				RecordTTL:            12 * time.Hour,
+				DHTReprovideInterval: 6 * time.Hour,
+				GossipSub:            routingconfig.GossipSubConfig{ReprovideInterval: 30 * time.Minute},
+				CleanupInterval:      time.Hour,
+				MaxLabelAge:          12 * time.Hour,
+				BucketSize:           20,
+				Concurrency:          10,
 			},
 			want: dhtParams{
-				RefreshInterval:   time.Minute,
-				RecordTTL:         12 * time.Hour,
-				RepublishInterval: 6 * time.Hour,
-				CleanupInterval:   time.Hour,
-				MaxLabelAge:       12 * time.Hour,
-				BucketSize:        20,
-				Concurrency:       10,
+				RefreshInterval:         time.Minute,
+				RecordTTL:               12 * time.Hour,
+				DHTReprovideInterval:    6 * time.Hour,
+				GossipReprovideInterval: 30 * time.Minute,
+				CleanupInterval:         time.Hour,
+				MaxLabelAge:             12 * time.Hour,
+				BucketSize:              20,
+				Concurrency:             10,
 			},
 		},
 		{name: "negative value", cfg: routingconfig.Config{BucketSize: -1}, wantErr: true},
-		{name: "republish not below ttl", cfg: routingconfig.Config{RepublishInterval: RecordTTL}, wantErr: true},
-		{name: "label age not above republish", cfg: routingconfig.Config{MaxLabelAge: RepublishInterval}, wantErr: true},
+		{
+			name:    "negative gossip interval",
+			cfg:     routingconfig.Config{GossipSub: routingconfig.GossipSubConfig{ReprovideInterval: -time.Minute}},
+			wantErr: true,
+		},
+		{name: "dht reprovide not below ttl", cfg: routingconfig.Config{DHTReprovideInterval: RecordTTL}, wantErr: true},
+		{name: "label age not above dht reprovide", cfg: routingconfig.Config{MaxLabelAge: DHTReprovideInterval}, wantErr: true},
 	}
 
 	for _, tt := range tests {

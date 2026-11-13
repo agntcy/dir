@@ -157,8 +157,8 @@ them wrong:
 
 Any setting can also be overridden by environment variable: `DIRECTORY_DAEMON_`
 followed by the uppercased, underscore-delimited path, e.g.
-`server.routing.republish_interval` →
-`DIRECTORY_DAEMON_SERVER_ROUTING_REPUBLISH_INTERVAL`. List values such as
+`server.routing.dht_reprovide_interval` →
+`DIRECTORY_DAEMON_SERVER_ROUTING_DHT_REPROVIDE_INTERVAL`. List values such as
 `..._BOOTSTRAP_PEERS` are comma-separated. This is the quickest way to tweak
 one knob without touching a file. See the sync reference for when a config
 file is genuinely required (e.g. P2P autosync).

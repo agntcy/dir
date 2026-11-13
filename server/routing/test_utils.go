@@ -25,6 +25,15 @@ const testLocalPeerID = "local-peer"
 func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route {
 	t.Helper()
 
+	return newTestServerWithConfig(t, ctx, bootPeers, nil)
+}
+
+// newTestServerWithConfig is newTestServer with a hook to adjust the routing config.
+//
+//nolint:revive
+func newTestServerWithConfig(t *testing.T, ctx context.Context, bootPeers []string, mutate func(*routingconfig.Config)) *route {
+	t.Helper()
+
 	refreshInterval := 1 * time.Second
 
 	// define opts with faster refresh interval for testing
@@ -45,6 +54,10 @@ func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route
 			},
 		},
 	)
+
+	if mutate != nil {
+		mutate(&opts.Config().Routing)
+	}
 
 	// create new store
 	s, err := store.New(opts)

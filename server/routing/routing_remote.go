@@ -255,9 +255,9 @@ func newRemote(parentCtx context.Context,
 		remoteLogger.Info("GossipSub disabled, using DHT+Pull fallback only")
 	}
 
-	// Pass Publish as callback to avoid circular dependency
-	// The method value captures routeAPI's state (server, pubsubManager)
-	routeAPI.cleanupManager = NewCleanupManager(dstore, storeAPI, server, routeAPI.Publish, params)
+	// Pass provide/announce as callbacks to avoid circular dependency
+	// The method values capture routeAPI's state (server, pubsubManager)
+	routeAPI.cleanupManager = NewCleanupManager(dstore, storeAPI, server, routeAPI.provide, routeAPI.announce, params)
 
 	// Initialize DHT autosync if enabled (deny-by-default). The manager pulls and
 	// ingests records/referrers announced by trusted peers, off the notification
@@ -277,7 +277,13 @@ func newRemote(parentCtx context.Context,
 
 	routeAPI.wg.Add(1)
 	//nolint:contextcheck // Intentionally passing routing context to child goroutine for lifecycle management
-	go routeAPI.cleanupManager.StartLabelRepublishTask(routeAPI.ctx, &routeAPI.wg)
+	go routeAPI.cleanupManager.StartDHTReprovideTask(routeAPI.ctx, &routeAPI.wg)
+
+	if routeAPI.pubsubManager != nil {
+		routeAPI.wg.Add(1)
+		//nolint:contextcheck // Intentionally passing routing context to child goroutine for lifecycle management
+		go routeAPI.cleanupManager.StartGossipReprovideTask(routeAPI.ctx, &routeAPI.wg)
+	}
 
 	routeAPI.wg.Add(1)
 	//nolint:contextcheck // Intentionally passing routing context to child goroutine for lifecycle management
@@ -287,8 +293,8 @@ func newRemote(parentCtx context.Context,
 }
 
 // Publish announces a record to the network via DHT and GossipSub.
-// This method is part of the RoutingAPI interface and is also used
-// by CleanupManager for republishing via method value injection.
+// This method is part of the RoutingAPI interface. The periodic reprovide tasks
+// of CleanupManager call provide and announce separately, on their own intervals.
 //
 // Flow:
 //  1. Validate and extract CID from record
@@ -315,39 +321,57 @@ func (r *routeRemote) Publish(ctx context.Context, record coretypes.Record) erro
 
 	remoteLogger.Debug("Publishing record to network", "cid", cidStr)
 
-	// Parse CID
-	decodedCID, err := cid.Decode(cidStr)
-	if err != nil {
-		return status.Errorf(codes.InvalidArgument, "invalid CID %q: %v", cidStr, err)
-	}
-
 	// 1. Announce CID to DHT network (content discovery)
-	err = r.server.DHT().Provide(ctx, decodedCID, true)
-	if err != nil {
-		return status.Errorf(codes.Internal, "failed to announce CID to DHT: %v", err)
+	if err := r.provide(ctx, cidStr); err != nil {
+		return err
 	}
 
 	// 2. Publish record via GossipSub (if enabled)
-	// This provides efficient label propagation to ALL subscribed peers
-	if r.pubsubManager != nil {
-		if err := r.pubsubManager.PublishRecord(ctx, record); err != nil {
-			// Log warning but don't fail - DHT announcement already succeeded
-			// Remote peers can still discover via DHT+Pull fallback
-			remoteLogger.Warn("Failed to publish record via GossipSub",
-				"cid", cidStr,
-				"error", err,
-				"fallback", "DHT+Pull will handle discovery")
-		} else {
-			remoteLogger.Debug("Successfully published record via GossipSub",
-				"cid", cidStr,
-				"topicPeers", len(r.pubsubManager.GetTopicPeers()))
-		}
+	// Log warning but don't fail - DHT announcement already succeeded
+	// Remote peers can still discover via DHT+Pull fallback
+	if err := r.announce(ctx, record); err != nil {
+		remoteLogger.Warn("Failed to publish record via GossipSub",
+			"cid", cidStr,
+			"error", err,
+			"fallback", "DHT+Pull will handle discovery")
 	}
 
 	remoteLogger.Debug("Successfully announced record to network",
 		"cid", cidStr,
 		"dhtPeers", r.server.DHT().RoutingTable().Size(),
 		"gossipSubEnabled", r.pubsubManager != nil)
+
+	return nil
+}
+
+// provide announces a CID to the DHT network.
+func (r *routeRemote) provide(ctx context.Context, cidStr string) error {
+	decodedCID, err := cid.Decode(cidStr)
+	if err != nil {
+		return status.Errorf(codes.InvalidArgument, "invalid CID %q: %v", cidStr, err)
+	}
+
+	if err := r.server.DHT().Provide(ctx, decodedCID, true); err != nil {
+		return status.Errorf(codes.Internal, "failed to announce CID to DHT: %v", err)
+	}
+
+	return nil
+}
+
+// announce publishes a record and its labels via GossipSub.
+// It is a no-op when GossipSub is disabled.
+func (r *routeRemote) announce(ctx context.Context, record coretypes.Record) error {
+	if r.pubsubManager == nil {
+		return nil
+	}
+
+	if err := r.pubsubManager.PublishRecord(ctx, record); err != nil {
+		return fmt.Errorf("failed to publish record via GossipSub: %w", err)
+	}
+
+	remoteLogger.Debug("Successfully published record via GossipSub",
+		"cid", record.GetCid(),
+		"topicPeers", len(r.pubsubManager.GetTopicPeers()))
 
 	return nil
 }
@@ -1007,7 +1031,7 @@ func (r *routeRemote) Stop() error {
 
 	// Cancel routing context to stop all background goroutines:
 	// - handleNotify (DHT provider notifications)
-	// - StartLabelRepublishTask (periodic republishing)
+	// - StartDHTReprovideTask and StartGossipReprovideTask (periodic reproviding)
 	// - StartRemoteLabelCleanupTask (stale label cleanup)
 	r.cancel()
 

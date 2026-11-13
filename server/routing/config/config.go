@@ -5,8 +5,11 @@ package config
 
 import (
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
+	"github.com/agntcy/dir/utils/env"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -67,7 +70,7 @@ type Config struct {
 
 	// RecordTTL is how long DHT provider records are kept before they expire.
 	// If not set or zero, uses the default RecordTTL constant (48h).
-	// Must be greater than RepublishInterval.
+	// Must be greater than DHTReprovideInterval.
 	RecordTTL time.Duration `json:"record_ttl,omitempty" mapstructure:"record_ttl"`
 
 	// CleanupInterval is how often stale remote labels are removed.
@@ -76,7 +79,7 @@ type Config struct {
 
 	// MaxLabelAge is the age after which a remote label is considered stale.
 	// If not set or zero, uses the default MaxLabelAge constant (48h).
-	// Must be greater than RepublishInterval so labels are refreshed before they go stale.
+	// Must be greater than DHTReprovideInterval so labels are refreshed before they go stale.
 	MaxLabelAge time.Duration `json:"max_label_age,omitempty" mapstructure:"max_label_age"`
 
 	// BucketSize is the Kademlia k parameter.
@@ -88,12 +91,11 @@ type Config struct {
 	// If not set or zero, uses the default Concurrency constant (5).
 	Concurrency int `json:"concurrency,omitempty" mapstructure:"concurrency"`
 
-	// RepublishInterval controls how often local CID provider announcements are
-	// republished to keep content discoverable (DHT provider records + GossipSub
-	// labels). If not set or zero, uses the default RepublishInterval constant (24h).
-	// Lower values let newly joined nodes converge on existing content sooner, at
-	// the cost of more frequent announcement traffic.
-	RepublishInterval time.Duration `json:"republish_interval,omitempty" mapstructure:"republish_interval"`
+	// DHTReprovideInterval controls how often local CID provider records are
+	// re-announced to the DHT so they do not expire on remote peers.
+	// If not set or zero, uses the default DHTReprovideInterval constant (24h).
+	// Must be lower than RecordTTL.
+	DHTReprovideInterval time.Duration `json:"dht_reprovide_interval,omitempty" mapstructure:"dht_reprovide_interval"`
 
 	// RelayService enables a circuit-relay v2 service on this node so it can
 	// relay traffic for NAT'd peers. Enable only on publicly-reachable nodes
@@ -153,6 +155,54 @@ type GossipSubConfig struct {
 	// Note: Protocol parameters (topic, message size) are hardcoded in
 	// server/routing/pubsub/constants.go for network compatibility.
 	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
+
+	// ReprovideInterval controls how often local records are re-announced over
+	// GossipSub, independently of the DHT. Lower values let newly joined nodes
+	// learn labels sooner, at the cost of more announcement traffic.
+	// If not set or zero, uses the default GossipReprovideInterval constant (24h).
+	ReprovideInterval time.Duration `json:"reprovide_interval,omitempty" mapstructure:"reprovide_interval"`
+}
+
+// removedKeys maps routing keys that no longer exist to their replacement, so
+// a stale configuration fails loudly instead of being silently ignored.
+var removedKeys = map[string][]string{
+	"republish_interval": {"dht_reprovide_interval", "gossipsub.reprovide_interval"},
+}
+
+// CheckRemovedKeys returns an error if a removed routing key is still set in
+// the configuration file or through its environment variable. configFile is
+// named in the error when the key comes from it, keyPrefix is the path of the
+// routing block (e.g. "routing." or "server.routing.") and envPrefix the
+// loader's variable prefix.
+func CheckRemovedKeys(inConfig func(key string) bool, configFile, keyPrefix, envPrefix string) error {
+	for key, replacements := range removedKeys {
+		full := keyPrefix + key
+
+		name := env.Name(envPrefix, full)
+		_, inEnv := os.LookupEnv(name)
+
+		var source string
+
+		switch {
+		case inConfig(full) && configFile != "":
+			source = configFile
+		case inConfig(full):
+			source = "the configuration file"
+		case inEnv:
+			source = name
+		default:
+			continue
+		}
+
+		use := make([]string, len(replacements))
+		for i, r := range replacements {
+			use[i] = keyPrefix + r
+		}
+
+		return fmt.Errorf("%s (set in %s) was removed, use %s instead", full, source, strings.Join(use, " and "))
+	}
+
+	return nil
 }
 
 // AutosyncConfig configures DHT-based record + referrer synchronization.

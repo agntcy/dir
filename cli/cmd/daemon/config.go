@@ -32,6 +32,7 @@ import (
 	serverconfig "github.com/agntcy/dir/server/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	policyconfig "github.com/agntcy/dir/server/policy/config"
+	routingconfig "github.com/agntcy/dir/server/routing/config"
 	storeconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/utils/env"
 	"github.com/mitchellh/mapstructure"
@@ -145,6 +146,8 @@ func registerServerDefaults(v *viper.Viper) {
 	_ = v.BindEnv("server.routing.max_label_age")
 	_ = v.BindEnv("server.routing.bucket_size")
 	_ = v.BindEnv("server.routing.concurrency")
+	_ = v.BindEnv("server.routing.dht_reprovide_interval")
+	_ = v.BindEnv("server.routing.gossipsub.reprovide_interval")
 
 	// Extractor config likewise has no defaults and is absent from
 	// daemon.config.yaml, so register it here for AutomaticEnv. Mirrors
@@ -342,6 +345,11 @@ func loadConfig() (*DaemonConfig, error) {
 	// it is silent. The blocks are read from the keys viper already holds.
 	if err := env.CheckBlocks(DefaultEnvPrefix, v.AllKeys()); err != nil {
 		//nolint:wrapcheck // the error is complete, and the only prefix available here would be wrong
+		return nil, err
+	}
+
+	if err := routingconfig.CheckRemovedKeys(v.InConfig, v.ConfigFileUsed(), "server.routing.", DefaultEnvPrefix); err != nil {
+		//nolint:wrapcheck // the error is complete: it names the key and where it was set
 		return nil, err
 	}
 

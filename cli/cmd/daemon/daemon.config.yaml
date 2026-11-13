@@ -50,15 +50,14 @@ server:
     # directory_api_address: "dir.example.com:8888"
     # directory_oci_address: "ghcr.io/org/agents"
 
-    # How often local CID provider announcements are republished. Lower values
-    # let newly joined nodes converge on existing content sooner, at the cost of
-    # more announcement traffic and more work for every subscriber.
-    republish_interval: "24h"
+    # How often local CID provider records are re-announced to the DHT so they
+    # do not expire on remote peers. Must be lower than record_ttl.
+    dht_reprovide_interval: "24h"
 
     # DHT tuning. Unset keys use the defaults shown.
     # bucket_size should be the same on every node of the network.
-    # record_ttl must be greater than republish_interval.
-    # max_label_age must be greater than republish_interval.
+    # record_ttl must be greater than dht_reprovide_interval.
+    # max_label_age must be greater than dht_reprovide_interval.
     # refresh_interval: "10m"
     # record_ttl: "48h"
     # cleanup_interval: "48h"
