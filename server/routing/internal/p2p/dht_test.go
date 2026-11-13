@@ -5,8 +5,12 @@ package p2p
 
 import (
 	"testing"
+	"time"
 
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDropPrivateAddrs(t *testing.T) {
@@ -42,4 +46,25 @@ func TestDropPrivateAddrs(t *testing.T) {
 			t.Errorf("addr %d: got %s, want %s", i, a, keep[i])
 		}
 	}
+}
+
+func TestNewDHT(t *testing.T) {
+	ctx := t.Context()
+
+	bootstrap := newTestHost(t, options{})
+
+	bootDHT, err := newDHT(ctx, bootstrap, nil, 0, false)
+	require.NoError(t, err)
+
+	t.Cleanup(func() { _ = bootDHT.Close() })
+	require.Equal(t, dht.ModeServer, bootDHT.Mode())
+
+	peerHost := newTestHost(t, options{})
+	bootInfo := peer.AddrInfo{ID: bootstrap.ID(), Addrs: bootstrap.Addrs()}
+
+	peerDHT, err := newDHT(ctx, peerHost, []peer.AddrInfo{bootInfo}, time.Minute, true)
+	require.NoError(t, err)
+
+	t.Cleanup(func() { _ = peerDHT.Close() })
+	require.Equal(t, dht.ModeAutoServer, peerDHT.Mode())
 }
