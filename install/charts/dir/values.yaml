@@ -272,6 +272,10 @@ apiserver:
       # Default: true (recommended for production)
       gossipsub:
         enabled: true
+        # How often local records are re-announced over GossipSub, independently
+        # of the DHT (default 1h). Each round sends every local record to every
+        # subscriber.
+        # reprovide_interval: "1h"
 
       # DHT-based record + referrer autosync.
       # Deny-by-default: when enabled, only records announced by a peer in
@@ -313,12 +317,12 @@ apiserver:
       # record_ttl must be greater than dht_reprovide_interval.
       # max_label_age must be greater than dht_reprovide_interval.
       # refresh_interval: "10m"
-      # record_ttl: "48h"
-      # cleanup_interval: "48h"
-      # max_label_age: "48h"
+      # record_ttl: "24h"
+      # cleanup_interval: "24h"
+      # max_label_age: "24h"
       # bucket_size: 10
       # concurrency: 5
-      # dht_reprovide_interval: "24h"
+      # dht_reprovide_interval: "12h"
 
     # Sync configuration
     sync:
