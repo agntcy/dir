@@ -11,17 +11,18 @@ import "time"
 const (
 	// RecordTTL defines how long DHT provider records persist before expiring.
 	// It is applied to both dht.MaxRecordAge() and the provider store validity.
-	RecordTTL = 48 * time.Hour
+	RecordTTL = 24 * time.Hour
 	// DHTReprovideInterval defines how often local CID provider records are re-announced to the DHT.
 	// It is set to RecordTTL/2 so records are refreshed well before they expire.
-	DHTReprovideInterval = 24 * time.Hour
+	DHTReprovideInterval = 12 * time.Hour
 	// GossipReprovideInterval defines how often local records are re-announced over GossipSub,
-	// independently of the DHT.
-	GossipReprovideInterval = 24 * time.Hour
+	// independently of the DHT. Shorter than the DHT interval so newly joined nodes learn
+	// labels sooner; each round sends every local record to every subscriber.
+	GossipReprovideInterval = time.Hour
 	// CleanupInterval defines how often we clean up stale announcements.
-	// This should match DHTRecordTTL to stay consistent with DHT behavior and prevent
+	// This should match RecordTTL to stay consistent with DHT behavior and prevent
 	// our local cache from having stale entries that no longer exist in the DHT.
-	CleanupInterval = 48 * time.Hour
+	CleanupInterval = 24 * time.Hour
 	// RefreshInterval defines how often DHT routing tables are refreshed.
 	RefreshInterval = 10 * time.Minute
 )
@@ -56,7 +57,7 @@ const (
 
 	// MaxLabelAge defines when remote label announcements are considered stale.
 	// Labels older than this will be cleaned up during periodic cleanup cycles.
-	MaxLabelAge = 48 * time.Hour
+	MaxLabelAge = 24 * time.Hour
 
 	// DefaultMinMatchScore defines the minimum allowed match score for production safety.
 	// Per proto specification: "If not set, it will return records that match at least one query".

@@ -69,16 +69,16 @@ type Config struct {
 	RefreshInterval time.Duration `json:"refresh_interval,omitempty" mapstructure:"refresh_interval"`
 
 	// RecordTTL is how long DHT provider records are kept before they expire.
-	// If not set or zero, uses the default RecordTTL constant (48h).
+	// If not set or zero, uses the default RecordTTL constant (24h).
 	// Must be greater than DHTReprovideInterval.
 	RecordTTL time.Duration `json:"record_ttl,omitempty" mapstructure:"record_ttl"`
 
 	// CleanupInterval is how often stale remote labels are removed.
-	// If not set or zero, uses the default CleanupInterval constant (48h).
+	// If not set or zero, uses the default CleanupInterval constant (24h).
 	CleanupInterval time.Duration `json:"cleanup_interval,omitempty" mapstructure:"cleanup_interval"`
 
 	// MaxLabelAge is the age after which a remote label is considered stale.
-	// If not set or zero, uses the default MaxLabelAge constant (48h).
+	// If not set or zero, uses the default MaxLabelAge constant (24h).
 	// Must be greater than DHTReprovideInterval so labels are refreshed before they go stale.
 	MaxLabelAge time.Duration `json:"max_label_age,omitempty" mapstructure:"max_label_age"`
 
@@ -93,7 +93,7 @@ type Config struct {
 
 	// DHTReprovideInterval controls how often local CID provider records are
 	// re-announced to the DHT so they do not expire on remote peers.
-	// If not set or zero, uses the default DHTReprovideInterval constant (24h).
+	// If not set or zero, uses the default DHTReprovideInterval constant (12h).
 	// Must be lower than RecordTTL.
 	DHTReprovideInterval time.Duration `json:"dht_reprovide_interval,omitempty" mapstructure:"dht_reprovide_interval"`
 
@@ -159,7 +159,7 @@ type GossipSubConfig struct {
 	// ReprovideInterval controls how often local records are re-announced over
 	// GossipSub, independently of the DHT. Lower values let newly joined nodes
 	// learn labels sooner, at the cost of more announcement traffic.
-	// If not set or zero, uses the default GossipReprovideInterval constant (24h).
+	// If not set or zero, uses the default GossipReprovideInterval constant (1h).
 	ReprovideInterval time.Duration `json:"reprovide_interval,omitempty" mapstructure:"reprovide_interval"`
 }
 

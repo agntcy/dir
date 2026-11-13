@@ -278,7 +278,8 @@ func TestLoadConfigReprovideIntervalEnvOverride(t *testing.T) {
 
 	cfg, err := loadConfig()
 	require.NoError(t, err)
-	require.Equal(t, 24*time.Hour, cfg.Server.Routing.DHTReprovideInterval)
+	require.Equal(t, 12*time.Hour, cfg.Server.Routing.DHTReprovideInterval)
+	require.Equal(t, time.Hour, cfg.Server.Routing.GossipSub.ReprovideInterval)
 
 	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_DHT_REPROVIDE_INTERVAL", "10m")
 	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_GOSSIPSUB_REPROVIDE_INTERVAL", "5m")
