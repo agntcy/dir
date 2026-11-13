@@ -7,14 +7,17 @@ import "time"
 
 // Default DHT and routing timing settings. Each one can be overridden through the
 // matching routing config key (see server/routing/config/config.go).
-// These constants ensure proper coordination between DHT expiration, republishing, and cleanup tasks.
+// These constants ensure proper coordination between DHT expiration, reproviding, and cleanup tasks.
 const (
 	// RecordTTL defines how long DHT provider records persist before expiring.
 	// It is applied to both dht.MaxRecordAge() and the provider store validity.
 	RecordTTL = 48 * time.Hour
-	// RepublishInterval defines how often we republish CID provider announcements to prevent expiration.
+	// DHTReprovideInterval defines how often local CID provider records are re-announced to the DHT.
 	// It is set to RecordTTL/2 so records are refreshed well before they expire.
-	RepublishInterval = 24 * time.Hour
+	DHTReprovideInterval = 24 * time.Hour
+	// GossipReprovideInterval defines how often local records are re-announced over GossipSub,
+	// independently of the DHT.
+	GossipReprovideInterval = 24 * time.Hour
 	// CleanupInterval defines how often we clean up stale announcements.
 	// This should match DHTRecordTTL to stay consistent with DHT behavior and prevent
 	// our local cache from having stale entries that no longer exist in the DHT.

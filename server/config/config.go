@@ -541,7 +541,7 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	// routing package falls back to its constants (see server/routing/constants.go).
 	_ = v.BindEnv("routing.refresh_interval")
 
-	_ = v.BindEnv("routing.republish_interval")
+	_ = v.BindEnv("routing.dht_reprovide_interval")
 
 	_ = v.BindEnv("routing.record_ttl")
 
@@ -555,11 +555,15 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 
 	//
 	// Routing GossipSub configuration
-	// Note: Only enable/disable is configurable. Protocol parameters (topic, message size)
-	// are hardcoded in server/routing/pubsub/constants.go for network compatibility.
+	// Note: Only enable/disable and the reprovide interval are configurable. Protocol
+	// parameters (topic, message size) are hardcoded in server/routing/pubsub/constants.go
+	// for network compatibility.
 	//
 	_ = v.BindEnv("routing.gossipsub.enabled")
 	v.SetDefault("routing.gossipsub.enabled", routing.DefaultGossipSubEnabled)
+
+	// No default: a zero value means the routing package uses its constant.
+	_ = v.BindEnv("routing.gossipsub.reprovide_interval")
 
 	//
 	// Routing autosync configuration (DHT-based record + referrer sync).
@@ -709,6 +713,10 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	)
 
 	if err := policy.CheckRetired(v, policy.KeyLocation{EnvPrefix: DefaultEnvPrefix}); err != nil {
+		return nil, fmt.Errorf("invalid server config: %w", err)
+	}
+
+	if err := routing.CheckRemovedKeys(v.InConfig, v.ConfigFileUsed(), "routing.", DefaultEnvPrefix); err != nil {
 		return nil, fmt.Errorf("invalid server config: %w", err)
 	}
 

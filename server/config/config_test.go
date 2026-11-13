@@ -45,7 +45,8 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS":               "/ip4/1.1.1.1/tcp/1,/ip4/1.1.1.1/tcp/2",
 				"DIRECTORY_SERVER_ROUTING_KEY_PATH":                      "/path/to/key",
 				"DIRECTORY_SERVER_ROUTING_REFRESH_INTERVAL":              "5s",
-				"DIRECTORY_SERVER_ROUTING_REPUBLISH_INTERVAL":            "10m",
+				"DIRECTORY_SERVER_ROUTING_DHT_REPROVIDE_INTERVAL":        "10m",
+				"DIRECTORY_SERVER_ROUTING_GOSSIPSUB_REPROVIDE_INTERVAL":  "5m",
 				"DIRECTORY_SERVER_ROUTING_DISABLE_PRIVATE_IPS":           "true",
 				"DIRECTORY_SERVER_ROUTING_RECORD_TTL":                    "12h",
 				"DIRECTORY_SERVER_ROUTING_CLEANUP_INTERVAL":              "6h",
@@ -106,17 +107,18 @@ func TestConfig(t *testing.T) {
 						"/ip4/1.1.1.1/tcp/1",
 						"/ip4/1.1.1.1/tcp/2",
 					},
-					KeyPath:           "/path/to/key",
-					RefreshInterval:   5 * time.Second,
-					RepublishInterval: 10 * time.Minute,
-					DisablePrivateIPs: true,
-					RecordTTL:         12 * time.Hour,
-					CleanupInterval:   6 * time.Hour,
-					MaxLabelAge:       3 * time.Hour,
-					BucketSize:        15,
-					Concurrency:       3,
+					KeyPath:              "/path/to/key",
+					RefreshInterval:      5 * time.Second,
+					DHTReprovideInterval: 10 * time.Minute,
+					DisablePrivateIPs:    true,
+					RecordTTL:            12 * time.Hour,
+					CleanupInterval:      6 * time.Hour,
+					MaxLabelAge:          3 * time.Hour,
+					BucketSize:           15,
+					Concurrency:          3,
 					GossipSub: routing.GossipSubConfig{
-						Enabled: true, // Default value
+						Enabled:           true, // Default value
+						ReprovideInterval: 5 * time.Minute,
 					},
 				},
 				Database: dbconfig.Config{
@@ -734,4 +736,12 @@ func TestLoadConfig_RefusesANegativePolicyRefreshInterval(t *testing.T) {
 
 	_, err := LoadConfig()
 	assert.ErrorContains(t, err, "refresh_interval must not be negative")
+}
+
+func TestLoadConfig_RefusesTheRemovedRepublishInterval(t *testing.T) {
+	t.Setenv("DIRECTORY_SERVER_ROUTING_REPUBLISH_INTERVAL", "24h")
+
+	_, err := LoadConfig()
+	assert.ErrorContains(t, err, "routing.republish_interval")
+	assert.ErrorContains(t, err, "routing.dht_reprovide_interval")
 }
