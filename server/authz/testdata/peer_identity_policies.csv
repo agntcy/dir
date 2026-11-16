@@ -4,3 +4,4 @@ p,*,/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials
 p,spiffe://partner.org/ns/dir/sa/dir,/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials
 p,spiffe://example.org/ns/peers/*,/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials
 p,spiffe://example.org/ns/dir/sa/auditor,/agntcy.dir.policy.v1.PolicyAuditService/*
+p,spiffe://example.org/ns/dir/sa/admin,/agntcy.dir.security.v1.ScanService/*

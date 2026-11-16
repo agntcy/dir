@@ -43,6 +43,12 @@ Some methods read records without passing through the server's content-policy ga
   p,spiffe://example.org/ns/dir/sa/auditor,/agntcy.dir.policy.v1.PolicyAuditService/*
   ```
 
+- `/agntcy.dir.security.v1.ScanService/*` queues security scans and lists a record's scan history, including who asked for each scan. Name the administrators:
+
+  ```
+  p,spiffe://example.org/ns/dir/sa/admin,/agntcy.dir.security.v1.ScanService/*
+  ```
+
 #### Common Policy Examples
 
 **Allow full access for your trust domain:**
