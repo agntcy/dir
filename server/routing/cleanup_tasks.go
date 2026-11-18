@@ -58,6 +58,7 @@ type CleanupManager struct {
 	announceFunc            pubsub.PublishEventHandler // GossipSub announcement (captures routeRemote state)
 	dhtReprovideInterval    time.Duration              // How often local CIDs are re-announced to the DHT
 	gossipReprovideInterval time.Duration              // How often local records are re-announced over GossipSub
+	gossipReprovideDelay    time.Duration              // Pause between two records in a GossipSub reprovide round
 	cleanupInterval         time.Duration              // How often stale remote labels are removed
 	maxLabelAge             time.Duration              // Age after which a remote label is stale
 }
@@ -80,6 +81,7 @@ func NewCleanupManager(
 		announceFunc:            announceFunc,
 		dhtReprovideInterval:    params.DHTReprovideInterval,
 		gossipReprovideInterval: params.GossipReprovideInterval,
+		gossipReprovideDelay:    params.GossipReprovideDelay,
 		cleanupInterval:         params.CleanupInterval,
 		maxLabelAge:             params.MaxLabelAge,
 	}
@@ -147,6 +149,19 @@ func (c *CleanupManager) StartRemoteLabelCleanupTask(ctx context.Context, wg *sy
 				cleanupLogger.Error("Failed to cleanup stale remote labels", "error", err)
 			}
 		}
+	}
+}
+
+// wait pauses for d and reports whether it completed before ctx was cancelled.
+func wait(ctx context.Context, d time.Duration) bool {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
 	}
 }
 
@@ -223,9 +238,10 @@ func (c *CleanupManager) reprovideDHT(ctx context.Context) {
 		"orphaned", len(orphanedCIDs))
 }
 
-// reprovideGossip re-announces every local record over GossipSub. Unlike the DHT,
-// the announcement carries the record labels, so each record is pulled from storage.
-// Orphaned records are left to the DHT reprovide task.
+// reprovideGossip re-announces every local record over GossipSub, pausing
+// gossipReprovideDelay between records so subscribers are not flooded. Unlike the
+// DHT, the announcement carries the record labels, so each record is pulled from
+// storage. Orphaned records are left to the DHT reprovide task.
 func (c *CleanupManager) reprovideGossip(ctx context.Context) {
 	cids, err := c.localRecordCIDs(ctx)
 	if err != nil {
@@ -236,7 +252,13 @@ func (c *CleanupManager) reprovideGossip(ctx context.Context) {
 
 	var announced, failed int
 
-	for _, cidStr := range cids {
+	for i, cidStr := range cids {
+		if i > 0 && !wait(ctx, c.gossipReprovideDelay) {
+			cleanupLogger.Info("GossipSub reprovide cycle interrupted (context cancelled)", "announced", announced)
+
+			return
+		}
+
 		record, err := c.storeAPI.Pull(ctx, &corev1.RecordRef{Cid: cidStr})
 		if err != nil {
 			cleanupLogger.Warn("Failed to pull record for GossipSub reprovide", "cid", cidStr, "error", err)

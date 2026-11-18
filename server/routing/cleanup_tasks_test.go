@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -268,4 +269,102 @@ func TestReprovideTasksRunOnInterval(t *testing.T) {
 
 	cancel()
 	wg.Wait()
+}
+
+// putLocalRecords stores n distinct records in store and indexes them as local
+// records of r, so the reprovide tasks pick them up.
+func putLocalRecords(t *testing.T, r *route, store *mockStore, n int) {
+	t.Helper()
+
+	for i := range n {
+		record := corev1.New(&typesv1.Record{
+			Name:          fmt.Sprintf("gossip-agent-%d", i),
+			SchemaVersion: "1.0.0",
+			Skills:        []*typesv1.Skill{{Name: "test_skill", Id: 1}},
+		})
+		_, err := store.Push(t.Context(), record)
+		require.NoError(t, err)
+		require.NoError(t, r.remote.dstore.Put(t.Context(), datastore.NewKey("/records/"+record.GetCid()), []byte{}))
+	}
+}
+
+// countLabels returns how many label keys r has cached under prefix.
+func countLabels(t *testing.T, r *route, prefix string) int {
+	t.Helper()
+
+	results, err := r.remote.dstore.Query(t.Context(), query.Query{Prefix: prefix, KeysOnly: true})
+	require.NoError(t, err)
+
+	defer results.Close()
+
+	count := 0
+	for range results.Next() {
+		count++
+	}
+
+	return count
+}
+
+// A reprovide round must reach subscribers in full. Sent back-to-back, a round
+// this size overflowed the subscriber's buffer and lost about 40% of the records.
+func TestGossipReprovideDeliversEveryRecord(t *testing.T) {
+	const records = 2000
+
+	publisher := newGossipTestServer(t, nil)
+	subscriber := newGossipTestServer(t, publisher.remote.server.P2pAddrs())
+
+	require.Eventually(t, func() bool {
+		return len(publisher.remote.pubsubManager.GetTopicPeers()) > 0
+	}, 10*time.Second, 50*time.Millisecond, "subscriber never joined the topic")
+
+	store := newMockStore()
+	putLocalRecords(t, publisher, store, records)
+
+	cm := publisher.remote.cleanupManager
+	cm.storeAPI = store
+	cm.gossipReprovideDelay = time.Millisecond
+
+	cm.reprovideGossip(t.Context())
+
+	require.Eventually(t, func() bool {
+		return countLabels(t, subscriber, "/skills/") == records
+	}, 10*time.Second, 100*time.Millisecond, "subscriber received %d/%d records", countLabels(t, subscriber, "/skills/"), records)
+}
+
+func TestGossipReprovideStopsOnCancel(t *testing.T) {
+	r := newTestServer(t, t.Context(), nil)
+
+	t.Cleanup(func() { _ = r.Stop() })
+
+	store := newMockStore()
+	putLocalRecords(t, r, store, 10)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	announced := 0
+
+	cm := r.remote.cleanupManager
+	cm.storeAPI = store
+	cm.gossipReprovideDelay = time.Hour
+	cm.announceFunc = func(context.Context, coretypes.Record) error {
+		announced++
+
+		cancel() // the pause before the next record must stop the round
+
+		return nil
+	}
+
+	done := make(chan struct{})
+
+	go func() {
+		cm.reprovideGossip(ctx)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("reprovideGossip did not stop after the context was cancelled")
+	}
+
+	require.Equal(t, 1, announced)
 }

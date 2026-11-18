@@ -17,6 +17,7 @@ type dhtParams struct {
 	RecordTTL               time.Duration
 	DHTReprovideInterval    time.Duration
 	GossipReprovideInterval time.Duration
+	GossipReprovideDelay    time.Duration
 	CleanupInterval         time.Duration
 	MaxLabelAge             time.Duration
 	BucketSize              int
@@ -26,7 +27,7 @@ type dhtParams struct {
 // resolveDHTParams fills unset (zero) config values with the package defaults
 // and rejects invalid combinations.
 func resolveDHTParams(cfg routingconfig.Config) (dhtParams, error) {
-	if cfg.RefreshInterval < 0 || cfg.RecordTTL < 0 || cfg.DHTReprovideInterval < 0 || cfg.GossipSub.ReprovideInterval < 0 ||
+	if cfg.RefreshInterval < 0 || cfg.RecordTTL < 0 || cfg.DHTReprovideInterval < 0 || cfg.GossipSub.ReprovideInterval < 0 || cfg.GossipSub.ReprovideDelay < 0 ||
 		cfg.CleanupInterval < 0 || cfg.MaxLabelAge < 0 || cfg.BucketSize < 0 || cfg.Concurrency < 0 {
 		return dhtParams{}, errors.New("routing intervals, bucket_size and concurrency must not be negative")
 	}
@@ -36,6 +37,7 @@ func resolveDHTParams(cfg routingconfig.Config) (dhtParams, error) {
 		RecordTTL:               orDefault(cfg.RecordTTL, RecordTTL),
 		DHTReprovideInterval:    orDefault(cfg.DHTReprovideInterval, DHTReprovideInterval),
 		GossipReprovideInterval: orDefault(cfg.GossipSub.ReprovideInterval, GossipReprovideInterval),
+		GossipReprovideDelay:    orDefault(cfg.GossipSub.ReprovideDelay, GossipReprovideDelay),
 		CleanupInterval:         orDefault(cfg.CleanupInterval, CleanupInterval),
 		MaxLabelAge:             orDefault(cfg.MaxLabelAge, MaxLabelAge),
 		BucketSize:              orDefault(cfg.BucketSize, BucketSize),

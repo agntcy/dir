@@ -565,6 +565,8 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	// No default: a zero value means the routing package uses its constant.
 	_ = v.BindEnv("routing.gossipsub.reprovide_interval")
 
+	_ = v.BindEnv("routing.gossipsub.reprovide_delay")
+
 	//
 	// Routing autosync configuration (DHT-based record + referrer sync).
 	// Note: routing.autosync.peerlist is a list of objects and is configured via

@@ -19,6 +19,9 @@ const (
 	// independently of the DHT. Shorter than the DHT interval so newly joined nodes learn
 	// labels sooner; each round sends every local record to every subscriber.
 	GossipReprovideInterval = time.Hour
+	// GossipReprovideDelay is the pause between two records announced during a GossipSub
+	// reprovide round, so subscribers are not flooded by a burst they cannot process.
+	GossipReprovideDelay = 5 * time.Millisecond
 	// CleanupInterval defines how often we clean up stale announcements.
 	// This should match RecordTTL to stay consistent with DHT behavior and prevent
 	// our local cache from having stale entries that no longer exist in the DHT.
