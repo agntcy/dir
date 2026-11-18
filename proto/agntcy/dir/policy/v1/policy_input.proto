@@ -319,6 +319,32 @@ enum ScanStatus {
   SCAN_STATUS_FAILED = 4;
 }
 
+// ScanFailureReason classifies why a scan phase produced no result, mirroring
+// utils/scanner.FailureReason.
+enum ScanFailureReason {
+  SCAN_FAILURE_REASON_UNSPECIFIED = 0;
+
+  // Not failures: the record declares no content of the runner's type.
+  SCAN_FAILURE_REASON_SOURCE_NOT_DECLARED = 1;
+  SCAN_FAILURE_REASON_ENDPOINT_NOT_DECLARED = 2;
+  SCAN_FAILURE_REASON_ARTIFACT_MISSING = 3;
+
+  // Attributable to the record.
+  SCAN_FAILURE_REASON_SOURCE_UNREACHABLE = 4;
+  SCAN_FAILURE_REASON_ENDPOINT_URL_INVALID = 5;
+
+  // Attributable to the third party the record points at.
+  SCAN_FAILURE_REASON_ENDPOINT_UNREACHABLE = 6;
+
+  // Attributable to this deployment's scanning infrastructure.
+  SCAN_FAILURE_REASON_SCANNER_TIMEOUT = 7;
+  SCAN_FAILURE_REASON_SCANNER_CRASHED = 8;
+  SCAN_FAILURE_REASON_SCANNER_UNAVAILABLE = 9;
+  SCAN_FAILURE_REASON_SCANNER_FAILED = 10;
+  SCAN_FAILURE_REASON_SCANNER_UNPARSABLE_OUTPUT = 11;
+  SCAN_FAILURE_REASON_LLM_NOT_CONFIGURED = 12;
+}
+
 // ScannerResult is one scanner's contribution to a record's scan facts,
 // so that a policy can require a particular scanner rather than trusting an
 // aggregate it cannot see into.
@@ -337,6 +363,9 @@ message ScannerResult {
 
   // When this scanner reported. Absent if it has not.
   optional google.protobuf.Timestamp scanned_at = 5;
+
+  // Why scanning produced no result, if it did not.
+  ScanFailureReason failure_reason = 6;
 }
 
 // ScanFacts is what the scanners found, aggregated and per scanner.
@@ -356,7 +385,8 @@ message ScanFacts {
   // Severity is declared ascending in agntcy/dir/security/v1/scan_report.proto,
   // so a threshold is an ordinary comparison, and SEVERITY_UNSPECIFIED sorting
   // below every real severity means an unscanned record fails a threshold
-  // rather than passing it.
+  // written >= X rather than passing it (conversely, passing an allow-rule
+  // written < X).
   agntcy.dir.security.v1.Severity max_severity = 3;
 
   // Whether every scanner that reported considers the record safe.
@@ -371,6 +401,10 @@ message ScanFacts {
 
   // When the most recent scanner reported. Absent if none has.
   optional google.protobuf.Timestamp scanned_at = 7;
+
+  // Why scanning failed, when every failed scanner agrees;
+  // SCAN_FAILURE_REASON_UNSPECIFIED if they disagree or no scanner failed.
+  ScanFailureReason failure_reason = 8;
 }
 
 // ClaimStatus is what this node knows about an identity or ownership claim.
