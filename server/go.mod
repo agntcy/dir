@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/server
 
-go 1.27.3
+go 1.27.4
 
 // Replace local modules
 replace (
@@ -8,10 +8,6 @@ replace (
 	github.com/agntcy/dir/client => ../client
 	github.com/agntcy/dir/utils => ../utils
 )
-
-// Replace external modules to address compatibility/security
-// Cosign does not updated the crypto11 owner
-replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 v1.6.8
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2

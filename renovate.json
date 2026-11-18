@@ -299,6 +299,16 @@
         "Group Agent Name Service SDK bumps into a single PR.",
         "The SDK verifies ans:// identity claims, so a bump is reviewed as a trust-path change."
       ]
+    },
+    {
+      "groupName": "Go toolchain",
+      "groupSlug": "go-toolchain",
+      "matchDepNames": ["go", "golang"],
+      "addLabels": ["go"],
+      "description": [
+        "Move the Go version and the golang builder image together: the go directive, setup-go,",
+        "GO_VERSION and the golang Docker image. Split, neither branch builds without the other."
+      ]
     }
   ],
   "postUpdateOptions": [
