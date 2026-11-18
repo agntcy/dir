@@ -14,6 +14,7 @@ import (
 	securityv1 "github.com/agntcy/dir/api/security/v1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/conv"
+	"github.com/agntcy/dir/utils/scanner"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -88,8 +89,9 @@ func pickSignature(rows []types.SignatureVerificationObject) (types.SignatureVer
 
 func scanFacts(rows []types.ScanReportObject) *policyv1.ScanFacts {
 	facts := &policyv1.ScanFacts{
-		Status:      policyv1.ScanStatus_SCAN_STATUS_UNSCANNED,
-		MaxSeverity: securityv1.Severity_SEVERITY_UNSPECIFIED,
+		Status:        policyv1.ScanStatus_SCAN_STATUS_UNSCANNED,
+		MaxSeverity:   securityv1.Severity_SEVERITY_UNSPECIFIED,
+		FailureReason: policyv1.ScanFailureReason_SCAN_FAILURE_REASON_UNSPECIFIED,
 	}
 
 	if len(rows) == 0 {
@@ -115,11 +117,12 @@ func scanFacts(rows []types.ScanReportObject) *policyv1.ScanFacts {
 	for _, row := range sorted {
 		status := scanStatusOf(row.GetStatus())
 		result := &policyv1.ScannerResult{
-			ScannerType:  scannerTypeOf(row.GetScannerType()),
-			Status:       status,
-			MaxSeverity:  severityOf(row.GetMaxSeverity()),
-			FindingCount: conv.SafeUint32(row.GetFindingCount()),
-			ScannedAt:    timestampOf(row.GetUpdatedAt()),
+			ScannerType:   scannerTypeOf(row.GetScannerType()),
+			Status:        status,
+			MaxSeverity:   severityOf(row.GetMaxSeverity()),
+			FindingCount:  conv.SafeUint32(row.GetFindingCount()),
+			ScannedAt:     timestampOf(row.GetUpdatedAt()),
+			FailureReason: scanFailureReasonOf(row.GetFailureReason()),
 		}
 		facts.Scanners = append(facts.Scanners, result)
 
@@ -143,8 +146,43 @@ func scanFacts(rows []types.ScanReportObject) *policyv1.ScanFacts {
 	facts.IsSafe = sawVerdict && allSafe
 	facts.ScannedAt = timestampOf(latest)
 	facts.Source = scanSource(sorted)
+	facts.FailureReason = scanFailureReason(facts.GetStatus(), sorted)
 
 	return facts
+}
+
+// scanFailureReason reports why scanning failed when every failed scanner row
+// agrees on the reason.
+//
+// A policy cannot treat a mixture of causes as either one, so rows that
+// disagree, or a failed row with an unspecified reason, leaves the aggregate
+// unspecified. When the overall status is not failed, no aggregate failure
+// reason applies.
+func scanFailureReason(status policyv1.ScanStatus, rows []types.ScanReportObject) policyv1.ScanFailureReason {
+	if status != policyv1.ScanStatus_SCAN_STATUS_FAILED || len(rows) == 0 {
+		return policyv1.ScanFailureReason_SCAN_FAILURE_REASON_UNSPECIFIED
+	}
+
+	var reason policyv1.ScanFailureReason
+
+	for i, row := range rows {
+		got := scanFailureReasonOf(row.GetFailureReason())
+		if got == policyv1.ScanFailureReason_SCAN_FAILURE_REASON_UNSPECIFIED {
+			return policyv1.ScanFailureReason_SCAN_FAILURE_REASON_UNSPECIFIED
+		}
+
+		if i == 0 {
+			reason = got
+
+			continue
+		}
+
+		if got != reason {
+			return policyv1.ScanFailureReason_SCAN_FAILURE_REASON_UNSPECIFIED
+		}
+	}
+
+	return reason
 }
 
 // scanSource reports who produced the rows a policy is reading.
@@ -271,6 +309,39 @@ func severityOf(name string) securityv1.Severity {
 	}
 
 	return securityv1.Severity(value)
+}
+
+func scanFailureReasonOf(name string) policyv1.ScanFailureReason {
+	switch scanner.FailureReason(name) {
+	case scanner.FailureNone:
+		return policyv1.ScanFailureReason_SCAN_FAILURE_REASON_UNSPECIFIED
+	case scanner.FailureSourceNotDeclared:
+		return policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SOURCE_NOT_DECLARED
+	case scanner.FailureEndpointNotDeclared:
+		return policyv1.ScanFailureReason_SCAN_FAILURE_REASON_ENDPOINT_NOT_DECLARED
+	case scanner.FailureArtifactMissing:
+		return policyv1.ScanFailureReason_SCAN_FAILURE_REASON_ARTIFACT_MISSING
+	case scanner.FailureSourceUnreachable:
+		return policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SOURCE_UNREACHABLE
+	case scanner.FailureEndpointURLInvalid:
+		return policyv1.ScanFailureReason_SCAN_FAILURE_REASON_ENDPOINT_URL_INVALID
+	case scanner.FailureEndpointUnreachable:
+		return policyv1.ScanFailureReason_SCAN_FAILURE_REASON_ENDPOINT_UNREACHABLE
+	case scanner.FailureScannerTimeout:
+		return policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SCANNER_TIMEOUT
+	case scanner.FailureScannerCrashed:
+		return policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SCANNER_CRASHED
+	case scanner.FailureScannerUnavailable:
+		return policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SCANNER_UNAVAILABLE
+	case scanner.FailureScannerFailed:
+		return policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SCANNER_FAILED
+	case scanner.FailureScannerUnparsable:
+		return policyv1.ScanFailureReason_SCAN_FAILURE_REASON_SCANNER_UNPARSABLE_OUTPUT
+	case scanner.FailureLLMNotConfigured:
+		return policyv1.ScanFailureReason_SCAN_FAILURE_REASON_LLM_NOT_CONFIGURED
+	default:
+		return policyv1.ScanFailureReason_SCAN_FAILURE_REASON_UNSPECIFIED
+	}
 }
 
 func identityFacts(record *corev1.Record, claims []types.IdentityClaimObject) *policyv1.IdentityFacts {
