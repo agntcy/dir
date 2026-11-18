@@ -17,20 +17,17 @@ import (
 // This is used for dependency injection to allow components to trigger publishing
 // operations without creating circular dependencies.
 //
-// The handler should:
-//   - Accept a types.Record interface (caller must wrap concrete types with adapters)
-//   - Announce the record to DHT
-//   - Publish the record's labels via GossipSub
-//   - Handle errors appropriately
+// The handler accepts a types.Record interface (callers wrap concrete types with
+// adapters), publishes the record's labels via GossipSub and returns any error.
 //
 // Example usage:
 //
 //	// In routing_remote.go:
-//	cleanupManager := NewCleanupManager(..., routeAPI.Publish)
+//	cleanupManager := NewCleanupManager(..., routeAPI.provide, routeAPI.announce, params)
 //
 //	// In cleanup_tasks.go:
 //	type CleanupManager struct {
-//	    publishFunc pubsub.PublishEventHandler
+//	    announceFunc pubsub.PublishEventHandler
 //	}
 type PublishEventHandler func(context.Context, coretypes.Record) error
 
