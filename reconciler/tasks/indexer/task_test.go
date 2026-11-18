@@ -283,10 +283,10 @@ func (s *storeWithReferrers) WalkReferrers(_ context.Context, _ string, referrer
 	return nil
 }
 
-// syncedDB is searchDB plus the two writes a referrer could lead the indexer
+// regsyncedDB is searchDB plus the two writes a referrer could lead the indexer
 // to make. It is a full ScanReportDatabaseAPI, as the real database is, so a
 // backfill that type-asserts for one finds it.
-type syncedDB struct {
+type regsyncedDB struct {
 	searchDB
 	types.ScanReportDatabaseAPI
 
@@ -294,39 +294,39 @@ type syncedDB struct {
 	scanReports []types.ScanReportObject
 }
 
-func (d *syncedDB) SetRecordSigned(cid string) error {
+func (d *regsyncedDB) SetRecordSigned(cid string) error {
 	d.signed = append(d.signed, cid)
 
 	return nil
 }
 
-func (d *syncedDB) UpsertScanReport(report types.ScanReportObject, _ types.ScanSchedule) error {
+func (d *regsyncedDB) UpsertScanReport(report types.ScanReportObject, _ types.ScanSchedule) error {
 	d.scanReports = append(d.scanReports, report)
 
 	return nil
 }
 
-// A record synced with its referrers has its signature verified here, because
-// the indexer marks it signed. Its copied scan report is the publisher's
-// assertion, not this node's conclusion, so it is not imported: the record
+// A record regsync copied with its referrers has its signature verified here,
+// because the indexer marks it signed. Its scan report is not imported, since
+// regsync bypasses the ingest path that would have written the row: the record
 // reads as unscanned until this node's scan task, whose work query selects
 // records with no scan_reports row, scans it itself. Adding a scan report
 // backfill next to the signature one should be a decision, so this fails if
 // one appears.
-func TestRun_DoesNotImportASyncedScanReport(t *testing.T) {
+func TestRun_DoesNotImportAScanReportCopiedByRegsync(t *testing.T) {
 	t.Parallel()
 
 	store := &storeWithReferrers{referrers: []*corev1.RecordReferrer{
 		{Type: corev1.SignatureReferrerType},
 		{Type: corev1.ScanReportReferrerType},
 	}}
-	db := &syncedDB{}
+	db := &regsyncedDB{}
 
 	task, err := NewTask(Config{Enabled: true}, ociconfig.Config{}, store, &registryOf{tags: []string{indexedCID}}, db, nil)
 	require.NoError(t, err)
 
 	require.NoError(t, task.Run(t.Context()))
 	assert.Equal(t, 1, db.added)
-	assert.Equal(t, []string{indexedCID}, db.signed, "a synced signature is marked for this node to verify")
-	assert.Empty(t, db.scanReports, "a synced scan report must not become a scan_reports row")
+	assert.Equal(t, []string{indexedCID}, db.signed, "a copied signature is marked for this node to verify")
+	assert.Empty(t, db.scanReports, "a scan report copied by regsync must not become a scan_reports row")
 }
