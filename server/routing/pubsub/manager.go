@@ -84,7 +84,7 @@ func New(ctx context.Context, h host.Host) (*Manager, error) {
 	}
 
 	// Subscribe to receive label announcements
-	sub, err := topic.Subscribe()
+	sub, err := topic.Subscribe(pubsub.WithBufferSize(SubscriptionBufferSize))
 	if err != nil {
 		return nil, fmt.Errorf("failed to subscribe to labels topic %q: %w", TopicLabels, err)
 	}

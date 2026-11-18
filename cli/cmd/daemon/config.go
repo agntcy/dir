@@ -148,6 +148,7 @@ func registerServerDefaults(v *viper.Viper) {
 	_ = v.BindEnv("server.routing.concurrency")
 	_ = v.BindEnv("server.routing.dht_reprovide_interval")
 	_ = v.BindEnv("server.routing.gossipsub.reprovide_interval")
+	_ = v.BindEnv("server.routing.gossipsub.reprovide_delay")
 
 	// Extractor config likewise has no defaults and is absent from
 	// daemon.config.yaml, so register it here for AutomaticEnv. Mirrors

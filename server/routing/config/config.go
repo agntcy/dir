@@ -161,6 +161,13 @@ type GossipSubConfig struct {
 	// learn labels sooner, at the cost of more announcement traffic.
 	// If not set or zero, uses the default GossipReprovideInterval constant (1h).
 	ReprovideInterval time.Duration `json:"reprovide_interval,omitempty" mapstructure:"reprovide_interval"`
+
+	// ReprovideDelay is the pause between two records announced during a
+	// GossipSub reprovide round. It spreads the round out so subscribers can
+	// keep up; sent back-to-back, a large round overflows their buffers and
+	// announcements are dropped.
+	// If not set or zero, uses the default GossipReprovideDelay constant (5ms).
+	ReprovideDelay time.Duration `json:"reprovide_delay,omitempty" mapstructure:"reprovide_delay"`
 }
 
 // removedKeys maps routing keys that no longer exist to their replacement, so

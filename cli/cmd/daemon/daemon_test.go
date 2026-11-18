@@ -283,11 +283,13 @@ func TestLoadConfigReprovideIntervalEnvOverride(t *testing.T) {
 
 	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_DHT_REPROVIDE_INTERVAL", "10m")
 	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_GOSSIPSUB_REPROVIDE_INTERVAL", "5m")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_GOSSIPSUB_REPROVIDE_DELAY", "2ms")
 
 	cfg, err = loadConfig()
 	require.NoError(t, err)
 	require.Equal(t, 10*time.Minute, cfg.Server.Routing.DHTReprovideInterval)
 	require.Equal(t, 5*time.Minute, cfg.Server.Routing.GossipSub.ReprovideInterval)
+	require.Equal(t, 2*time.Millisecond, cfg.Server.Routing.GossipSub.ReprovideDelay)
 }
 
 // TestLoadConfigRefusesRemovedRepublishInterval asserts that the removed

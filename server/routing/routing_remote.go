@@ -920,7 +920,7 @@ func (r *routeRemote) handleRecordPublishEvent(ctx context.Context, authenticate
 		}
 	}
 
-	remoteLogger.Info("Caching labels from GossipSub announcement",
+	remoteLogger.Debug("Caching labels from GossipSub announcement",
 		"cid", event.CID,
 		"peer", authenticatedPeerID,
 		"labels", len(event.Labels))

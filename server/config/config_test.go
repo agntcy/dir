@@ -47,6 +47,7 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_ROUTING_REFRESH_INTERVAL":              "5s",
 				"DIRECTORY_SERVER_ROUTING_DHT_REPROVIDE_INTERVAL":        "10m",
 				"DIRECTORY_SERVER_ROUTING_GOSSIPSUB_REPROVIDE_INTERVAL":  "5m",
+				"DIRECTORY_SERVER_ROUTING_GOSSIPSUB_REPROVIDE_DELAY":     "2ms",
 				"DIRECTORY_SERVER_ROUTING_DISABLE_PRIVATE_IPS":           "true",
 				"DIRECTORY_SERVER_ROUTING_RECORD_TTL":                    "12h",
 				"DIRECTORY_SERVER_ROUTING_CLEANUP_INTERVAL":              "6h",
@@ -119,6 +120,7 @@ func TestConfig(t *testing.T) {
 					GossipSub: routing.GossipSubConfig{
 						Enabled:           true, // Default value
 						ReprovideInterval: 5 * time.Minute,
+						ReprovideDelay:    2 * time.Millisecond,
 					},
 				},
 				Database: dbconfig.Config{
