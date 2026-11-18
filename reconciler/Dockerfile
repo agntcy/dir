@@ -3,7 +3,7 @@
 # xx is a helper for cross-compilation
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.10.0@sha256:40fe21f44bb8cddf1eb1226db190d0a984118f62ee02a91b77d99448d28264a6 AS xx
 
-FROM --platform=$BUILDPLATFORM golang:1.27.3-bookworm@sha256:dc0963f32053e4bc451d24d87e3892d42d01021b61f093e98eb95c0352bb84b0 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27.4-bookworm@sha256:4fa7c968ba93f1635670522dbb01a2c78150443e1385746924566079f36570ea AS builder
 
 COPY --link --from=xx / /
 
@@ -42,7 +42,7 @@ RUN xx-verify /bin/reconciler
 # for 2.3.2) that carries fixed stdlib CVEs; skill-scanner honours
 # SKILL_SCANNER_CEL_GO_HELPER for a trusted local build, so the scanner stage
 # swaps the bundled binary for this one.
-FROM --platform=$BUILDPLATFORM golang:1.27.3-bookworm@sha256:dc0963f32053e4bc451d24d87e3892d42d01021b61f093e98eb95c0352bb84b0 AS cel-helper
+FROM --platform=$BUILDPLATFORM golang:1.27.4-bookworm@sha256:4fa7c968ba93f1635670522dbb01a2c78150443e1385746924566079f36570ea AS cel-helper
 
 COPY --link --from=xx / /
 

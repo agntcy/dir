@@ -1,6 +1,6 @@
 module protocol_interop
 
-go 1.27.3
+go 1.27.4
 
 // TODO: replace once v1.5 is out
 replace (
