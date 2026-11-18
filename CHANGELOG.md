@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Deps**: bump Go to 1.27.4 (stdlib CVE-2026-97054), grpc-health-probe to v0.4.63, cosign to v3.1.4 and sigstore to v1.11.3. The `ThalesIgnite/crypto11` replace is removed, because cosign now imports `eclipse-keypont/crypto11` directly. Renovate now moves the Go version and the `golang` builder image in one PR (#2510)
+
 ## [v1.9.0] - 2026-11-11
 
 ### Added
