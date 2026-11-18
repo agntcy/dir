@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Routing**: **BREAKING**: `routing.republish_interval` is replaced by `routing.dht_reprovide_interval` (DHT provider records) and `routing.gossipsub.reprovide_interval` (GossipSub label announcements), which now run as separate tasks; both default to 22h, with provider records and remote labels kept for 48h. A configuration file or `*_ROUTING_REPUBLISH_INTERVAL` variable that still sets the old key fails at startup and names the replacements: rename it in `daemon.config.yaml` and in server configurations. `routing.gossipsub.reprovide_delay` (default 5ms) paces each GossipSub round (#2503)
+
 ## [v1.9.0] - 2026-11-11
 
 ### Added
