@@ -11,21 +11,22 @@ import "time"
 const (
 	// RecordTTL defines how long DHT provider records persist before expiring.
 	// It is applied to both dht.MaxRecordAge() and the provider store validity.
-	RecordTTL = 24 * time.Hour
+	RecordTTL = 48 * time.Hour
 	// DHTReprovideInterval defines how often local CID provider records are re-announced to the DHT.
-	// It is set to RecordTTL/2 so records are refreshed well before they expire.
-	DHTReprovideInterval = 12 * time.Hour
+	// It is set just under RecordTTL/2, as in the Amino DHT, so a record survives one
+	// missed reprovide round: two rounds (44h) still fit within the TTL.
+	DHTReprovideInterval = 22 * time.Hour
 	// GossipReprovideInterval defines how often local records are re-announced over GossipSub,
-	// independently of the DHT. Shorter than the DHT interval so newly joined nodes learn
-	// labels sooner; each round sends every local record to every subscriber.
-	GossipReprovideInterval = time.Hour
+	// independently of the DHT. Each round sends every local record to every subscriber;
+	// lower it to let newly joined nodes learn labels sooner.
+	GossipReprovideInterval = 22 * time.Hour
 	// GossipReprovideDelay is the pause between two records announced during a GossipSub
 	// reprovide round, so subscribers are not flooded by a burst they cannot process.
 	GossipReprovideDelay = 5 * time.Millisecond
-	// CleanupInterval defines how often we clean up stale announcements.
-	// This should match RecordTTL to stay consistent with DHT behavior and prevent
-	// our local cache from having stale entries that no longer exist in the DHT.
-	CleanupInterval = 24 * time.Hour
+	// CleanupInterval defines how often the local cache is scanned for remote labels
+	// older than MaxLabelAge. Search does not check label age, so an expired label is
+	// served until the next scan; the scan is local and cheap, so it runs often.
+	CleanupInterval = time.Hour
 	// RefreshInterval defines how often DHT routing tables are refreshed.
 	RefreshInterval = 10 * time.Minute
 )
@@ -60,7 +61,7 @@ const (
 
 	// MaxLabelAge defines when remote label announcements are considered stale.
 	// Labels older than this will be cleaned up during periodic cleanup cycles.
-	MaxLabelAge = 24 * time.Hour
+	MaxLabelAge = 48 * time.Hour
 
 	// DefaultMinMatchScore defines the minimum allowed match score for production safety.
 	// Per proto specification: "If not set, it will return records that match at least one query".
