@@ -70,6 +70,29 @@ func TestResolveDHTParams(t *testing.T) {
 		},
 		{name: "dht reprovide not below ttl", cfg: routingconfig.Config{DHTReprovideInterval: RecordTTL}, wantErr: true},
 		{name: "label age not above dht reprovide", cfg: routingconfig.Config{MaxLabelAge: DHTReprovideInterval}, wantErr: true},
+		{
+			name: "label age not above gossip reprovide",
+			cfg: routingconfig.Config{GossipSub: routingconfig.GossipSubConfig{
+				Enabled:           true,
+				ReprovideInterval: MaxLabelAge,
+			}},
+			wantErr: true,
+		},
+		{
+			name: "gossip reprovide ignored when gossipsub is disabled",
+			cfg:  routingconfig.Config{GossipSub: routingconfig.GossipSubConfig{ReprovideInterval: MaxLabelAge}},
+			want: dhtParams{
+				RefreshInterval:         RefreshInterval,
+				RecordTTL:               RecordTTL,
+				DHTReprovideInterval:    DHTReprovideInterval,
+				GossipReprovideInterval: MaxLabelAge,
+				GossipReprovideDelay:    GossipReprovideDelay,
+				CleanupInterval:         CleanupInterval,
+				MaxLabelAge:             MaxLabelAge,
+				BucketSize:              BucketSize,
+				Concurrency:             Concurrency,
+			},
+		},
 	}
 
 	for _, tt := range tests {

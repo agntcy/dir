@@ -57,6 +57,12 @@ func resolveDHTParams(cfg routingconfig.Config) (dhtParams, error) {
 			p.MaxLabelAge, p.DHTReprovideInterval)
 	}
 
+	// Peers outside the closest set of a CID only refresh its labels over GossipSub.
+	if cfg.GossipSub.Enabled && p.MaxLabelAge <= p.GossipReprovideInterval {
+		return dhtParams{}, fmt.Errorf("max_label_age (%s) must be greater than gossipsub.reprovide_interval (%s)",
+			p.MaxLabelAge, p.GossipReprovideInterval)
+	}
+
 	return p, nil
 }
 

@@ -79,7 +79,8 @@ type Config struct {
 
 	// MaxLabelAge is the age after which a remote label is considered stale.
 	// If not set or zero, uses the default MaxLabelAge constant (48h).
-	// Must be greater than DHTReprovideInterval so labels are refreshed before they go stale.
+	// Must be greater than DHTReprovideInterval, and than GossipSub.ReprovideInterval when
+	// GossipSub is enabled, so labels are refreshed before they go stale.
 	MaxLabelAge time.Duration `json:"max_label_age,omitempty" mapstructure:"max_label_age"`
 
 	// BucketSize is the Kademlia k parameter.
