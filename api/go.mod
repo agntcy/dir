@@ -3,8 +3,8 @@ module github.com/agntcy/dir/api
 go 1.27.4
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260911081041-07202faeff63.2
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20261104144821-f8039ffa88d8.2
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261106120914-497c7a1ca059.2
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.2
 	github.com/agntcy/oasf-sdk/pkg v1.1.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.33.0
