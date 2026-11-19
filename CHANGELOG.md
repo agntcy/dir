@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.9.1] - 2026-11-18
+
+### Added
+- **Policy**: `ScanFacts` and `ScannerResult` carry a `failure_reason`, so a policy can tell a local scanner outage (`scanner-timeout`, `scanner-crashed`) from a defect of the record or its endpoint (`source-unreachable`, `endpoint-url-invalid`). `ScanFacts.failure_reason` is set when every failed scanner agrees, and a change of reason invalidates the cached verdicts that read it (#2501)
+
+### Changed
+- **CLI**: `dirctl routing list` and `dirctl routing search` print a column-aligned table instead of one `%v` line; `search` also shows the providing peer, the match score and the matched labels. The `json`, `jsonl` and `raw` outputs are unchanged (#2495)
+- **Deps**: gateway UI updates: `vite` v8.3.6, `svelte` v5.57.3, `tailwindcss` v4.3.5 (#2506)
+
+### Fixed
+- **Policy**: a negative `policy.refresh_interval` is refused at load. It used to load and made every request start a refresh (#2496)
+- **Policy**: the verified and revoked signature projections pick the signer with the lowest `signer_key`, so the projected signer no longer depends on verification time or row order (#2502)
+
+### Security
+- **Deps**: bump Go to 1.27.4 (stdlib CVE-2026-97054), grpc-health-probe to v0.4.63, cosign to v3.1.4 and sigstore to v1.11.3. The `ThalesIgnite/crypto11` replace is removed, because cosign now imports `eclipse-keypont/crypto11` directly. Renovate now moves the Go version and the `golang` builder image in one PR (#2510)
+- **Deps**: `go.opentelemetry.io/otel/sdk/log` v1.47.0, fixing the attribute length limit bypass CVE-2026-128085 / GHSA-q7gw-24fr-5p69 (#2504)
+
 ## [v1.9.0] - 2026-11-11
 
 ### Added

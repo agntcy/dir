@@ -85,7 +85,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
-          go-version: "1.27.3"
+          go-version: "1.27.4"
           cache-dependency-path: "**/*.sum"
 
       - name: Install Task
@@ -121,7 +121,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
-          go-version: "1.27.3"
+          go-version: "1.27.4"
           cache-dependency-path: "**/*.sum"
 
       - name: Install Task
@@ -286,6 +286,16 @@ jobs:
     needs:
       - release
     steps:
+      - name: Authenticate as the GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.PROJECT_APP_ID }}
+          private-key: ${{ secrets.PROJECT_APP_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: csit
+          permission-actions: write
+
       - name: Checkout code
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
@@ -294,7 +304,7 @@ jobs:
       - name: Run tests
         uses: ./.github/actions/trigger-integrations
         with:
-          github-token: ${{ secrets.AGNTCY_BUILD_BOT_GH_TOKEN }}
+          github-token: ${{ steps.app-token.outputs.token }}
 
   success:
     name: Success
