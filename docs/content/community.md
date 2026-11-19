@@ -84,6 +84,10 @@ Stay up to date with announcements, tutorials, and technical deep dives from the
 
     Python SDK for Directory clients.
 
+- :fontawesome-brands-github:{ .lg .middle } **[agntcy/dir-sdk-rust](https://github.com/agntcy/dir-sdk-rust)**
+
+    Rust SDK for Directory clients.
+
 - :fontawesome-brands-github:{ .lg .middle } **[agntcy/dir-gui](https://github.com/agntcy/dir-gui)**
 
     Desktop GUI for browsing and managing directory records.

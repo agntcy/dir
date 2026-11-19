@@ -14,6 +14,7 @@ routing, and search or pull by skill.
 | [Go SDK](dir-sdk-go.md) | Go 1.21+ | [pkg.go.dev](https://pkg.go.dev/github.com/agntcy/dir/client) |
 | [Python SDK](dir-sdk-python.md) | Python 3.10+ | [agntcy-dir on PyPI](https://pypi.org/project/agntcy-dir/) |
 | [JavaScript / TypeScript SDK](dir-sdk-javascript.md) | Node.js (JS + TS) | [agntcy-dir on npm](https://www.npmjs.com/package/agntcy-dir) |
+| [Rust SDK](dir-sdk-rust.md) | Rust 1.86+ | [agntcy-dir on crates.io](https://crates.io/crates/agntcy-dir) |
 
 ## Publish and discover
 

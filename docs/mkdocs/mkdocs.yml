@@ -154,6 +154,7 @@ nav:
           - Go SDK: dir/dir-sdk-go.md
           - Python SDK: dir/dir-sdk-python.md
           - JavaScript / TypeScript SDK: dir/dir-sdk-javascript.md
+          - Rust SDK: dir/dir-sdk-rust.md
       - Reference:
           - CLI Reference: dir/dir-cli-reference.md
           - API Reference: dir/dir-api-reference.md
