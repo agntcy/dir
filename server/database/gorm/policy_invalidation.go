@@ -52,7 +52,8 @@ func scanFactsChanged(before, after *ScanReport) bool {
 		before.MaxSeverity != after.MaxSeverity ||
 		before.IsSafe != after.IsSafe ||
 		before.FindingCount != after.FindingCount ||
-		before.Source != after.Source
+		before.Source != after.Source ||
+		before.FailureReason != after.FailureReason
 }
 
 // signatureVerificationFactsChanged reports whether replacing before with
