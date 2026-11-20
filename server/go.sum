@@ -1,9 +1,9 @@
-buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20260911081041-07202faeff63.1 h1:eZZLCwh876CRjOZl7FQwAl3cWBK8XCrTkcXyG+zccjg=
-buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20260911081041-07202faeff63.1/go.mod h1:Voz9x/pEvz+DPx3gEAa/c9iYptXI0pfCzqWYFNbYqtg=
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260911081041-07202faeff63.2 h1:LHUjHjbPYFl0BbgXHmW4lTHq01QCCoUvvohzxHo8lk0=
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260911081041-07202faeff63.2/go.mod h1:OKrypRTN8TPQY+X9elmC8r4XIo+5jZbfVEo2O1zm3FY=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2 h1:ELaYxCuG5tF7zlWM2OJVpa42/+s7ssz49CaTawsl4P4=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2/go.mod h1:fFU895SO7wQQGKQjtcNazRJgE8pigwfwTLmf4W2gRsk=
+buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20261104144821-f8039ffa88d8.1 h1:CQ5vjgQ2c08ZMTvgdM4VA8N2cMehSdn4Nk2wQODUUC8=
+buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20261104144821-f8039ffa88d8.1/go.mod h1:CrMuScANLSkk9tpKV7lfnhWczDreqJnxWowXwYYxa3Q=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20261104144821-f8039ffa88d8.2 h1:q29KnXdZnHsVBp5NpXcptPcN4jlVPiq5ZZA8lYz/gJY=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20261104144821-f8039ffa88d8.2/go.mod h1:OKrypRTN8TPQY+X9elmC8r4XIo+5jZbfVEo2O1zm3FY=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261106120914-497c7a1ca059.2 h1:neFUAOcii2//xt+A1sAjkRES3KvZPPSVpc959J94NpE=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261106120914-497c7a1ca059.2/go.mod h1:fFU895SO7wQQGKQjtcNazRJgE8pigwfwTLmf4W2gRsk=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.2 h1:NbnlmV26O7oZ1iM5tsCI+GEx+3ZSdrhvnKQ/eWSrLiY=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.2/go.mod h1:TCt1lluMFnctISJXvkIQ4x3ABrPuUKCWKyjKdkJNBpw=
 buf.build/go/protovalidate v1.4.0 h1:UjLrYbt5VX7+TMOs2+pG5FhZhIG1mSfK4EIopbb4LcM=
@@ -655,8 +655,8 @@ github.com/tchap/go-patricia/v2 v2.3.3/go.mod h1:VZRHKAb53DLaG+nA9EaYYiaEx6YztwD
 github.com/tetratelabs/wazero v1.12.0 h1:DuWcpNu/FzgEXgGBDp8J1Spc+CWOvvtvVyjKlaZopYU=
 github.com/tetratelabs/wazero v1.12.0/go.mod h1:LvKtzl2RqO4gyF27BiXU+nKAjcV8f38U+kP/q2vgxh0=
 github.com/ugorji/go/codec v0.0.0-20181204163529-d75b2dcb6bc8/go.mod h1:VFNgLljTbGfSG7qAOspJ7OScBnGdDN/yBr0sguwnwf0=
-github.com/ugorji/go/codec v1.3.1 h1:waO7eEiFDwidsBN6agj1vJQ4AG7lh2yqXyOXqhgQuyY=
-github.com/ugorji/go/codec v1.3.1/go.mod h1:pRBVtBSKl77K30Bv8R2P+cLSGaTtex6fsA2Wjqmfxj4=
+github.com/ugorji/go/codec v1.3.2 h1:zkEASHHyEClGeURfgNT9PJZVfAbs9oEX9QXggwWNJbc=
+github.com/ugorji/go/codec v1.3.2/go.mod h1:pRBVtBSKl77K30Bv8R2P+cLSGaTtex6fsA2Wjqmfxj4=
 github.com/urfave/cli v1.22.10/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
 github.com/valyala/fastjson v1.6.10 h1:/yjJg8jaVQdYR3arGxPE2X5z89xrlhS0eGXdv+ADTh4=
 github.com/valyala/fastjson v1.6.10/go.mod h1:e6FubmQouUNP73jtMLmcbxS6ydWIpOfhz34TSfO3JaE=
