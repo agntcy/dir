@@ -308,6 +308,20 @@ func (t *Task) indexRecord(ctx context.Context, tag string) error {
 
 	// If this record has signature referrers in the store (e.g. synced with referrers),
 	// mark it as signed so the signature task will verify it.
+	//
+	// There is deliberately no counterpart for scan report referrers, although
+	// regsync copies those too. Regsync copies registry to registry and never
+	// passes through server/ingest, so nothing writes a scan_reports row for a
+	// record it brought in, and none is needed: the scan task's work query
+	// (GetRecordsNeedingScan) already selects every record with no row, so this
+	// node scans the record itself and writes its own row with source "local".
+	// Until then the record reads as unscanned, even though
+	// `dirctl pull --scan-report` returns the copied report.
+	//
+	// A scan report that arrives through ingest is a different case, and is
+	// imported: applyReferrerDBEffects in server/ingest writes the row with
+	// source "imported". The asymmetry is between the two arrival paths, not
+	// between signatures and scans.
 	if refStore, ok := t.store.(types.ReferrerStoreAPI); ok {
 		var hasSignatures bool
 
