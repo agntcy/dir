@@ -149,6 +149,11 @@ All release binaries are distributed via [GitHub Releases](https://github.com/ag
 - [NPM package](https://www.npmjs.com/package/agntcy-dir)
 - [Source code](https://github.com/agntcy/dir-sdk-javascript)
 
+#### Rust
+
+- [crates.io package](https://crates.io/crates/agntcy-dir)
+- [Source code](https://github.com/agntcy/dir-sdk-rust)
+
 ## Deployment
 
 See the [Quickstart](https://docs.agntcy.org/dir/dir-quickstart/) documentation for the full platform support matrix, prerequisites, and configuration details.
