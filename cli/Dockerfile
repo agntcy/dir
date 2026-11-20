@@ -42,7 +42,10 @@ RUN xx-verify /bin/dirctl
 # multiple dirctl calls (pipes, `--output json` into jq) are runnable with this image.
 FROM alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 
-RUN apk upgrade --no-cache zlib \
+# Upgrade every package, not just the ones known to be vulnerable: Alpine publishes
+# security fixes to its package repository before it rebuilds the base image
+# (e.g. libcrypto3/libssl3 3.5.9-r1 while alpine:3.24 still ships 3.5.9-r0).
+RUN apk upgrade --no-cache \
     && apk add --no-cache ca-certificates jq \
     && addgroup -g 65532 -S nonroot \
     && adduser -u 65532 -S nonroot -G nonroot -h /home/nonroot \
