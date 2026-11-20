@@ -70,6 +70,19 @@ func (s *ScanReport) GetFindingCount() int     { return s.FindingCount }
 // derives from the incremented failure count, and doing that in the ON CONFLICT
 // clause would need date arithmetic SQLite and PostgreSQL spell differently.
 func (d *DB) UpsertScanReport(report types.ScanReportObject, schedule types.ScanSchedule) error {
+	err := d.gormDB.Transaction(func(tx *gorm.DB) error {
+		return upsertScanReport(tx, report, schedule)
+	})
+	if err != nil {
+		return fmt.Errorf("upsert scan report: %w", err)
+	}
+
+	return nil
+}
+
+// upsertScanReport is UpsertScanReport run inside the caller's transaction, so
+// FinishScannerRun can write it together with the security_scans row.
+func upsertScanReport(tx *gorm.DB, report types.ScanReportObject, schedule types.ScanSchedule) error {
 	now := time.Now()
 
 	status := report.GetStatus()
@@ -79,71 +92,64 @@ func (d *DB) UpsertScanReport(report types.ScanReportObject, schedule types.Scan
 
 	failed := status == types.ScanStatusFailed
 
-	err := d.gormDB.Transaction(func(tx *gorm.DB) error {
-		var existing ScanReport
+	var existing ScanReport
 
-		err := tx.Where("record_cid = ? AND scanner_type = ?",
-			report.GetRecordCID(), report.GetScannerType()).Take(&existing).Error
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("load existing scan report: %w", err)
-		}
-
-		existed := err == nil
-
-		row := &ScanReport{
-			RecordCID:     report.GetRecordCID(),
-			ScannerType:   report.GetScannerType(),
-			IsSafe:        report.GetIsSafe(),
-			MaxSeverity:   report.GetMaxSeverity(),
-			Status:        status,
-			FailureReason: report.GetFailureReason(),
-			FailureDetail: report.GetFailureDetail(),
-			Source:        report.GetSource(),
-			FindingCount:  report.GetFindingCount(),
-			CreatedAt:     now,
-			UpdatedAt:     now,
-		}
-
-		if failed {
-			// existing is the zero value when there was no row, so a first
-			// failure counts as one.
-			row.ConsecutiveFailures = existing.ConsecutiveFailures + 1
-		}
-
-		row.NextAttemptAt = schedule.NextAttempt(now, row.ConsecutiveFailures)
-
-		err = tx.Clauses(clause.OnConflict{
-			Columns: []clause.Column{{Name: "record_cid"}, {Name: "scanner_type"}},
-			DoUpdates: clause.AssignmentColumns([]string{
-				"is_safe",
-				"max_severity",
-				"status",
-				"failure_reason",
-				"failure_detail",
-				"consecutive_failures",
-				"next_attempt_at",
-				"source",
-				"finding_count",
-				"updated_at",
-			}),
-		}).Create(row).Error
-		if err != nil {
-			return err
-		}
-
-		if existed && !scanFactsChanged(&existing, row) {
-			return nil
-		}
-
-		_, err = supersedePolicyEvaluations(tx, row.RecordCID, types.FactGroupScan)
-
-		return err
-	})
-	if err != nil {
-		return fmt.Errorf("upsert scan report: %w", err)
+	err := tx.Where("record_cid = ? AND scanner_type = ?",
+		report.GetRecordCID(), report.GetScannerType()).Take(&existing).Error
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("load existing scan report: %w", err)
 	}
 
-	return nil
+	existed := err == nil
+
+	row := &ScanReport{
+		RecordCID:     report.GetRecordCID(),
+		ScannerType:   report.GetScannerType(),
+		IsSafe:        report.GetIsSafe(),
+		MaxSeverity:   report.GetMaxSeverity(),
+		Status:        status,
+		FailureReason: report.GetFailureReason(),
+		FailureDetail: report.GetFailureDetail(),
+		Source:        report.GetSource(),
+		FindingCount:  report.GetFindingCount(),
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+
+	if failed {
+		// existing is the zero value when there was no row, so a first
+		// failure counts as one.
+		row.ConsecutiveFailures = existing.ConsecutiveFailures + 1
+	}
+
+	row.NextAttemptAt = schedule.NextAttempt(now, row.ConsecutiveFailures)
+
+	err = tx.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "record_cid"}, {Name: "scanner_type"}},
+		DoUpdates: clause.AssignmentColumns([]string{
+			"is_safe",
+			"max_severity",
+			"status",
+			"failure_reason",
+			"failure_detail",
+			"consecutive_failures",
+			"next_attempt_at",
+			"source",
+			"finding_count",
+			"updated_at",
+		}),
+	}).Create(row).Error
+	if err != nil {
+		return err
+	}
+
+	if existed && !scanFactsChanged(&existing, row) {
+		return nil
+	}
+
+	_, err = supersedePolicyEvaluations(tx, row.RecordCID, types.FactGroupScan)
+
+	return err
 }
 
 // GetRecordsNeedingScan returns records with no scan_reports row that is still

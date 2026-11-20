@@ -18,6 +18,7 @@ import (
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/agntcy/dir/utils/scanner"
+	"github.com/google/uuid"
 )
 
 var logger = logging.Logger("reconciler/scan")
@@ -74,9 +75,21 @@ func (t *Task) Interval() time.Duration { return t.config.GetInterval() }
 // IsEnabled returns whether this task is enabled.
 func (t *Task) IsEnabled() bool { return t.config.Enabled }
 
-// Run fetches records that have no recent scan result and scans each one.
+// scanRun identifies the security_scans rows one scan writes: every scanner
+// that runs on a record in the same scan shares its scan ID.
+type scanRun struct {
+	scanID      string
+	trigger     string
+	requestedBy string
+}
+
+// Run scans the manual scans users asked for, then the records that have no
+// recent scan result.
 func (t *Task) Run(ctx context.Context) error {
 	logger.Debug("Running security scan task")
+
+	// Manual scans first, so a request does not wait behind the whole backlog.
+	scanned := t.runPendingScans(ctx)
 
 	records, err := t.db.GetRecordsNeedingScan(t.config.GetTTL())
 	if err != nil {
@@ -91,15 +104,23 @@ func (t *Task) Run(ctx context.Context) error {
 
 	logger.Info("Processing records for security scan", "count", len(records))
 
+	// One scan ID for the whole pass, so its rows can be read back together.
+	run := scanRun{scanID: uuid.NewString(), trigger: types.SecurityScanTriggerScheduled}
+
 	var succeeded, failed int
 
 	for _, r := range records {
+		cid := r.GetCid()
+
+		// Already scanned as a manual scan in this pass.
+		if _, ok := scanned[cid]; ok {
+			continue
+		}
+
 		recordCtx, cancel := context.WithTimeout(ctx, t.config.GetRecordTimeout())
 		defer cancel()
 
-		cid := r.GetCid()
-
-		if err := t.scanRecord(recordCtx, cid); err != nil {
+		if err := t.scanRecord(recordCtx, cid, run); err != nil {
 			logger.Warn("Scan failed for record", "cid", cid, "error", err)
 
 			failed++
@@ -113,9 +134,70 @@ func (t *Task) Run(ctx context.Context) error {
 	return nil
 }
 
+// runPendingScans scans every manual scan no scanner has started yet and
+// returns the CIDs it scanned. A failure to list them is logged, so it never
+// blocks the scheduled scan.
+func (t *Task) runPendingScans(ctx context.Context) map[string]struct{} {
+	scanned := make(map[string]struct{})
+
+	pending, err := t.db.ListPendingScans(0)
+	if err != nil {
+		logger.Warn("Failed to list pending manual scans", "error", err)
+
+		return scanned
+	}
+
+	if len(pending) == 0 {
+		return scanned
+	}
+
+	logger.Info("Processing manual security scans", "count", len(pending))
+
+	for _, p := range pending {
+		cid := p.GetRecordCID()
+		run := scanRun{
+			scanID:      p.GetScanID(),
+			trigger:     types.SecurityScanTriggerManual,
+			requestedBy: p.GetRequestedBy(),
+		}
+
+		recordCtx, cancel := context.WithTimeout(ctx, t.config.GetRecordTimeout())
+		err := t.scanRecord(recordCtx, cid, run)
+
+		cancel()
+
+		if err != nil {
+			logger.Warn("Manual scan failed for record", "cid", cid, "scan_id", run.scanID, "error", err)
+		}
+
+		t.closePlaceholder(ctx, run.scanID, err)
+
+		scanned[cid] = struct{}{}
+	}
+
+	return scanned
+}
+
+// closePlaceholder fails a manual scan's placeholder if no scanner took it
+// over, so the request does not stay pending forever. It changes nothing when
+// a scanner did.
+func (t *Task) closePlaceholder(ctx context.Context, scanID string, scanErr error) {
+	reason := types.SecurityScanFailureNotApplicable
+	detail := "no scanner applies to this record"
+
+	if scanErr != nil {
+		reason = string(scanner.ClassifyError(ctx, scanErr))
+		detail = scanErr.Error()
+	}
+
+	if err := t.db.CloseScanPlaceholder(scanID, reason, detail); err != nil {
+		logger.Warn("Failed to close manual scan placeholder", "scan_id", scanID, "error", err)
+	}
+}
+
 // scanRecord pulls the record from the store, runs each runner, and persists results.
 // A failure for one runner does not abort the others.
-func (t *Task) scanRecord(ctx context.Context, recordCID string) error {
+func (t *Task) scanRecord(ctx context.Context, recordCID string, run scanRun) error {
 	rec, err := t.store.Pull(ctx, &corev1.RecordRef{Cid: recordCID})
 	if err != nil {
 		return fmt.Errorf("pull record: %w", err)
@@ -124,6 +206,8 @@ func (t *Task) scanRecord(ctx context.Context, recordCID string) error {
 	var anyErr error
 
 	for _, r := range t.runners {
+		historyID := t.startHistory(recordCID, r.Name(), run)
+
 		result, err := r.Run(ctx, rec)
 		if err != nil {
 			logger.Warn("Runner failed", "runner", r.Name(), "cid", recordCID, "error", err)
@@ -131,7 +215,7 @@ func (t *Task) scanRecord(ctx context.Context, recordCID string) error {
 
 			// Persisted, not just logged: an unrecorded failure matches
 			// GetRecordsNeedingScan on every pass, forever.
-			t.recordOutcome(recordCID, r.Name(), &scanner.ScanResult{
+			t.recordOutcome(historyID, recordCID, r.Name(), &scanner.ScanResult{
 				Skipped:       true,
 				SkippedReason: err.Error(),
 				FailureReason: scanner.ClassifyError(ctx, err),
@@ -147,13 +231,15 @@ func (t *Task) scanRecord(ctx context.Context, recordCID string) error {
 				// runners.
 				logger.Debug("Runner not applicable to record", "runner", r.Name(), "cid", recordCID, "reason", result.SkippedReason)
 
+				t.discardHistory(historyID, recordCID, r.Name())
+
 				continue
 			}
 
 			logger.Warn("Runner could not scan record", "runner", r.Name(), "cid", recordCID,
 				"reason", result.FailureReason, "detail", result.SkippedReason)
 
-			t.recordOutcome(recordCID, r.Name(), result, nil)
+			t.recordOutcome(historyID, recordCID, r.Name(), result, nil)
 
 			continue
 		}
@@ -169,20 +255,51 @@ func (t *Task) scanRecord(ctx context.Context, recordCID string) error {
 			logger.Warn("Failed to push scan referrer", "runner", r.Name(), "cid", recordCID, "error", pushErr)
 		}
 
-		t.recordOutcome(recordCID, r.Name(), result, report)
+		t.recordOutcome(historyID, recordCID, r.Name(), result, report)
 	}
 
 	return anyErr
 }
 
+// startHistory writes the security_scans row for a runner that is about to
+// start and returns its ID. History is best effort: on a write failure it
+// returns 0 and the scan goes ahead, writing scan_reports as before.
+func (t *Task) startHistory(recordCID, runnerName string, run scanRun) uint {
+	id, err := t.db.StartScannerRun(run.scanID, recordCID, strings.ToUpper(runnerName), run.trigger, run.requestedBy)
+	if err != nil {
+		logger.Warn("Failed to record scan start", "runner", runnerName, "cid", recordCID, "error", err)
+
+		return 0
+	}
+
+	return id
+}
+
+// discardHistory removes the security_scans row of a runner that turned out
+// not to apply to the record.
+func (t *Task) discardHistory(historyID uint, recordCID, runnerName string) {
+	if historyID == 0 {
+		return
+	}
+
+	if err := t.db.DiscardScannerRun(historyID); err != nil {
+		logger.Warn("Failed to discard scan history row", "runner", runnerName, "cid", recordCID, "error", err)
+	}
+}
+
 // recordOutcome upserts the scan_reports row for one runner. A write failure is
 // non-fatal.
+//
+// When the runner has a security_scans row (historyID is not 0), the row is
+// finished in the same transaction as the upsert, so history and current state
+// agree. If that fails, the upsert is retried on its own: scan_reports is what
+// search and policy read, so it must not depend on history.
 //
 // A row is written whether or not the scan reached a verdict, while the OCI
 // referrer is pushed only for verdicts. Referrers sync to peers, and "I could
 // not clone this repository" describes this node's network position rather than
 // the record.
-func (t *Task) recordOutcome(recordCID, runnerName string, result *scanner.ScanResult, report *scanv1.ScanReport) {
+func (t *Task) recordOutcome(historyID uint, recordCID, runnerName string, result *scanner.ScanResult, report *scanv1.ScanReport) {
 	row := &gormdb.ScanReport{
 		RecordCID:   recordCID,
 		ScannerType: strings.ToUpper(runnerName),
@@ -204,7 +321,18 @@ func (t *Task) recordOutcome(recordCID, runnerName string, result *scanner.ScanR
 		row.FindingCount = len(report.GetFindings())
 	}
 
-	if err := t.db.UpsertScanReport(row, t.scanSchedule(result.FailureReason)); err != nil {
+	schedule := t.scanSchedule(result.FailureReason)
+
+	if historyID != 0 {
+		err := t.db.FinishScannerRun(historyID, result.Version, row, schedule)
+		if err == nil {
+			return
+		}
+
+		logger.Warn("Failed to record scan history", "runner", runnerName, "cid", recordCID, "error", err)
+	}
+
+	if err := t.db.UpsertScanReport(row, schedule); err != nil {
 		logger.Warn("Failed to upsert scan report", "runner", runnerName, "cid", recordCID, "error", err)
 	}
 }

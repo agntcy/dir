@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	policyv1 "github.com/agntcy/dir/api/policy/v1"
+	securityv1 "github.com/agntcy/dir/api/security/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/authz/config"
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
@@ -93,5 +94,23 @@ func TestAuthorize_PolicyAuditNeedsAuditorIdentity(t *testing.T) {
 		{"named auditor, get", "spiffe://example.org/ns/dir/sa/auditor", getRecord, true},
 		{"named auditor, list", "spiffe://example.org/ns/dir/sa/auditor", listExcluded, true},
 		{"peer node", "spiffe://partner.org/ns/dir/sa/dir", getRecord, false},
+	})
+}
+
+// The scan service is an admin API, so only a rule naming the administrator
+// grants it, even to the node's own trust domain.
+func TestAuthorize_ScanServiceNeedsAdminIdentity(t *testing.T) {
+	t.Parallel()
+
+	newScan := securityv1.ScanService_NewScan_FullMethodName
+	listScans := securityv1.ScanService_ListScans_FullMethodName
+
+	assertAuthorized(t, []authorizeCase{
+		{"user in the node's own trust domain, new scan", "spiffe://example.org/ns/dir/sa/dirctl", newScan, false},
+		{"user in the node's own trust domain, list", "spiffe://example.org/ns/dir/sa/dirctl", listScans, false},
+		{"named admin, new scan", "spiffe://example.org/ns/dir/sa/admin", newScan, true},
+		{"named admin, list", "spiffe://example.org/ns/dir/sa/admin", listScans, true},
+		{"auditor", "spiffe://example.org/ns/dir/sa/auditor", newScan, false},
+		{"peer node", "spiffe://partner.org/ns/dir/sa/dir", newScan, false},
 	})
 }

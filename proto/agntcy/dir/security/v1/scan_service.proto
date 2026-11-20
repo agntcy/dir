@@ -1,0 +1,132 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.security.v1;
+
+import "agntcy/dir/security/v1/scan_report.proto";
+import "google/protobuf/timestamp.proto";
+
+// ScanService lets an administrator ask for a security scan of a record and
+// follow the record's scan history. It is an admin API: it is authorized on
+// its own, and default policies do not grant it.
+service ScanService {
+  // NewScan asks for a scan of a record. The reconciler runs it on its next
+  // pass. When the record already has a scan pending or running, that scan
+  // is returned instead of queueing another.
+  rpc NewScan(NewScanRequest) returns (NewScanResponse);
+
+  // ListScans lists a record's scans, newest first.
+  rpc ListScans(ListScansRequest) returns (stream ListScansResponse);
+}
+
+// ScanStatus is where a scan is in its lifecycle.
+enum ScanStatus {
+  SCAN_STATUS_UNSPECIFIED = 0;
+  // A manual scan no scanner has started yet.
+  SCAN_STATUS_PENDING = 1;
+  // A scanner is working on the record.
+  SCAN_STATUS_RUNNING = 2;
+  // The scanner finished and reached a verdict, possibly with partial coverage.
+  SCAN_STATUS_SUCCEEDED = 3;
+  // The scanner could not scan the record. failure_reason says why.
+  SCAN_STATUS_FAILED = 4;
+}
+
+// ScanTrigger is what started a scan.
+enum ScanTrigger {
+  SCAN_TRIGGER_UNSPECIFIED = 0;
+  // The reconciler's periodic scan.
+  SCAN_TRIGGER_SCHEDULED = 1;
+  // A NewScan request.
+  SCAN_TRIGGER_MANUAL = 2;
+}
+
+// Scan is one scanner's run on a record. The runs of one pass over a record
+// share a scan_id.
+message Scan {
+  // Groups the runs of one pass over a record.
+  string scan_id = 1;
+
+  // The scanned record's CID.
+  string cid = 2;
+
+  // The scanner. Unspecified while a manual scan is pending.
+  ScannerType scanner_type = 3;
+
+  // Version of the scanner binary, when it reports one.
+  string scanner_version = 4;
+
+  // What started the scan.
+  ScanTrigger trigger = 5;
+
+  // Where the scan is in its lifecycle.
+  ScanStatus status = 6;
+
+  // Whether the scanner considers the record safe. Set once succeeded.
+  bool is_safe = 7;
+
+  // Highest severity among the findings. Set once succeeded.
+  Severity max_severity = 8;
+
+  // Number of findings. Set once succeeded.
+  uint32 finding_count = 9;
+
+  // Whether only some of the scanner's phases ran. Set once succeeded.
+  bool partial = 10;
+
+  // Machine-readable reason a scan failed, e.g. "source-unreachable".
+  string failure_reason = 11;
+
+  // Human-readable detail for failure_reason.
+  string failure_detail = 12;
+
+  // Identity of the caller who asked for a manual scan.
+  string requested_by = 13;
+
+  // When the scan was created.
+  google.protobuf.Timestamp created_at = 14;
+
+  // When a scanner started. Unset while pending.
+  google.protobuf.Timestamp started_at = 15;
+
+  // When the scan finished. Unset until succeeded or failed.
+  google.protobuf.Timestamp finished_at = 16;
+}
+
+// NewScanRequest names the record to scan.
+message NewScanRequest {
+  // The record's CID.
+  string cid = 1;
+}
+
+// NewScanResponse is the scan that will cover the request.
+message NewScanResponse {
+  // The new scan, or the record's scan already pending or running.
+  Scan scan = 1;
+
+  // Whether this request created the scan.
+  bool created = 2;
+}
+
+// ListScansRequest selects and pages through a record's scans.
+message ListScansRequest {
+  // The record's CID.
+  string cid = 1;
+
+  // Only scans in this status. Unspecified means every status.
+  ScanStatus status = 2;
+
+  // At most this many scans. Zero means no limit.
+  uint32 limit = 3;
+
+  // Skip this many scans first.
+  uint32 offset = 4;
+}
+
+// ListScansResponse is one scan.
+message ListScansResponse {
+  // The scan.
+  Scan scan = 1;
+}

@@ -311,6 +311,34 @@ func (f *fakeSignatureDB) GetUsageMetrics(cid string) (types.UsageMetricsObject,
 	return nil, nil
 }
 
+func (f *fakeSignatureDB) CreatePendingScan(string, string) (types.SecurityScanObject, bool, error) {
+	return nil, false, nil
+}
+
+func (f *fakeSignatureDB) ListPendingScans(int) ([]types.SecurityScanObject, error) {
+	return nil, nil
+}
+
+func (f *fakeSignatureDB) StartScannerRun(string, string, string, string, string) (uint, error) {
+	return 0, nil
+}
+
+func (f *fakeSignatureDB) FinishScannerRun(uint, string, types.ScanReportObject, types.ScanSchedule) error {
+	return nil
+}
+
+func (f *fakeSignatureDB) DiscardScannerRun(uint) error {
+	return nil
+}
+
+func (f *fakeSignatureDB) CloseScanPlaceholder(string, string, string) error {
+	return nil
+}
+
+func (f *fakeSignatureDB) ListScans(string, string, int, int) ([]types.SecurityScanObject, error) {
+	return nil, nil
+}
+
 func (f *fakeSignatureDB) UpsertScanReport(types.ScanReportObject, types.ScanSchedule) error {
 	return nil
 }

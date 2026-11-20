@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	policyv1 "github.com/agntcy/dir/api/policy/v1"
+	securityv1 "github.com/agntcy/dir/api/security/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/authz/config"
 	"github.com/casbin/casbin/v2"
@@ -23,14 +24,17 @@ import (
 var modelConf string
 
 // identityOnlyMethods can be granted only by a rule naming the caller's SPIFFE
-// ID, never by a rule for a whole trust domain. Each reads records without
+// ID, never by a rule for a whole trust domain. Most read records without
 // passing through this server's policy gate: RequestRegistryCredentials hands
 // out the registry password, for peer nodes, and the policy audit service
-// returns excluded records, for auditors.
+// returns excluded records, for auditors. The scan service is an admin API:
+// it starts LLM-backed scans and shows who asked for them, for administrators.
 var identityOnlyMethods = map[string]bool{
 	storev1.SyncService_RequestRegistryCredentials_FullMethodName:  true,
 	policyv1.PolicyAuditService_GetRecord_FullMethodName:           true,
 	policyv1.PolicyAuditService_ListExcludedRecords_FullMethodName: true,
+	securityv1.ScanService_NewScan_FullMethodName:                  true,
+	securityv1.ScanService_ListScans_FullMethodName:                true,
 }
 
 type Authorizer struct {
