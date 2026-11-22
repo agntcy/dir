@@ -1,0 +1,114 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: Validate AI Catalog
+
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-catalog-validation
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: Test issue reporting
+        run: python -m unittest discover .github/workflows/scripts -p 'test_report_ai_catalog_validation.py'
+
+      - name: Build local directory daemon
+        id: build
+        uses: ./.github/actions/build-dirctl
+
+      - name: Start local site and fetch well-known document
+        env:
+          DIRCTL_PATH: ${{ steps.build.outputs.dirctl_path }}
+        run: |
+          set -euo pipefail
+          data_dir="${RUNNER_TEMP}/ai-catalog-dir"
+          mkdir -p "$data_dir"
+          echo "AI_CATALOG_DATA_DIR=$data_dir" >> "$GITHUB_ENV"
+          "$DIRCTL_PATH" daemon start \
+            --config tests/e2e/local/testenv/local/dir-daemon-config.yaml \
+            --data-dir "$data_dir" > "$RUNNER_TEMP/ai-catalog-dir.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/ai-catalog-dir.pid"
+
+          url="http://localhost:19892/.well-known/ai-catalog.json"
+          echo "AI_CATALOG_URL=$url" >> "$GITHUB_ENV"
+          for attempt in {1..60}; do
+            if curl --fail --silent --show-error --max-time 5 "$url" \
+              --output "$RUNNER_TEMP/ai-catalog.json"; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/ai-catalog-dir.log"
+          echo "::error::Local AI Catalog site did not become ready"
+          exit 1
+
+      - name: Install latest AI Catalog CLI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          release_dir="$RUNNER_TEMP/ai-catalog-cli"
+          mkdir -p "$release_dir"
+          tag="$(gh release view --repo Agent-Card/ai-catalog-cli --json tagName --jq .tagName)"
+          gh release download "$tag" --repo Agent-Card/ai-catalog-cli \
+            --pattern 'ai-catalog-linux-amd64-gnu.tar.gz' \
+            --pattern 'ai-catalog-linux-amd64-gnu.sha256' --dir "$release_dir"
+          (cd "$release_dir" && sha256sum --check ai-catalog-linux-amd64-gnu.sha256)
+          tar -xzf "$release_dir/ai-catalog-linux-amd64-gnu.tar.gz" -C "$release_dir"
+          "$release_dir/ai-catalog" --version | tee "$RUNNER_TEMP/ai-catalog-version.txt"
+          echo "$release_dir" >> "$GITHUB_PATH"
+          echo "Validator release: $tag"
+
+      - name: Validate well-known document
+        id: validate
+        continue-on-error: true
+        run: |
+          ai-catalog validate --json "$RUNNER_TEMP/ai-catalog.json" \
+            > "$RUNNER_TEMP/ai-catalog-validation.json" 2>&1
+
+      - name: Open or update validation issue
+        if: steps.validate.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python .github/workflows/scripts/report-ai-catalog-validation.py \
+            --repo "$GITHUB_REPOSITORY" \
+            --version "$(cat "$RUNNER_TEMP/ai-catalog-version.txt")" \
+            --url "$AI_CATALOG_URL" \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --result "$RUNNER_TEMP/ai-catalog-validation.json"
+
+      - name: Fail on invalid catalog
+        if: steps.validate.outcome == 'failure'
+        run: exit 1
+
+      - name: Stop local daemon
+        if: always() && steps.build.outcome == 'success'
+        env:
+          DIRCTL_PATH: ${{ steps.build.outputs.dirctl_path }}
+        run: |
+          if [ -n "${AI_CATALOG_DATA_DIR:-}" ]; then
+            "$DIRCTL_PATH" daemon stop \
+              --config tests/e2e/local/testenv/local/dir-daemon-config.yaml \
+              --data-dir "$AI_CATALOG_DATA_DIR" || true
+          fi
+          if [ -f "$RUNNER_TEMP/ai-catalog-dir.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/ai-catalog-dir.pid")" 2>/dev/null || true
+          fi
