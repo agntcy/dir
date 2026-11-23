@@ -32,6 +32,7 @@ func TestLoadConfigRuntimeAdapters(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, []string{"docker", "process"}, cfg.Runtime.EffectiveAdapterTypes())
+		require.Empty(t, cfg.Runtime.IgnoredAdapterType())
 		require.Equal(t, adapterprocess.DefaultPollInterval, cfg.Runtime.Adapter.Process.PollInterval)
 		require.Equal(t, adapterprocess.DefaultLabelKey, cfg.Runtime.Adapter.Process.LabelKey)
 		require.Equal(t, []string{runtimev1.DefaultOASFSchemaURL}, cfg.Runtime.OASFSchemaURLs)
@@ -48,7 +49,33 @@ func TestLoadConfigRuntimeAdapters(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, []string{"kubernetes"}, cfg.Runtime.EffectiveAdapterTypes())
+		require.Empty(t, cfg.Runtime.IgnoredAdapterType())
 		require.Equal(t, []string{runtimev1.DefaultOASFSchemaURL}, cfg.Runtime.OASFSchemaURLs)
+	})
+
+	t.Run("a file that sets no adapter runs docker", func(t *testing.T) {
+		file := filepath.Join(t.TempDir(), "daemon.yaml")
+		require.NoError(t, os.WriteFile(file, []byte("runtime:\n  enabled: true\n"), 0o600))
+
+		opts = &Options{DataDir: t.TempDir(), ConfigFile: file}
+
+		cfg, err := loadConfig()
+
+		require.NoError(t, err)
+		require.Equal(t, []string{"docker"}, cfg.Runtime.EffectiveAdapterTypes())
+		require.Empty(t, cfg.Runtime.IgnoredAdapterType())
+	})
+
+	t.Run("the singular environment variable is reported as ignored next to the list", func(t *testing.T) {
+		t.Setenv("DIRECTORY_DAEMON_RUNTIME_ADAPTER_TYPE", "process")
+
+		opts = &Options{DataDir: t.TempDir()}
+
+		cfg, err := loadConfig()
+
+		require.NoError(t, err)
+		require.Equal(t, []string{"docker", "process"}, cfg.Runtime.EffectiveAdapterTypes())
+		require.Equal(t, "process", cfg.Runtime.IgnoredAdapterType())
 	})
 
 	t.Run("environment overrides the adapter list and schema servers", func(t *testing.T) {
@@ -66,15 +93,23 @@ func TestLoadConfigRuntimeAdapters(t *testing.T) {
 }
 
 func TestEffectiveAdapterTypes(t *testing.T) {
-	require.Empty(t, RuntimeConfig{}.EffectiveAdapterTypes())
+	require.Equal(t, []string{"docker"}, RuntimeConfig{}.EffectiveAdapterTypes())
+	require.Empty(t, RuntimeConfig{}.IgnoredAdapterType())
 
 	withList := RuntimeConfig{AdapterTypes: []string{"process"}}
 	withList.Adapter.Type = "docker"
 	require.Equal(t, []string{"process"}, withList.EffectiveAdapterTypes())
+	require.Equal(t, "docker", withList.IgnoredAdapterType())
+
+	// Ignored even when the list contains it: the list was chosen, not adapter.type.
+	listed := RuntimeConfig{AdapterTypes: []string{"docker", "process"}}
+	listed.Adapter.Type = "process"
+	require.Equal(t, "process", listed.IgnoredAdapterType())
 
 	legacy := RuntimeConfig{}
-	legacy.Adapter.Type = "docker"
-	require.Equal(t, []string{"docker"}, legacy.EffectiveAdapterTypes())
+	legacy.Adapter.Type = "kubernetes"
+	require.Equal(t, []string{"kubernetes"}, legacy.EffectiveAdapterTypes())
+	require.Empty(t, legacy.IgnoredAdapterType())
 }
 
 func TestEffectiveResolverDefaultsTheOASFClientToThisDaemon(t *testing.T) {

@@ -60,7 +60,8 @@ type RuntimeConfig struct {
 	Adapter runtime.Config `json:"adapter" mapstructure:"adapter"`
 	// AdapterTypes lists the runtimes to discover workloads in (e.g. docker, process,
 	// kubernetes). Each runs its own discovery, configured by its section under Adapter,
-	// and all write to Store. When empty, Adapter.Type is used alone.
+	// and all write to Store. When empty, Adapter.Type is used alone, or docker when
+	// that is unset too.
 	AdapterTypes []string            `json:"adapter_types,omitempty" mapstructure:"adapter_types"`
 	Resolver     resolver.Config     `json:"resolver"                mapstructure:"resolver"`
 	Store        runtimestore.Config `json:"store"                   mapstructure:"store"`
@@ -102,7 +103,7 @@ func localDialAddress(listen string) string {
 }
 
 // EffectiveAdapterTypes returns the runtimes to run discovery for: AdapterTypes, or else
-// Adapter.Type, so configs written before AdapterTypes existed keep working.
+// Adapter.Type, so configs written before AdapterTypes existed keep working, or else docker.
 func (c RuntimeConfig) EffectiveAdapterTypes() []string {
 	if len(c.AdapterTypes) > 0 {
 		return c.AdapterTypes
@@ -112,7 +113,17 @@ func (c RuntimeConfig) EffectiveAdapterTypes() []string {
 		return []string{string(c.Adapter.Type)}
 	}
 
-	return nil
+	return []string{string(adapterdocker.RuntimeType)}
+}
+
+// IgnoredAdapterType returns Adapter.Type when EffectiveAdapterTypes discards it because
+// AdapterTypes is set too, and "" otherwise.
+func (c RuntimeConfig) IgnoredAdapterType() string {
+	if len(c.AdapterTypes) == 0 {
+		return ""
+	}
+
+	return string(c.Adapter.Type)
 }
 
 func registerServerDefaults(v *viper.Viper) {
@@ -220,8 +231,10 @@ func registerRuntimeDefaults(v *viper.Viper) {
 	v.SetDefault("runtime.store.type", runtimestoresql.StoreTypeSqlite)
 	v.SetDefault("runtime.store.sqlite.path", runtimestoresql.DefaultPath)
 
-	// Adapter configuration
-	v.SetDefault("runtime.adapter.type", adapterdocker.RuntimeType)
+	// adapter.type has no default, so a non-empty value means someone set it and
+	// startRuntimeDiscovery can warn when adapter_types overrides it. Register it so
+	// the environment variable still applies.
+	_ = v.BindEnv("runtime.adapter.type")
 
 	// Docker adapter
 	// Docker host mode is required for the adapter to access the Docker socket when the daemon runs in a process.
