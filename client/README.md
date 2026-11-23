@@ -54,7 +54,7 @@ The SDK can be configured via environment variables or direct instantiation.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DIRECTORY_CLIENT_SERVER_ADDRESS` | Directory server address | `0.0.0.0:8888` |
+| `DIRECTORY_CLIENT_SERVER_ADDRESS` | Directory server address | `127.0.0.1:8888` |
 | `DIRECTORY_CLIENT_AUTH_MODE` | Authentication mode: `x509`, `jwt`, or empty for insecure | `""` (insecure) |
 | `DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH` | SPIFFE Workload API socket path | `""` |
 | `DIRECTORY_CLIENT_JWT_AUDIENCE` | JWT audience for JWT authentication | `""` |

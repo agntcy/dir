@@ -15,7 +15,7 @@ import (
 const (
 	DefaultEnvPrefix = "DIRECTORY_CLIENT"
 
-	DefaultServerAddress = "0.0.0.0:8888"
+	DefaultServerAddress = "127.0.0.1:8888"
 	DefaultTlsSkipVerify = false
 	DefaultCallbackPort  = 8484
 	DefaultOAuthTimeout  = 5 * time.Minute
