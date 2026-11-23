@@ -41,12 +41,14 @@ A policy in `policy.evaluations` says what this node believes about a record, so
 |---|---|---|
 | `record` | dynamic | The record's OASF content, read by field name. |
 | `record_cid` | string | The record's content identifier. |
-| `meta.signature` | object | What is known about the record's signing: `status`, `signer_identity`, `signer_issuer`, `verified_at`. |
-| `meta.scan` | object | What the scanners found: `status`, `is_safe`, `max_severity`, `finding_count`, `failure_reason`, `scanned_at`, `scanners`. |
-| `meta.identity` | object | `meta.identity.identity` and `meta.identity.owner`, each a claim with a `status` and `subject`. |
+| `meta.signature` | object | What is known about the record's signing: `status`, `source`, `signer_identity`, `signer_issuer`, `verified_at`. `source` is `FACT_SOURCE_LOCAL` for a verified or revoked signature and `FACT_SOURCE_UNSPECIFIED` for an unverified or unsigned record. |
+| `meta.scan` | object | What the scanners found: `status`, `source`, `is_safe`, `max_severity`, `finding_count`, `failure_reason`, `scanned_at`, `scanners`. `source` can be `FACT_SOURCE_LOCAL`, `FACT_SOURCE_IMPORTED`, or `FACT_SOURCE_UNSPECIFIED` when the relevant reports have no known common source. |
+| `meta.identity` | object | `meta.identity.identity` and `meta.identity.owner`, each a claim with a `status`, `subject`, and `source`. A stored claim result has `FACT_SOURCE_LOCAL`; a role without a stored result has `FACT_SOURCE_UNSPECIFIED`, even if the record declares that role. |
 | `indexed_at` | optional timestamp | When this node first indexed the record. Absent for a record that is not indexed, so a policy unwraps it with `orValue` or `hasValue()`. |
 
 `indexed_at` is this node's own observation and never the `created_at` inside the record, which its publisher chose.
+
+The `source` fields distinguish this node's conclusions from a peer's assertions. A scan report may be imported with a record, so check `meta.scan.source` when a policy requires a scan performed locally; mixed or unknown report provenance is unspecified. Signature verifications and identity claim results are instead produced by this node's verifier and resolver, not imported from referrers. Their `source` is local only where the node has stored a result; do not require `FACT_SOURCE_LOCAL` for unsigned records or claims that have not been resolved.
 
 ```yaml
 - provider: cel
