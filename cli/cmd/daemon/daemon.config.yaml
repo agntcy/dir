@@ -299,7 +299,9 @@ runtime:
   ## section under adapter, and all write to the same store: Docker containers and
   ## processes on this host (announced by writing a descriptor to adapter.process.dir,
   ## e.g. by agentbridge register --dir-announce). A runtime that fails to start is
-  ## logged and skipped; the daemon stops only if all of them fail.
+  ## logged and skipped; the daemon stops only if all of them fail. Override the list
+  ## with DIRECTORY_DAEMON_RUNTIME_ADAPTER_TYPES (comma-separated); while it is set,
+  ## adapter.type (DIRECTORY_DAEMON_RUNTIME_ADAPTER_TYPE) is ignored.
   adapter_types: ["docker", "process"]
 
   adapter:

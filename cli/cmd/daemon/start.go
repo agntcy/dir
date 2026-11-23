@@ -255,6 +255,12 @@ func startRuntimeDiscovery(
 		return
 	}
 
+	if ignored := cfg.IgnoredAdapterType(); ignored != "" {
+		logger.Warn("runtime.adapter.type is ignored because runtime.adapter_types is set; "+
+			"choose runtimes with runtime.adapter_types (DIRECTORY_DAEMON_RUNTIME_ADAPTER_TYPES, comma-separated)",
+			"adapter_type", ignored, "adapter_types", adapterTypes)
+	}
+
 	var (
 		mu     sync.Mutex
 		failed int
