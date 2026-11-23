@@ -2758,17 +2758,17 @@
 <tr>
 <td><code>meta.signature</code></td>
 <td>object</td>
-<td>What is known about the record's signing: <code>status</code>, <code>signer_identity</code>, <code>signer_issuer</code>, <code>verified_at</code>.</td>
+<td>What is known about the record's signing: <code>status</code>, <code>source</code>, <code>signer_identity</code>, <code>signer_issuer</code>, <code>verified_at</code>. <code>source</code> is <code>FACT_SOURCE_LOCAL</code> for a verified or revoked signature and <code>FACT_SOURCE_UNSPECIFIED</code> for an unverified or unsigned record.</td>
 </tr>
 <tr>
 <td><code>meta.scan</code></td>
 <td>object</td>
-<td>What the scanners found: <code>status</code>, <code>is_safe</code>, <code>max_severity</code>, <code>finding_count</code>, <code>failure_reason</code>, <code>scanned_at</code>, <code>scanners</code>.</td>
+<td>What the scanners found: <code>status</code>, <code>source</code>, <code>is_safe</code>, <code>max_severity</code>, <code>finding_count</code>, <code>failure_reason</code>, <code>scanned_at</code>, <code>scanners</code>. <code>source</code> can be <code>FACT_SOURCE_LOCAL</code>, <code>FACT_SOURCE_IMPORTED</code>, or <code>FACT_SOURCE_UNSPECIFIED</code> when the relevant reports have no known common source.</td>
 </tr>
 <tr>
 <td><code>meta.identity</code></td>
 <td>object</td>
-<td><code>meta.identity.identity</code> and <code>meta.identity.owner</code>, each a claim with a <code>status</code> and <code>subject</code>.</td>
+<td><code>meta.identity.identity</code> and <code>meta.identity.owner</code>, each a claim with a <code>status</code>, <code>subject</code>, and <code>source</code>. A stored claim result has <code>FACT_SOURCE_LOCAL</code>; a role without a stored result has <code>FACT_SOURCE_UNSPECIFIED</code>, even if the record declares that role.</td>
 </tr>
 <tr>
 <td><code>indexed_at</code></td>
@@ -2778,6 +2778,7 @@
 </tbody>
 </table>
 <p><code>indexed_at</code> is this node's own observation and never the <code>created_at</code> inside the record, which its publisher chose.</p>
+<p>The <code>source</code> fields distinguish this node's conclusions from a peer's assertions. A scan report may be imported with a record, so check <code>meta.scan.source</code> when a policy requires a scan performed locally; mixed or unknown report provenance is unspecified. Signature verifications and identity claim results are instead produced by this node's verifier and resolver, not imported from referrers. Their <code>source</code> is local only where the node has stored a result; do not require <code>FACT_SOURCE_LOCAL</code> for unsigned records or claims that have not been resolved.</p>
 <div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cel</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">trusted</span>
 <span class="w">  </span><span class="nt">expressions</span><span class="p">:</span>
