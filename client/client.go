@@ -52,9 +52,14 @@ func New(ctx context.Context, opts ...Option) (*Client, error) {
 	}
 
 	// Create gRPC client connection
-	dialOpts := make([]grpc.DialOption, 0, len(options.authOpts)+1)
+	extraOpts := []grpc.DialOption{
+		grpc.WithDisableServiceConfig(),
+		grpc.WithChainUnaryInterceptor(serverAddressUnaryInterceptor(options.config.ServerAddress)),
+		grpc.WithChainStreamInterceptor(serverAddressStreamInterceptor(options.config.ServerAddress)),
+	}
+	dialOpts := make([]grpc.DialOption, 0, len(options.authOpts)+len(extraOpts))
 	dialOpts = append(dialOpts, options.authOpts...)
-	dialOpts = append(dialOpts, grpc.WithDisableServiceConfig())
+	dialOpts = append(dialOpts, extraOpts...)
 
 	conn, err := grpc.NewClient(options.config.ServerAddress, dialOpts...)
 	if err != nil {
