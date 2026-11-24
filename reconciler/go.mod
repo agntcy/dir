@@ -12,10 +12,10 @@ replace (
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261106120914-497c7a1ca059.2
-	github.com/agntcy/dir/api v1.9.1
-	github.com/agntcy/dir/client v1.9.1
+	github.com/agntcy/dir/api v1.9.2
+	github.com/agntcy/dir/client v1.9.2
 	github.com/agntcy/dir/server v1.9.1
-	github.com/agntcy/dir/utils v1.9.1
+	github.com/agntcy/dir/utils v1.9.2
 	github.com/csirmazbendeguz/regclient v0.0.0-20260429082137-82ab6d426079
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/lestrrat-go/jwx/v2 v2.1.7

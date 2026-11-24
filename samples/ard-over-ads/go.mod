@@ -14,9 +14,9 @@ replace (
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261106120914-497c7a1ca059.2
-	github.com/agntcy/dir/api v1.9.1
+	github.com/agntcy/dir/api v1.9.2
 	github.com/agntcy/dir/cli v1.9.1
-	github.com/agntcy/dir/client v1.9.1
+	github.com/agntcy/dir/client v1.9.2
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/sigstore/cosign/v3 v3.1.4
 	google.golang.org/protobuf v1.36.12
@@ -84,7 +84,7 @@ require (
 	github.com/agntcy/dir-runtime/utils v1.6.0 // indirect
 	github.com/agntcy/dir/reconciler v1.9.1 // indirect
 	github.com/agntcy/dir/server v1.9.1 // indirect
-	github.com/agntcy/dir/utils v1.9.1 // indirect
+	github.com/agntcy/dir/utils v1.9.2 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260910081500-f0c6172a010a // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/anchore/go-struct-converter v0.1.0 // indirect
