@@ -324,8 +324,9 @@ func TestLoadConfigRefusesRemovedRepublishInterval(t *testing.T) {
 	})
 }
 
-// TestLoadConfigDHTEnvOverride asserts that the DHT tuning keys, which are
-// commented out in the embedded daemon.config.yaml, can be set by environment.
+// TestLoadConfigDHTEnvOverride asserts that the DHT tuning and network keys,
+// which are commented out in the embedded daemon.config.yaml, can be set by
+// environment.
 func TestLoadConfigDHTEnvOverride(t *testing.T) {
 	originalOpts := opts
 	opts = &Options{DataDir: t.TempDir()}
@@ -339,6 +340,7 @@ func TestLoadConfigDHTEnvOverride(t *testing.T) {
 	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_MAX_LABEL_AGE", "3h")
 	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_BUCKET_SIZE", "15")
 	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_CONCURRENCY", "3")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_DISABLE_PRIVATE_IPS", "true")
 
 	cfg, err := loadConfig()
 	require.NoError(t, err)
@@ -350,6 +352,7 @@ func TestLoadConfigDHTEnvOverride(t *testing.T) {
 	require.Equal(t, 3*time.Hour, r.MaxLabelAge)
 	require.Equal(t, 15, r.BucketSize)
 	require.Equal(t, 3, r.Concurrency)
+	require.True(t, r.DisablePrivateIPs)
 }
 
 // TestLoadConfigANSEnvOverride asserts that the ans:// identity scheme, which

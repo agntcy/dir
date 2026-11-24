@@ -52,6 +52,45 @@ sequenceDiagram
     User->>ServerB: Sync record 2
 ```
 
+## Republishing of records
+
+The node announces all records in its local store to the network again at regular intervals, to show that the records are still available.
+
+Up to and including v1.9.1, the `routing.republish_interval` key set this interval. The Directory server then announced its local records again through both GossipSub and the DHT. This key is now split into two keys, one for each announcement path:
+
+| Key | Default | What it controls |
+|---|---|---|
+| `routing.dht_reprovide_interval` | 22h | How often the node announces its provider records to the DHT again. Remote peers delete a provider record after `routing.record_ttl`. |
+| `routing.gossipsub.reprovide_interval` | 22h | How often the node sends its local records over GossipSub again. Each round sends every local record to every subscriber. |
+
+A node that still sets `routing.republish_interval` does not start. The key in the configuration file and the `*_ROUTING_REPUBLISH_INTERVAL` environment variable both cause this error. The error message gives the names of the two new keys. If the node ignored the old key, it would use the 22h default and the operator would not know.
+
+In `daemon.config.yaml`, the routing keys are under `server.routing`. This configuration:
+
+```yaml
+routing:
+  republish_interval: 36h
+```
+
+becomes:
+
+```yaml
+routing:
+  dht_reprovide_interval: 36h
+  gossipsub:
+    reprovide_interval: 36h
+```
+
+To use the 22h defaults, remove the old key and do not set the new keys.
+
+The node also does a check of these values at startup. If a check fails, the node does not start:
+
+- `routing.dht_reprovide_interval` must be lower than `routing.record_ttl`. If it is not lower, provider records expire on remote peers before the node announces them again.
+- `routing.max_label_age` must be greater than `routing.dht_reprovide_interval`.
+- If GossipSub is enabled, `routing.max_label_age` must also be greater than `routing.gossipsub.reprovide_interval`.
+
+The last two checks make sure that the node does not delete a remote label as stale before the next announcement refreshes it. `routing.record_ttl` and `routing.max_label_age` both default to 48h.
+
 ## Synchronization
 
 Discovery identifies *where* records live; **synchronization (sync)** replicates them

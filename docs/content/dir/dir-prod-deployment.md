@@ -298,6 +298,8 @@ kubectl logs -n <your-dir-namespace> -l app.kubernetes.io/name=apiserver | \
 
 If the routing service is unreachable, peer discovery and publication will fail silently while the rest of the deployment appears healthy.
 
+For a node that connects only to peers on the internet, set `apiserver.config.routing.disable_private_ips` to `true`. The node then uses and advertises only public IP addresses, and it does not use mDNS to find peers on the local network. Keep the default, `false`, if the node must find peers on a private network.
+
 ### CronJobs
 
 ```bash
