@@ -216,7 +216,7 @@ func TestOptions_Chaining(t *testing.T) {
 
 func TestOptions_DefaultValues(t *testing.T) {
 	t.Run("should use default server address", func(t *testing.T) {
-		assert.Equal(t, "0.0.0.0:8888", DefaultServerAddress)
+		assert.Equal(t, "127.0.0.1:8888", DefaultServerAddress)
 		assert.Equal(t, DefaultServerAddress, DefaultConfig.ServerAddress)
 	})
 

@@ -42,7 +42,7 @@ Requires Go 1.21 or higher.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DIRECTORY_CLIENT_SERVER_ADDRESS` | Directory server address | `0.0.0.0:8888` |
+| `DIRECTORY_CLIENT_SERVER_ADDRESS` | Directory server address | `127.0.0.1:8888` |
 | `DIRECTORY_CLIENT_AUTH_MODE` | Auth mode: `x509`, `jwt`, `tls`, `oidc`, `insecure`, or empty | `""` (auto-detect) |
 | `DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH` | SPIFFE Workload API socket path | `""` |
 | `DIRECTORY_CLIENT_JWT_AUDIENCE` | JWT audience (JWT mode only) | `""` |
