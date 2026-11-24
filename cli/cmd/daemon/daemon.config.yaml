@@ -295,6 +295,12 @@ reconciler:
 runtime:
   enabled: false
 
+  ## Ownership ID for runtime discovery when daemons share an etcd or CRD store.
+  ## Keep it unique per daemon and stable across restarts. If omitted for a shared
+  ## store, dirctl creates a persistent ID in the data directory. The local SQLite
+  ## store keeps its existing unscoped behavior unless an ID is set explicitly.
+  # instance_id: "my-daemon"
+
   ## Runtimes to discover workloads in. Each runs its own discovery, configured by its
   ## section under adapter, and all write to the same store: Docker containers and
   ## processes on this host (announced by writing a descriptor to adapter.process.dir,

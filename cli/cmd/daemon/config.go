@@ -58,6 +58,9 @@ type DaemonConfig struct {
 type RuntimeConfig struct {
 	Enabled bool           `json:"enabled" mapstructure:"enabled"`
 	Adapter runtime.Config `json:"adapter" mapstructure:"adapter"`
+	// InstanceID scopes workload ownership when multiple daemons share a store.
+	// If unset for a shared store, a persistent ID is created in the data directory.
+	InstanceID string `json:"instance_id,omitempty" mapstructure:"instance_id"`
 	// AdapterTypes lists the runtimes to discover workloads in (e.g. docker, process,
 	// kubernetes). Each runs its own discovery, configured by its section under Adapter,
 	// and all write to Store. When empty, Adapter.Type is used alone, or docker when
@@ -226,6 +229,7 @@ func registerReconcilerDefaults(v *viper.Viper) {
 
 func registerRuntimeDefaults(v *viper.Viper) {
 	v.SetDefault("runtime.enabled", false)
+	_ = v.BindEnv("runtime.instance_id")
 
 	// Store configuration
 	v.SetDefault("runtime.store.type", runtimestoresql.StoreTypeSqlite)

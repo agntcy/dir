@@ -115,6 +115,11 @@ func runStart(cmd *cobra.Command, _ []string) error {
 		}
 		defer runtimeStore.Close()
 
+		cfg.Runtime.InstanceID, err = cfg.Runtime.EffectiveInstanceID(opts.DataDir)
+		if err != nil {
+			return fmt.Errorf("failed to configure runtime discovery ownership: %w", err)
+		}
+
 		startRuntimeDiscovery(ctx, cfg.Runtime, cfg.Runtime.EffectiveResolver(cfg.Server.ListenAddress), runtimeStore, discoveryErrCh)
 
 		// Register runtime API with server
@@ -275,9 +280,10 @@ func startRuntimeDiscovery(
 
 			err := discovery.Run(ctx,
 				discovery.WithConfig(&discoveryConfig.Config{
-					Workers:  discoveryConfig.DefaultWorkers,
-					Runtime:  adapterCfg,
-					Resolver: resolverCfg,
+					Workers:    discoveryConfig.DefaultWorkers,
+					InstanceID: cfg.InstanceID,
+					Runtime:    adapterCfg,
+					Resolver:   resolverCfg,
 				}),
 				discovery.WithStore(store),
 				discovery.WithLogger(logger.With("runtime", "discovery", "adapter", adapterType)),
