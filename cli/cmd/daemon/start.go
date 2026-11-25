@@ -122,6 +122,7 @@ func runStart(cmd *cobra.Command, _ []string) error {
 		}
 
 		logger.Info("Runtime discovery instance selected", "instance_id", cfg.Runtime.InstanceID)
+
 		if cfg.Runtime.InstanceID != "" {
 			workloads, listErr := runtimeStore.ListWorkloads(ctx)
 			if listErr != nil {
@@ -197,6 +198,7 @@ func runStart(cmd *cobra.Command, _ []string) error {
 
 func countLegacyWorkloads(workloads []*runtimev1.Workload, adapterType string) int {
 	count := 0
+
 	for _, workload := range workloads {
 		if workload.GetRuntime() == adapterType && workload.GetAnnotations()[discovery.InstanceAnnotation] == "" {
 			count++

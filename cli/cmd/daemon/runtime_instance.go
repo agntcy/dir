@@ -62,6 +62,7 @@ func (c RuntimeConfig) EffectiveInstanceID(dataDir string) (string, error) {
 	}
 
 	id := hex.EncodeToString(random[:])
+
 	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, runtimeInstanceIDPerm)
 	if errors.Is(err, os.ErrExist) {
 		// Another daemon created the ID after the first read; use its value.
@@ -108,10 +109,13 @@ func localRuntimeSQLiteStore(storePath, dataDir string) (bool, error) {
 		return false, fmt.Errorf("failed to resolve daemon data directory: %w", err)
 	}
 
+	if !strings.EqualFold(filepath.VolumeName(dataAbs), filepath.VolumeName(storeAbs)) {
+		return false, nil
+	}
+
 	rel, err := filepath.Rel(dataAbs, storeAbs)
 	if err != nil {
-		// Paths on different volumes cannot refer to a store under dataDir.
-		return false, nil
+		return false, fmt.Errorf("failed to compare runtime SQLite and daemon data paths: %w", err)
 	}
 
 	return filepath.IsLocal(rel), nil
