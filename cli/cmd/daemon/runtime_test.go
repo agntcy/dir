@@ -126,6 +126,47 @@ func TestRuntimeInstanceIDForSharedStore(t *testing.T) {
 	require.Equal(t, "operator-selected", override)
 }
 
+func TestRuntimeInstanceIDConcurrentInitialization(t *testing.T) {
+	dataDir := t.TempDir()
+	cfg := RuntimeConfig{}
+	cfg.Store.Type = runtimestoretypes.StoreType("etcd")
+
+	const callers = 16
+
+	type result struct {
+		id  string
+		err error
+	}
+
+	start := make(chan struct{})
+
+	results := make(chan result, callers)
+	for range callers {
+		go func() {
+			<-start
+
+			id, err := cfg.EffectiveInstanceID(dataDir)
+			results <- result{id: id, err: err}
+		}()
+	}
+
+	close(start)
+
+	first := <-results
+	require.NoError(t, first.err)
+	require.NotEmpty(t, first.id)
+
+	for range callers - 1 {
+		got := <-results
+		require.NoError(t, got.err)
+		require.Equal(t, first.id, got.id)
+	}
+
+	data, err := os.ReadFile(filepath.Join(dataDir, runtimeInstanceIDFile))
+	require.NoError(t, err)
+	require.Equal(t, first.id+"\n", string(data))
+}
+
 func TestRuntimeInstanceIDKeepsLocalStoreCompatible(t *testing.T) {
 	dataDir := t.TempDir()
 	cfg := RuntimeConfig{}

@@ -14,6 +14,8 @@ import (
 
 	runtimestoresql "github.com/agntcy/dir-runtime/store/sql"
 	runtimeutils "github.com/agntcy/dir-runtime/utils"
+	"github.com/agntcy/dir/cli/internal/fsutil"
+	"github.com/gofrs/flock"
 )
 
 const (
@@ -45,6 +47,14 @@ func (c RuntimeConfig) EffectiveInstanceID(dataDir string) (string, error) {
 	}
 
 	path := filepath.Join(dataDir, runtimeInstanceIDFile)
+	// Serialize first startup in this data directory so the atomic write cannot
+	// replace an ID another initializer has already returned.
+	lock := flock.New(path + ".lock")
+	if err := lock.Lock(); err != nil {
+		return "", fmt.Errorf("failed to lock runtime instance ID file: %w", err)
+	}
+	defer func() { _ = lock.Close() }()
+
 	if data, err := os.ReadFile(path); err == nil {
 		id := strings.TrimSpace(string(data))
 		if id == "" {
@@ -63,26 +73,8 @@ func (c RuntimeConfig) EffectiveInstanceID(dataDir string) (string, error) {
 
 	id := hex.EncodeToString(random[:])
 
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, runtimeInstanceIDPerm)
-	if errors.Is(err, os.ErrExist) {
-		// Another daemon created the ID after the first read; use its value.
-		return c.EffectiveInstanceID(dataDir)
-	}
-	if err != nil {
-		return "", fmt.Errorf("failed to create runtime instance ID file: %w", err)
-	}
-
-	if _, err := fmt.Fprintln(file, id); err != nil {
-		_ = file.Close()
-		_ = os.Remove(path)
-
+	if err := fsutil.WriteAtomic(path, []byte(id+"\n"), fsutil.WriteOptions{FileMode: runtimeInstanceIDPerm}); err != nil {
 		return "", fmt.Errorf("failed to write runtime instance ID file: %w", err)
-	}
-
-	if err := file.Close(); err != nil {
-		_ = os.Remove(path)
-
-		return "", fmt.Errorf("failed to close runtime instance ID file: %w", err)
 	}
 
 	return id, nil
