@@ -11,8 +11,8 @@ replace (
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261106120914-497c7a1ca059.2
 	github.com/agentnameservice/ans-sdk-go v0.1.20
-	github.com/agntcy/dir/api v1.9.1
-	github.com/agntcy/dir/utils v1.9.1
+	github.com/agntcy/dir/api v1.9.2
+	github.com/agntcy/dir/utils v1.9.2
 	github.com/agntcy/oasf-sdk/pkg v1.1.0
 	github.com/fxamacker/cbor/v2 v2.9.6
 	github.com/google/uuid v1.6.0
