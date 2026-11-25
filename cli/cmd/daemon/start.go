@@ -19,6 +19,7 @@ import (
 	runtimeserver "github.com/agntcy/dir-runtime/server"
 	runtimestore "github.com/agntcy/dir-runtime/store"
 	runtimestoretypes "github.com/agntcy/dir-runtime/store/types"
+	runtimev1 "github.com/agntcy/dir/api/runtime/v1"
 	networkinit "github.com/agntcy/dir/cli/cmd/network/init"
 	"github.com/agntcy/dir/reconciler/recordevents"
 	reconciler "github.com/agntcy/dir/reconciler/service"
@@ -120,6 +121,21 @@ func runStart(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("failed to configure runtime discovery ownership: %w", err)
 		}
 
+		logger.Info("Runtime discovery instance selected", "instance_id", cfg.Runtime.InstanceID)
+		if cfg.Runtime.InstanceID != "" {
+			workloads, listErr := runtimeStore.ListWorkloads(ctx)
+			if listErr != nil {
+				logger.Warn("Could not inspect existing runtime workloads for migration", "error", listErr)
+			} else {
+				for _, adapterType := range cfg.Runtime.EffectiveAdapterTypes() {
+					if count := countLegacyWorkloads(workloads, adapterType); count > 0 {
+						logger.Warn("Unowned runtime workloads cannot be pruned by this instance",
+							"adapter", adapterType, "count", count)
+					}
+				}
+			}
+		}
+
 		startRuntimeDiscovery(ctx, cfg.Runtime, cfg.Runtime.EffectiveResolver(cfg.Server.ListenAddress), runtimeStore, discoveryErrCh)
 
 		// Register runtime API with server
@@ -177,6 +193,17 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
 	return waitForShutdown(ctx, sigCh, discoveryErrCh, zotCtx.Done())
+}
+
+func countLegacyWorkloads(workloads []*runtimev1.Workload, adapterType string) int {
+	count := 0
+	for _, workload := range workloads {
+		if workload.GetRuntime() == adapterType && workload.GetAnnotations()[discovery.InstanceAnnotation] == "" {
+			count++
+		}
+	}
+
+	return count
 }
 
 // waitForShutdown blocks until the daemon should stop. Runtime discovery failing for

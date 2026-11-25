@@ -13,13 +13,17 @@ import (
 	"strings"
 
 	runtimestoresql "github.com/agntcy/dir-runtime/store/sql"
+	runtimeutils "github.com/agntcy/dir-runtime/utils"
 )
 
-const runtimeInstanceIDFile = "runtime-instance-id"
+const (
+	runtimeInstanceIDFile = "runtime-instance-id"
+	runtimeInstanceIDPerm = 0o600
+)
 
-// EffectiveInstanceID keeps the existing unscoped local SQLite store compatible.
-// Shared stores need an ID that survives daemon restarts so their workloads can
-// be recognized and reaped by the same discovery instance.
+// EffectiveInstanceID keeps an SQLite store under the daemon's data directory
+// compatible with existing unscoped workloads. Shared stores need a persistent
+// ID so each daemon recognizes only the workloads it owns.
 func (c RuntimeConfig) EffectiveInstanceID(dataDir string) (string, error) {
 	if c.InstanceID != "" {
 		if strings.TrimSpace(c.InstanceID) == "" {
@@ -30,7 +34,14 @@ func (c RuntimeConfig) EffectiveInstanceID(dataDir string) (string, error) {
 	}
 
 	if c.Store.Type == runtimestoresql.StoreTypeSqlite {
-		return "", nil
+		local, err := localRuntimeSQLiteStore(c.Store.SQLite.Path, dataDir)
+		if err != nil {
+			return "", err
+		}
+
+		if local {
+			return "", nil
+		}
 	}
 
 	path := filepath.Join(dataDir, runtimeInstanceIDFile)
@@ -51,7 +62,7 @@ func (c RuntimeConfig) EffectiveInstanceID(dataDir string) (string, error) {
 	}
 
 	id := hex.EncodeToString(random[:])
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, runtimeInstanceIDPerm)
 	if errors.Is(err, os.ErrExist) {
 		// Another daemon created the ID after the first read; use its value.
 		return c.EffectiveInstanceID(dataDir)
@@ -63,12 +74,45 @@ func (c RuntimeConfig) EffectiveInstanceID(dataDir string) (string, error) {
 	if _, err := fmt.Fprintln(file, id); err != nil {
 		_ = file.Close()
 		_ = os.Remove(path)
+
 		return "", fmt.Errorf("failed to write runtime instance ID file: %w", err)
 	}
+
 	if err := file.Close(); err != nil {
 		_ = os.Remove(path)
+
 		return "", fmt.Errorf("failed to close runtime instance ID file: %w", err)
 	}
 
 	return id, nil
+}
+
+func localRuntimeSQLiteStore(storePath, dataDir string) (bool, error) {
+	if storePath == "" {
+		storePath = runtimestoresql.DefaultPath
+	}
+
+	// Match dir-runtime's home expansion before comparing actual store locations.
+	expanded, err := runtimeutils.ExpandHome(storePath)
+	if err != nil {
+		return false, fmt.Errorf("failed to expand runtime SQLite path: %w", err)
+	}
+
+	storeAbs, err := filepath.Abs(expanded)
+	if err != nil {
+		return false, fmt.Errorf("failed to resolve runtime SQLite path: %w", err)
+	}
+
+	dataAbs, err := filepath.Abs(dataDir)
+	if err != nil {
+		return false, fmt.Errorf("failed to resolve daemon data directory: %w", err)
+	}
+
+	rel, err := filepath.Rel(dataAbs, storeAbs)
+	if err != nil {
+		// Paths on different volumes cannot refer to a store under dataDir.
+		return false, nil
+	}
+
+	return filepath.IsLocal(rel), nil
 }

@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/agntcy/dir-runtime/discovery"
 	adapterprocess "github.com/agntcy/dir-runtime/discovery/runtime/process"
 	runtimestoresql "github.com/agntcy/dir-runtime/store/sql"
 	runtimestoretypes "github.com/agntcy/dir-runtime/store/types"
@@ -126,12 +127,61 @@ func TestRuntimeInstanceIDForSharedStore(t *testing.T) {
 }
 
 func TestRuntimeInstanceIDKeepsLocalStoreCompatible(t *testing.T) {
+	dataDir := t.TempDir()
 	cfg := RuntimeConfig{}
 	cfg.Store.Type = runtimestoresql.StoreTypeSqlite
+	cfg.Store.SQLite.Path = filepath.Join(dataDir, "workloads.db")
 
-	id, err := cfg.EffectiveInstanceID(t.TempDir())
+	id, err := cfg.EffectiveInstanceID(dataDir)
 	require.NoError(t, err)
 	require.Empty(t, id, "existing local workloads have no instance annotation")
+}
+
+func TestRuntimeInstanceIDForDefaultSQLiteStore(t *testing.T) {
+	dataDir := t.TempDir()
+	cfg := RuntimeConfig{}
+	cfg.Store.Type = runtimestoresql.StoreTypeSqlite
+	cfg.Store.SQLite.Path = runtimestoresql.DefaultPath
+
+	first, err := cfg.EffectiveInstanceID(dataDir)
+	require.NoError(t, err)
+	require.NotEmpty(t, first, "the default SQLite path is shared across daemon data directories")
+
+	second, err := cfg.EffectiveInstanceID(dataDir)
+	require.NoError(t, err)
+	require.Equal(t, first, second)
+
+	other, err := cfg.EffectiveInstanceID(t.TempDir())
+	require.NoError(t, err)
+	require.NotEqual(t, first, other)
+}
+
+func TestRuntimeInstanceIDForExplicitSharedSQLiteStore(t *testing.T) {
+	sharedPath := filepath.Join(t.TempDir(), "workloads.db")
+	cfg := RuntimeConfig{}
+	cfg.Store.Type = runtimestoresql.StoreTypeSqlite
+	cfg.Store.SQLite.Path = sharedPath
+
+	first, err := cfg.EffectiveInstanceID(t.TempDir())
+	require.NoError(t, err)
+	require.NotEmpty(t, first)
+
+	second, err := cfg.EffectiveInstanceID(t.TempDir())
+	require.NoError(t, err)
+	require.NotEqual(t, first, second)
+}
+
+func TestCountLegacyWorkloadsOnlyMatchesUnownedRuntimeType(t *testing.T) {
+	workloads := []*runtimev1.Workload{
+		{Runtime: "docker"},
+		{Runtime: "docker", Annotations: map[string]string{"other": "value"}},
+		{Runtime: "docker", Annotations: map[string]string{discovery.InstanceAnnotation: "node-west"}},
+		{Runtime: "process"},
+	}
+
+	require.Equal(t, 2, countLegacyWorkloads(workloads, "docker"))
+	require.Equal(t, 1, countLegacyWorkloads(workloads, "process"))
+	require.Zero(t, countLegacyWorkloads(workloads, "kubernetes"))
 }
 
 func TestEffectiveAdapterTypes(t *testing.T) {
