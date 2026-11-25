@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.9.2] - 2026-11-25
+
+### Added
+- **Docs**: a Rust SDK page, linked from the SDK index and the README (#2518)
+
+### Changed
+- **Docs**: the content-policy page documents `source` on signature, scan and identity facts. A scan can be local, imported or unspecified; a signature or identity claim is local only when this node has stored a result (#2529)
+
+### Fixed
+- **Client**: the default server address is `127.0.0.1:8888`. `0.0.0.0:8888` is not a dial address, so a client with no server configured could not connect to a local daemon (#2536)
+- **Client**: an `Unavailable` connection error names the server address that was dialled. The gRPC status code and details are unchanged (#2535)
+- **CLI**: the daemon warns when `runtime.adapter.type` (`DIRECTORY_DAEMON_RUNTIME_ADAPTER_TYPE`) is ignored because `runtime.adapter_types` is set. The list still wins. `runtime.adapter.type` no longer has a default, so a config that sets neither still runs docker alone (#2534)
+- **CI**: the agent-skills import workflow parses again. Replacing `DIRCTL_PATH` with `DIR_MCP_PATH` had dropped the step's `env` key, so GitHub rejected the file on every push (#2520)
+
+### Security
+- **CLI**: the `dir-ctl` image upgrades every Alpine package at build, so `libcrypto3` and `libssl3` pick up 3.5.9-r1 (CVE-2026-88822, CVE-2026-88823, CVE-2026-95691, CVE-2026-95692, CVE-2026-107496) (#2522)
+- **Deps**: `containerd` v2.4.2 (CVE-2026-95839) and `mcp-go` v1.6.0 (#2521, #2537)
+- **Deps**: zot Go module v2.1.23 and Helm chart v0.1.134, Bitnami PostgreSQL chart 18.12.20 and its image digest, and Go module patches including `go.yaml.in/yaml/v3` v3.0.6 (#2508, #2505, #2527, #2507)
+
 ## [v1.9.1] - 2026-11-18
 
 ### Added
