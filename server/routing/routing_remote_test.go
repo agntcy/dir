@@ -30,9 +30,9 @@ func TestNewRejectsInvalidDHTParams(t *testing.T) {
 				OCI:      ociconfig.Config{LocalDir: t.TempDir()},
 			},
 			Routing: routingconfig.Config{
-				ListenAddress:        "/ip4/0.0.0.0/tcp/0",
-				DatastoreDir:         t.TempDir(),
-				DHTReprovideInterval: RecordTTL, // must be lower than record_ttl
+				ListenAddress:     "/ip4/0.0.0.0/tcp/0",
+				DatastoreDir:      t.TempDir(),
+				RepublishInterval: RecordTTL, // must be lower than record_ttl
 			},
 		},
 	)

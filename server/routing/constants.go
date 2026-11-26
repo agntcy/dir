@@ -12,16 +12,13 @@ const (
 	// RecordTTL defines how long DHT provider records persist before expiring.
 	// It is applied to both dht.MaxRecordAge() and the provider store validity.
 	RecordTTL = 48 * time.Hour
-	// DHTReprovideInterval defines how often local CID provider records are re-announced to the DHT.
+	// DHTReprovideInterval is the default routing.republish_interval: how often local
+	// records are re-announced to the DHT, and over GossipSub unless overridden.
 	// It is set just under RecordTTL/2, as in the Amino DHT, so a record survives one
 	// missed reprovide round: two rounds (44h) still fit within the TTL.
 	DHTReprovideInterval = 22 * time.Hour
-	// GossipReprovideInterval defines how often local records are re-announced over GossipSub,
-	// independently of the DHT. Each round sends every local record to every subscriber;
-	// lower it to let newly joined nodes learn labels sooner.
-	GossipReprovideInterval = 22 * time.Hour
 	// GossipReprovideDelay is the pause between two records announced during a GossipSub
-	// reprovide round, so subscribers are not flooded by a burst they cannot process.
+	// republish round, so subscribers are not flooded by a burst they cannot process.
 	GossipReprovideDelay = 5 * time.Millisecond
 	// CleanupInterval defines how often the local cache is scanned for remote labels
 	// older than MaxLabelAge. Search does not check label age, so an expired label is

@@ -27,39 +27,41 @@ type dhtParams struct {
 // resolveDHTParams fills unset (zero) config values with the package defaults
 // and rejects invalid combinations.
 func resolveDHTParams(cfg routingconfig.Config) (dhtParams, error) {
-	if cfg.RefreshInterval < 0 || cfg.RecordTTL < 0 || cfg.DHTReprovideInterval < 0 || cfg.GossipSub.ReprovideInterval < 0 || cfg.GossipSub.ReprovideDelay < 0 ||
+	if cfg.RefreshInterval < 0 || cfg.RecordTTL < 0 || cfg.RepublishInterval < 0 || cfg.GossipSub.RepublishInterval < 0 || cfg.GossipSub.RepublishDelay < 0 ||
 		cfg.CleanupInterval < 0 || cfg.MaxLabelAge < 0 || cfg.BucketSize < 0 || cfg.Concurrency < 0 {
 		return dhtParams{}, errors.New("routing intervals, bucket_size and concurrency must not be negative")
 	}
 
 	p := dhtParams{
-		RefreshInterval:         orDefault(cfg.RefreshInterval, RefreshInterval),
-		RecordTTL:               orDefault(cfg.RecordTTL, RecordTTL),
-		DHTReprovideInterval:    orDefault(cfg.DHTReprovideInterval, DHTReprovideInterval),
-		GossipReprovideInterval: orDefault(cfg.GossipSub.ReprovideInterval, GossipReprovideInterval),
-		GossipReprovideDelay:    orDefault(cfg.GossipSub.ReprovideDelay, GossipReprovideDelay),
-		CleanupInterval:         orDefault(cfg.CleanupInterval, CleanupInterval),
-		MaxLabelAge:             orDefault(cfg.MaxLabelAge, MaxLabelAge),
-		BucketSize:              orDefault(cfg.BucketSize, BucketSize),
-		Concurrency:             orDefault(cfg.Concurrency, Concurrency),
+		RefreshInterval:      orDefault(cfg.RefreshInterval, RefreshInterval),
+		RecordTTL:            orDefault(cfg.RecordTTL, RecordTTL),
+		DHTReprovideInterval: orDefault(cfg.RepublishInterval, DHTReprovideInterval),
+		GossipReprovideDelay: orDefault(cfg.GossipSub.RepublishDelay, GossipReprovideDelay),
+		CleanupInterval:      orDefault(cfg.CleanupInterval, CleanupInterval),
+		MaxLabelAge:          orDefault(cfg.MaxLabelAge, MaxLabelAge),
+		BucketSize:           orDefault(cfg.BucketSize, BucketSize),
+		Concurrency:          orDefault(cfg.Concurrency, Concurrency),
 	}
+
+	// GossipSub uses the shared republish interval unless it has its own.
+	p.GossipReprovideInterval = orDefault(cfg.GossipSub.RepublishInterval, p.DHTReprovideInterval)
 
 	// Records must be reprovided before they expire on remote peers.
 	if p.DHTReprovideInterval >= p.RecordTTL {
-		return dhtParams{}, fmt.Errorf("dht_reprovide_interval (%s) must be lower than record_ttl (%s)",
+		return dhtParams{}, fmt.Errorf("republish_interval (%s) must be lower than record_ttl (%s)",
 			p.DHTReprovideInterval, p.RecordTTL)
 	}
 
 	// Remote labels are also refreshed by DHT provider notifications, so they must
 	// not go stale before the next DHT reprovide, even with GossipSub disabled.
 	if p.MaxLabelAge <= p.DHTReprovideInterval {
-		return dhtParams{}, fmt.Errorf("max_label_age (%s) must be greater than dht_reprovide_interval (%s)",
+		return dhtParams{}, fmt.Errorf("max_label_age (%s) must be greater than republish_interval (%s)",
 			p.MaxLabelAge, p.DHTReprovideInterval)
 	}
 
 	// Peers outside the closest set of a CID only refresh its labels over GossipSub.
 	if cfg.GossipSub.Enabled && p.MaxLabelAge <= p.GossipReprovideInterval {
-		return dhtParams{}, fmt.Errorf("max_label_age (%s) must be greater than gossipsub.reprovide_interval (%s)",
+		return dhtParams{}, fmt.Errorf("max_label_age (%s) must be greater than the GossipSub republish interval (%s)",
 			p.MaxLabelAge, p.GossipReprovideInterval)
 	}
 

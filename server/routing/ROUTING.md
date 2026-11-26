@@ -40,11 +40,9 @@ Defaults; each one can be overridden through the matching `routing.*` config key
 // DHT provider record TTL (48 hours) - routing.record_ttl
 routing.RecordTTL
 
-// DHT reprovide interval (22 hours) - routing.dht_reprovide_interval
+// Republish interval for the DHT and GossipSub (22 hours) - routing.republish_interval
+// (routing.gossipsub.republish_interval overrides it for GossipSub only)
 routing.DHTReprovideInterval
-
-// GossipSub reprovide interval (22 hours) - routing.gossipsub.reprovide_interval
-routing.GossipReprovideInterval
 
 // Remote label cleanup interval (1 hour) - routing.cleanup_interval
 routing.CleanupInterval

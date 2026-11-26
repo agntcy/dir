@@ -264,12 +264,13 @@ func TestLoadConfigPolicyBlocks(t *testing.T) {
 	require.NoError(t, cfg.Server.Policy.Validate())
 }
 
-// TestLoadConfigReprovideIntervalEnvOverride asserts that the DHT and GossipSub
-// reprovide intervals can be overridden by environment alone. AutomaticEnv only
-// resolves keys viper already knows, so this depends on dht_reprovide_interval
-// being declared in the embedded daemon.config.yaml and on the GossipSub key
-// being registered in registerServerDefaults.
-func TestLoadConfigReprovideIntervalEnvOverride(t *testing.T) {
+// TestLoadConfigRepublishEnvOverride asserts that the republish settings can be
+// overridden by environment alone. AutomaticEnv only resolves keys viper already
+// knows, so this depends on republish_interval being declared in the embedded
+// daemon.config.yaml and on the GossipSub keys being registered in
+// registerServerDefaults. The GossipSub interval is unset by default, so the
+// routing package uses republish_interval for it.
+func TestLoadConfigRepublishEnvOverride(t *testing.T) {
 	originalOpts := opts
 	opts = &Options{DataDir: t.TempDir()}
 	t.Cleanup(func() {
@@ -278,50 +279,18 @@ func TestLoadConfigReprovideIntervalEnvOverride(t *testing.T) {
 
 	cfg, err := loadConfig()
 	require.NoError(t, err)
-	require.Equal(t, 22*time.Hour, cfg.Server.Routing.DHTReprovideInterval)
-	require.Equal(t, 22*time.Hour, cfg.Server.Routing.GossipSub.ReprovideInterval)
+	require.Equal(t, 22*time.Hour, cfg.Server.Routing.RepublishInterval)
+	require.Zero(t, cfg.Server.Routing.GossipSub.RepublishInterval)
 
-	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_DHT_REPROVIDE_INTERVAL", "10m")
-	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_GOSSIPSUB_REPROVIDE_INTERVAL", "5m")
-	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_GOSSIPSUB_REPROVIDE_DELAY", "2ms")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_REPUBLISH_INTERVAL", "10m")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_GOSSIPSUB_REPUBLISH_INTERVAL", "5m")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_GOSSIPSUB_REPUBLISH_DELAY", "2ms")
 
 	cfg, err = loadConfig()
 	require.NoError(t, err)
-	require.Equal(t, 10*time.Minute, cfg.Server.Routing.DHTReprovideInterval)
-	require.Equal(t, 5*time.Minute, cfg.Server.Routing.GossipSub.ReprovideInterval)
-	require.Equal(t, 2*time.Millisecond, cfg.Server.Routing.GossipSub.ReprovideDelay)
-}
-
-// TestLoadConfigRefusesRemovedRepublishInterval asserts that the removed
-// republish_interval key fails the load, naming where it was set, instead of
-// being silently ignored.
-func TestLoadConfigRefusesRemovedRepublishInterval(t *testing.T) {
-	originalOpts := opts
-
-	t.Cleanup(func() {
-		opts = originalOpts
-	})
-
-	t.Run("environment", func(t *testing.T) {
-		opts = &Options{DataDir: t.TempDir()}
-		t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_REPUBLISH_INTERVAL", "24h")
-
-		_, err := loadConfig()
-		require.ErrorContains(t, err, "DIRECTORY_DAEMON_SERVER_ROUTING_REPUBLISH_INTERVAL")
-		require.ErrorContains(t, err, "server.routing.dht_reprovide_interval")
-	})
-
-	t.Run("config file", func(t *testing.T) {
-		dir := t.TempDir()
-		file := filepath.Join(dir, DefaultConfigFile)
-		require.NoError(t, os.WriteFile(file, []byte("server:\n  routing:\n    republish_interval: \"24h\"\n"), 0o600))
-
-		opts = &Options{DataDir: dir, ConfigFile: file}
-
-		_, err := loadConfig()
-		require.ErrorContains(t, err, file)
-		require.ErrorContains(t, err, "server.routing.republish_interval")
-	})
+	require.Equal(t, 10*time.Minute, cfg.Server.Routing.RepublishInterval)
+	require.Equal(t, 5*time.Minute, cfg.Server.Routing.GossipSub.RepublishInterval)
+	require.Equal(t, 2*time.Millisecond, cfg.Server.Routing.GossipSub.RepublishDelay)
 }
 
 // TestLoadConfigDHTEnvOverride asserts that the DHT tuning and network keys,

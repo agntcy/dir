@@ -5,11 +5,8 @@ package config
 
 import (
 	"fmt"
-	"os"
-	"strings"
 	"time"
 
-	"github.com/agntcy/dir/utils/env"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -70,7 +67,7 @@ type Config struct {
 
 	// RecordTTL is how long DHT provider records are kept before they expire.
 	// If not set or zero, uses the default RecordTTL constant (48h).
-	// Must be greater than DHTReprovideInterval.
+	// Must be greater than RepublishInterval.
 	RecordTTL time.Duration `json:"record_ttl,omitempty" mapstructure:"record_ttl"`
 
 	// CleanupInterval is how often stale remote labels are removed.
@@ -79,8 +76,8 @@ type Config struct {
 
 	// MaxLabelAge is the age after which a remote label is considered stale.
 	// If not set or zero, uses the default MaxLabelAge constant (48h).
-	// Must be greater than DHTReprovideInterval, and than GossipSub.ReprovideInterval when
-	// GossipSub is enabled, so labels are refreshed before they go stale.
+	// Must be greater than RepublishInterval, and than the GossipSub republish
+	// interval when GossipSub is enabled, so labels are refreshed before they go stale.
 	MaxLabelAge time.Duration `json:"max_label_age,omitempty" mapstructure:"max_label_age"`
 
 	// BucketSize is the Kademlia k parameter.
@@ -92,11 +89,12 @@ type Config struct {
 	// If not set or zero, uses the default Concurrency constant (5).
 	Concurrency int `json:"concurrency,omitempty" mapstructure:"concurrency"`
 
-	// DHTReprovideInterval controls how often local CID provider records are
-	// re-announced to the DHT so they do not expire on remote peers.
+	// RepublishInterval controls how often local records are re-announced to the
+	// DHT, so their provider records do not expire on remote peers, and over
+	// GossipSub unless GossipSub.RepublishInterval overrides it.
 	// If not set or zero, uses the default DHTReprovideInterval constant (22h).
 	// Must be lower than RecordTTL.
-	DHTReprovideInterval time.Duration `json:"dht_reprovide_interval,omitempty" mapstructure:"dht_reprovide_interval"`
+	RepublishInterval time.Duration `json:"republish_interval,omitempty" mapstructure:"republish_interval"`
 
 	// RelayService enables a circuit-relay v2 service on this node so it can
 	// relay traffic for NAT'd peers. Enable only on publicly-reachable nodes
@@ -157,60 +155,18 @@ type GossipSubConfig struct {
 	// server/routing/pubsub/constants.go for network compatibility.
 	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
 
-	// ReprovideInterval controls how often local records are re-announced over
-	// GossipSub, independently of the DHT. Lower values let newly joined nodes
-	// learn labels sooner, at the cost of more announcement traffic.
-	// If not set or zero, uses the default GossipReprovideInterval constant (22h).
-	ReprovideInterval time.Duration `json:"reprovide_interval,omitempty" mapstructure:"reprovide_interval"`
+	// RepublishInterval overrides Config.RepublishInterval for GossipSub only.
+	// Lower values let newly joined nodes learn labels sooner, at the cost of
+	// more announcement traffic.
+	// If not set or zero, uses Config.RepublishInterval.
+	RepublishInterval time.Duration `json:"republish_interval,omitempty" mapstructure:"republish_interval"`
 
-	// ReprovideDelay is the pause between two records announced during a
-	// GossipSub reprovide round. It spreads the round out so subscribers can
+	// RepublishDelay is the pause between two records announced during a
+	// GossipSub republish round. It spreads the round out so subscribers can
 	// keep up; sent back-to-back, a large round overflows their buffers and
 	// announcements are dropped.
 	// If not set or zero, uses the default GossipReprovideDelay constant (5ms).
-	ReprovideDelay time.Duration `json:"reprovide_delay,omitempty" mapstructure:"reprovide_delay"`
-}
-
-// removedKeys maps routing keys that no longer exist to their replacement, so
-// a stale configuration fails loudly instead of being silently ignored.
-var removedKeys = map[string][]string{
-	"republish_interval": {"dht_reprovide_interval", "gossipsub.reprovide_interval"},
-}
-
-// CheckRemovedKeys returns an error if a removed routing key is still set in
-// the configuration file or through its environment variable. configFile is
-// named in the error when the key comes from it, keyPrefix is the path of the
-// routing block (e.g. "routing." or "server.routing.") and envPrefix the
-// loader's variable prefix.
-func CheckRemovedKeys(inConfig func(key string) bool, configFile, keyPrefix, envPrefix string) error {
-	for key, replacements := range removedKeys {
-		full := keyPrefix + key
-
-		name := env.Name(envPrefix, full)
-		_, inEnv := os.LookupEnv(name)
-
-		var source string
-
-		switch {
-		case inConfig(full) && configFile != "":
-			source = configFile
-		case inConfig(full):
-			source = "the configuration file"
-		case inEnv:
-			source = name
-		default:
-			continue
-		}
-
-		use := make([]string, len(replacements))
-		for i, r := range replacements {
-			use[i] = keyPrefix + r
-		}
-
-		return fmt.Errorf("%s (set in %s) was removed, use %s instead", full, source, strings.Join(use, " and "))
-	}
-
-	return nil
+	RepublishDelay time.Duration `json:"republish_delay,omitempty" mapstructure:"republish_delay"`
 }
 
 // AutosyncConfig configures DHT-based record + referrer synchronization.
