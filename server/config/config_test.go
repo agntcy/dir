@@ -46,6 +46,14 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_ROUTING_KEY_PATH":                      "/path/to/key",
 				"DIRECTORY_SERVER_ROUTING_REFRESH_INTERVAL":              "5s",
 				"DIRECTORY_SERVER_ROUTING_REPUBLISH_INTERVAL":            "10m",
+				"DIRECTORY_SERVER_ROUTING_GOSSIPSUB_REPUBLISH_INTERVAL":  "5m",
+				"DIRECTORY_SERVER_ROUTING_GOSSIPSUB_REPUBLISH_DELAY":     "2ms",
+				"DIRECTORY_SERVER_ROUTING_DISABLE_PRIVATE_IPS":           "true",
+				"DIRECTORY_SERVER_ROUTING_RECORD_TTL":                    "12h",
+				"DIRECTORY_SERVER_ROUTING_CLEANUP_INTERVAL":              "6h",
+				"DIRECTORY_SERVER_ROUTING_MAX_LABEL_AGE":                 "3h",
+				"DIRECTORY_SERVER_ROUTING_BUCKET_SIZE":                   "15",
+				"DIRECTORY_SERVER_ROUTING_CONCURRENCY":                   "3",
 				"DIRECTORY_SERVER_DATABASE_TYPE":                         "postgres",
 				"DIRECTORY_SERVER_DATABASE_POSTGRES_HOST":                "localhost",
 				"DIRECTORY_SERVER_DATABASE_POSTGRES_PORT":                "5432",
@@ -103,8 +111,16 @@ func TestConfig(t *testing.T) {
 					KeyPath:           "/path/to/key",
 					RefreshInterval:   5 * time.Second,
 					RepublishInterval: 10 * time.Minute,
+					DisablePrivateIPs: true,
+					RecordTTL:         12 * time.Hour,
+					CleanupInterval:   6 * time.Hour,
+					MaxLabelAge:       3 * time.Hour,
+					BucketSize:        15,
+					Concurrency:       3,
 					GossipSub: routing.GossipSubConfig{
-						Enabled: true, // Default value
+						Enabled:           true, // Default value
+						RepublishInterval: 5 * time.Minute,
+						RepublishDelay:    2 * time.Millisecond,
 					},
 				},
 				Database: dbconfig.Config{

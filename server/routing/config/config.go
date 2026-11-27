@@ -30,6 +30,9 @@ var (
 
 	// ForceReachabilityPublic default (disabled; let AutoNAT decide reachability).
 	DefaultForceReachabilityPublic = false
+
+	// DisablePrivateIPs default (private addresses are allowed).
+	DefaultDisablePrivateIPs = false
 )
 
 type Config struct {
@@ -59,15 +62,38 @@ type Config struct {
 	DatastoreDir string `json:"datastore_dir,omitempty" mapstructure:"datastore_dir"`
 
 	// Refresh interval for DHT routing tables.
-	// If not set or zero, uses the default RefreshInterval constant.
-	// This is primarily used for testing with faster intervals.
+	// If not set or zero, uses the default RefreshInterval constant (10m).
 	RefreshInterval time.Duration `json:"refresh_interval,omitempty" mapstructure:"refresh_interval"`
 
-	// RepublishInterval controls how often local CID provider announcements are
-	// republished to keep content discoverable (DHT provider records + GossipSub
-	// labels). If not set or zero, uses the default RepublishInterval constant (36h).
-	// Lower values let newly joined nodes converge on existing content sooner, at
-	// the cost of more frequent announcement traffic.
+	// RecordTTL is how long DHT provider records are kept before they expire.
+	// If not set or zero, uses the default RecordTTL constant (48h).
+	// Must be greater than RepublishInterval.
+	RecordTTL time.Duration `json:"record_ttl,omitempty" mapstructure:"record_ttl"`
+
+	// CleanupInterval is how often stale remote labels are removed.
+	// If not set or zero, uses the default CleanupInterval constant (1h).
+	CleanupInterval time.Duration `json:"cleanup_interval,omitempty" mapstructure:"cleanup_interval"`
+
+	// MaxLabelAge is the age after which a remote label is considered stale.
+	// If not set or zero, uses the default MaxLabelAge constant (48h).
+	// Must be greater than RepublishInterval, and than the GossipSub republish
+	// interval when GossipSub is enabled, so labels are refreshed before they go stale.
+	MaxLabelAge time.Duration `json:"max_label_age,omitempty" mapstructure:"max_label_age"`
+
+	// BucketSize is the Kademlia k parameter.
+	// If not set or zero, uses the default BucketSize constant (10).
+	// Should be the same on every node of the network.
+	BucketSize int `json:"bucket_size,omitempty" mapstructure:"bucket_size"`
+
+	// Concurrency is the Kademlia alpha parameter (parallel lookup requests).
+	// If not set or zero, uses the default Concurrency constant (5).
+	Concurrency int `json:"concurrency,omitempty" mapstructure:"concurrency"`
+
+	// RepublishInterval controls how often local records are re-announced to the
+	// DHT, so their provider records do not expire on remote peers, and over
+	// GossipSub unless GossipSub.RepublishInterval overrides it.
+	// If not set or zero, uses the default DHTReprovideInterval constant (22h).
+	// Must be lower than RecordTTL.
 	RepublishInterval time.Duration `json:"republish_interval,omitempty" mapstructure:"republish_interval"`
 
 	// RelayService enables a circuit-relay v2 service on this node so it can
@@ -96,6 +122,12 @@ type Config struct {
 	// with ForceReachabilityPrivate.
 	ForceReachabilityPublic bool `json:"force_reachability_public,omitempty" mapstructure:"force_reachability_public"`
 
+	// DisablePrivateIPs restricts the DHT and host to public IP addresses
+	// (drops private, loopback and unspecified ones) and disables mDNS LAN
+	// discovery. Enable on internet-facing nodes to avoid dialing private
+	// addresses; leave false for private networks (Kubernetes, LAN, local dev).
+	DisablePrivateIPs bool `json:"disable_private_ips,omitempty" mapstructure:"disable_private_ips"`
+
 	// GossipSub configuration for label announcements
 	GossipSub GossipSubConfig `json:"gossipsub" mapstructure:"gossipsub"`
 
@@ -122,6 +154,19 @@ type GossipSubConfig struct {
 	// Note: Protocol parameters (topic, message size) are hardcoded in
 	// server/routing/pubsub/constants.go for network compatibility.
 	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
+
+	// RepublishInterval overrides Config.RepublishInterval for GossipSub only.
+	// Lower values let newly joined nodes learn labels sooner, at the cost of
+	// more announcement traffic.
+	// If not set or zero, uses Config.RepublishInterval.
+	RepublishInterval time.Duration `json:"republish_interval,omitempty" mapstructure:"republish_interval"`
+
+	// RepublishDelay is the pause between two records announced during a
+	// GossipSub republish round. It spreads the round out so subscribers can
+	// keep up; sent back-to-back, a large round overflows their buffers and
+	// announcements are dropped.
+	// If not set or zero, uses the default GossipReprovideDelay constant (5ms).
+	RepublishDelay time.Duration `json:"republish_delay,omitempty" mapstructure:"republish_delay"`
 }
 
 // AutosyncConfig configures DHT-based record + referrer synchronization.

@@ -264,11 +264,13 @@ func TestLoadConfigPolicyBlocks(t *testing.T) {
 	require.NoError(t, cfg.Server.Policy.Validate())
 }
 
-// TestLoadConfigRepublishIntervalEnvOverride asserts that the routing republish
-// interval can be overridden by environment alone. AutomaticEnv only resolves
-// keys viper already knows, so this depends on the key being declared in the
-// embedded daemon.config.yaml.
-func TestLoadConfigRepublishIntervalEnvOverride(t *testing.T) {
+// TestLoadConfigRepublishEnvOverride asserts that the republish settings can be
+// overridden by environment alone. AutomaticEnv only resolves keys viper already
+// knows, so this depends on republish_interval being declared in the embedded
+// daemon.config.yaml and on the GossipSub keys being registered in
+// registerServerDefaults. The GossipSub interval is unset by default, so the
+// routing package uses republish_interval for it.
+func TestLoadConfigRepublishEnvOverride(t *testing.T) {
 	originalOpts := opts
 	opts = &Options{DataDir: t.TempDir()}
 	t.Cleanup(func() {
@@ -277,13 +279,49 @@ func TestLoadConfigRepublishIntervalEnvOverride(t *testing.T) {
 
 	cfg, err := loadConfig()
 	require.NoError(t, err)
-	require.Equal(t, 36*time.Hour, cfg.Server.Routing.RepublishInterval)
+	require.Equal(t, 22*time.Hour, cfg.Server.Routing.RepublishInterval)
+	require.Zero(t, cfg.Server.Routing.GossipSub.RepublishInterval)
 
 	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_REPUBLISH_INTERVAL", "10m")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_GOSSIPSUB_REPUBLISH_INTERVAL", "5m")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_GOSSIPSUB_REPUBLISH_DELAY", "2ms")
 
 	cfg, err = loadConfig()
 	require.NoError(t, err)
 	require.Equal(t, 10*time.Minute, cfg.Server.Routing.RepublishInterval)
+	require.Equal(t, 5*time.Minute, cfg.Server.Routing.GossipSub.RepublishInterval)
+	require.Equal(t, 2*time.Millisecond, cfg.Server.Routing.GossipSub.RepublishDelay)
+}
+
+// TestLoadConfigDHTEnvOverride asserts that the DHT tuning and network keys,
+// which are commented out in the embedded daemon.config.yaml, can be set by
+// environment.
+func TestLoadConfigDHTEnvOverride(t *testing.T) {
+	originalOpts := opts
+	opts = &Options{DataDir: t.TempDir()}
+	t.Cleanup(func() {
+		opts = originalOpts
+	})
+
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_REFRESH_INTERVAL", "5m")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_RECORD_TTL", "12h")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_CLEANUP_INTERVAL", "6h")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_MAX_LABEL_AGE", "3h")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_BUCKET_SIZE", "15")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_CONCURRENCY", "3")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_DISABLE_PRIVATE_IPS", "true")
+
+	cfg, err := loadConfig()
+	require.NoError(t, err)
+
+	r := cfg.Server.Routing
+	require.Equal(t, 5*time.Minute, r.RefreshInterval)
+	require.Equal(t, 12*time.Hour, r.RecordTTL)
+	require.Equal(t, 6*time.Hour, r.CleanupInterval)
+	require.Equal(t, 3*time.Hour, r.MaxLabelAge)
+	require.Equal(t, 15, r.BucketSize)
+	require.Equal(t, 3, r.Concurrency)
+	require.True(t, r.DisablePrivateIPs)
 }
 
 // TestLoadConfigANSEnvOverride asserts that the ans:// identity scheme, which

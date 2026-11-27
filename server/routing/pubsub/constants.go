@@ -29,4 +29,10 @@ const (
 	// This prevents abuse from malicious peers.
 	// 100 labels is generous for typical records.
 	MaxLabelsPerAnnouncement = 100
+
+	// SubscriptionBufferSize is how many received announcements are buffered
+	// while the handler processes earlier ones. Announcements that arrive while
+	// the buffer is full are dropped, so it is sized to absorb reprovide rounds
+	// from several peers arriving at the same time (the library default is 32).
+	SubscriptionBufferSize = 1024
 )

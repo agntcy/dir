@@ -124,7 +124,7 @@ func start(ctx context.Context, opts *options) <-chan status {
 		defer cancel()
 
 		// Create host
-		host, err := newHost(opts.ListenAddress, opts.DirectoryAPIAddress, opts.DirectoryOCIAddress, opts.Key, opts.RelayService, opts.ForceReachabilityPrivate, opts.ForceReachabilityPublic)
+		host, err := newHost(opts)
 		if err != nil {
 			statusCh <- status{Err: err}
 
@@ -135,8 +135,7 @@ func start(ctx context.Context, opts *options) <-chan status {
 
 		logger.Debug("Host created", "id", host.ID(), "addresses", host.Addrs())
 
-		// Enable mDNS for local network peer discovery
-		setupMDNS(host)
+		setupMDNS(host, opts.DisablePrivateIPs)
 
 		// Create DHT
 		var customDhtOpts []dht.Option
@@ -149,7 +148,7 @@ func start(ctx context.Context, opts *options) <-chan status {
 			}
 		}
 
-		kdht, err := newDHT(ctx, host, opts.BootstrapPeers, opts.RefreshInterval, customDhtOpts...)
+		kdht, err := newDHT(ctx, host, opts.BootstrapPeers, opts.RefreshInterval, opts.DisablePrivateIPs, customDhtOpts...)
 		if err != nil {
 			statusCh <- status{Err: err}
 
@@ -172,7 +171,7 @@ func start(ctx context.Context, opts *options) <-chan status {
 		// Advertise to rendezvous for initial peer discovery.
 		// Peer discovery is now handled automatically by:
 		//   - DHT: Bootstrap() connects to bootstrap peers at startup
-		//   - DHT: RoutingTableRefreshPeriod() maintains routing table (every 30s)
+		//   - DHT: RoutingTableRefreshPeriod() maintains routing table (every 10m)
 		//   - GossipSub: Mesh maintenance with peer exchange (if enabled)
 		//   - Connection Manager: Maintains healthy connection count (50-200)
 		//
@@ -329,7 +328,12 @@ func (n *mdnsNotifee) HandlePeerFound(pi peer.AddrInfo) {
 // setupMDNS enables mDNS discovery for local network peers.
 // Peers on the same LAN will discover each other in < 1 second without bootstrap nodes.
 // This is useful for development, testing, and enterprise LAN deployments.
-func setupMDNS(h host.Host) {
+// mDNS only finds LAN peers, so it is skipped when private IPs are disabled.
+func setupMDNS(h host.Host, disablePrivateIPs bool) {
+	if disablePrivateIPs {
+		return
+	}
+
 	notifee := &mdnsNotifee{host: h}
 
 	service := mdns.NewMdnsService(h, MDNSServiceName, notifee)

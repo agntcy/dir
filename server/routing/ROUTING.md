@@ -34,20 +34,23 @@ import "github.com/agntcy/dir/server/routing"
 
 ### Timing Constants
 
+Defaults; each one can be overridden through the matching `routing.*` config key.
+
 ```go
-// DHT Record TTL (48 hours)
-routing.DHTRecordTTL
+// DHT provider record TTL (48 hours) - routing.record_ttl
+routing.RecordTTL
 
-// Label Republishing Interval (36 hours)  
-routing.LabelRepublishInterval
+// Republish interval for the DHT and GossipSub (22 hours) - routing.republish_interval
+// (routing.gossipsub.republish_interval overrides it for GossipSub only)
+routing.DHTReprovideInterval
 
-// Remote Label Cleanup Interval (48 hours)
-routing.RemoteLabelCleanupInterval
+// Remote label cleanup interval (1 hour) - routing.cleanup_interval
+routing.CleanupInterval
 
-// Provider Record TTL (48 hours)
-routing.ProviderRecordTTL
+// Remote label staleness threshold (48 hours) - routing.max_label_age
+routing.MaxLabelAge
 
-// DHT Refresh Interval (30 seconds)
+// DHT routing table refresh interval (10 minutes) - routing.refresh_interval
 routing.RefreshInterval
 ```
 

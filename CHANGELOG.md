@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Routing**: The DHT and GossipSub republish tasks now run separately. `routing.republish_interval` still sets the interval for both, and its default is now 22h (was 36h). Provider records and remote labels are kept for 48h. `routing.gossipsub.republish_interval` can set a different interval for GossipSub only, and `routing.gossipsub.republish_delay` (default 5ms) sets the pause between two records in a GossipSub round (#2503)
+
 ## [v1.9.2] - 2026-11-25
 
 ### Added

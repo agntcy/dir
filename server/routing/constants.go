@@ -5,24 +5,38 @@ package routing
 
 import "time"
 
-// DHT and routing timing constants that should be used consistently across the codebase.
-// These constants ensure proper coordination between DHT expiration, republishing, and cleanup tasks.
+// Default DHT and routing timing settings. Each one can be overridden through the
+// matching routing config key (see server/routing/config/config.go).
+// These constants ensure proper coordination between DHT expiration, reproviding, and cleanup tasks.
 const (
-	// RecordTTL defines how long DHT records persist before expiring.
-	// This is configured via dht.MaxRecordAge() and affects all PutValue operations.
-	// Default DHT TTL is 36h, but we use 48h for better network resilience.
+	// RecordTTL defines how long DHT provider records persist before expiring.
+	// It is applied to both dht.MaxRecordAge() and the provider store validity.
 	RecordTTL = 48 * time.Hour
-	// RepublishInterval defines how often we republish CID provider announcements to prevent expiration.
-	// Provider records typically expire after 24h, but we use a longer interval for robustness.
-	// This ensures our content remains discoverable by triggering pull-based label caching.
-	RepublishInterval = 36 * time.Hour
-	// CleanupInterval defines how often we clean up stale announcements.
-	// This should match DHTRecordTTL to stay consistent with DHT behavior and prevent
-	// our local cache from having stale entries that no longer exist in the DHT.
-	CleanupInterval = 48 * time.Hour
+	// DHTReprovideInterval is the default routing.republish_interval: how often local
+	// records are re-announced to the DHT, and over GossipSub unless overridden.
+	// It is set just under RecordTTL/2, as in the Amino DHT, so a record survives one
+	// missed reprovide round: two rounds (44h) still fit within the TTL.
+	DHTReprovideInterval = 22 * time.Hour
+	// GossipReprovideDelay is the pause between two records announced during a GossipSub
+	// republish round, so subscribers are not flooded by a burst they cannot process.
+	GossipReprovideDelay = 5 * time.Millisecond
+	// CleanupInterval defines how often the local cache is scanned for remote labels
+	// older than MaxLabelAge. Search does not check label age, so an expired label is
+	// served until the next scan; the scan is local and cheap, so it runs often.
+	CleanupInterval = time.Hour
 	// RefreshInterval defines how often DHT routing tables are refreshed.
-	// This is a shorter interval for maintaining network connectivity.
-	RefreshInterval = 30 * time.Second
+	RefreshInterval = 10 * time.Minute
+)
+
+// Default DHT lookup parameters, tuned for a small and stable network.
+// Overridable through routing.bucket_size and routing.concurrency.
+// BucketSize should be the same on every node of the network.
+const (
+	// BucketSize is the Kademlia k parameter (default 20).
+	BucketSize = 10
+
+	// Concurrency is the Kademlia alpha parameter (default 10).
+	Concurrency = 5
 )
 
 // Protocol constants for libp2p DHT and discovery.
@@ -44,7 +58,7 @@ const (
 
 	// MaxLabelAge defines when remote label announcements are considered stale.
 	// Labels older than this will be cleaned up during periodic cleanup cycles.
-	MaxLabelAge = 72 * time.Hour
+	MaxLabelAge = 48 * time.Hour
 
 	// DefaultMinMatchScore defines the minimum allowed match score for production safety.
 	// Per proto specification: "If not set, it will return records that match at least one query".

@@ -537,20 +537,36 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	_ = v.BindEnv("routing.datastore_dir")
 	v.SetDefault("routing.datastore_dir", "")
 
-	// Note: No defaults set for the intervals below. A zero value means the
-	// routing package falls back to its RefreshInterval/RepublishInterval
-	// constants.
+	// Note: No defaults set for the DHT settings below. A zero value means the
+	// routing package falls back to its constants (see server/routing/constants.go).
 	_ = v.BindEnv("routing.refresh_interval")
 
 	_ = v.BindEnv("routing.republish_interval")
 
+	_ = v.BindEnv("routing.record_ttl")
+
+	_ = v.BindEnv("routing.cleanup_interval")
+
+	_ = v.BindEnv("routing.max_label_age")
+
+	_ = v.BindEnv("routing.bucket_size")
+
+	_ = v.BindEnv("routing.concurrency")
+
 	//
 	// Routing GossipSub configuration
-	// Note: Only enable/disable is configurable. Protocol parameters (topic, message size)
-	// are hardcoded in server/routing/pubsub/constants.go for network compatibility.
+	// Note: Only enable/disable and the republish settings are configurable. Protocol
+	// parameters (topic, message size) are hardcoded in server/routing/pubsub/constants.go
+	// for network compatibility.
 	//
 	_ = v.BindEnv("routing.gossipsub.enabled")
 	v.SetDefault("routing.gossipsub.enabled", routing.DefaultGossipSubEnabled)
+
+	// No default: a zero interval means routing.republish_interval is used,
+	// and a zero delay means the routing package uses its constant.
+	_ = v.BindEnv("routing.gossipsub.republish_interval")
+
+	_ = v.BindEnv("routing.gossipsub.republish_delay")
 
 	//
 	// Routing autosync configuration (DHT-based record + referrer sync).
@@ -573,6 +589,9 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 
 	_ = v.BindEnv("routing.force_reachability_public")
 	v.SetDefault("routing.force_reachability_public", routing.DefaultForceReachabilityPublic)
+
+	_ = v.BindEnv("routing.disable_private_ips")
+	v.SetDefault("routing.disable_private_ips", routing.DefaultDisablePrivateIPs)
 
 	//
 	// Database configuration

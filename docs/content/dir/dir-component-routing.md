@@ -52,6 +52,28 @@ sequenceDiagram
     User->>ServerB: Sync record 2
 ```
 
+## Republishing of records
+
+The node announces all records in its local store to the network again at regular intervals, to show that the records are still available.
+
+The node announces its records through two paths, the DHT and GossipSub. These keys control the announcements:
+
+| Key | Default | What it controls |
+|---|---|---|
+| `routing.republish_interval` | 22h | How often the node announces its local records again, to the DHT and over GossipSub. Remote peers delete a provider record after `routing.record_ttl`. |
+| `routing.gossipsub.republish_interval` | The value of `routing.republish_interval` | A different interval for GossipSub only. Each round sends every local record to every subscriber. |
+| `routing.gossipsub.republish_delay` | 5ms | The pause between two records in a GossipSub round. The pause prevents a large round from flooding the subscribers. |
+
+In `daemon.config.yaml`, the routing keys are under `server.routing`.
+
+The node also does a check of these values at startup. If a check fails, the node does not start:
+
+- `routing.republish_interval` must be lower than `routing.record_ttl`. If it is not lower, provider records expire on remote peers before the node announces them again.
+- `routing.max_label_age` must be greater than `routing.republish_interval`.
+- If GossipSub is enabled, `routing.max_label_age` must also be greater than `routing.gossipsub.republish_interval`.
+
+The last two checks make sure that the node does not delete a remote label as stale before the next announcement refreshes it. `routing.record_ttl` and `routing.max_label_age` both default to 48h.
+
 ## Synchronization
 
 Discovery identifies *where* records live; **synchronization (sync)** replicates them
