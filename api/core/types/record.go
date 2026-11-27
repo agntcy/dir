@@ -24,6 +24,15 @@ type Record interface {
 	GetModules() []Module
 }
 
+// ModuleArtifact is the OASF module descriptor payload used when a catalog
+// entry is the artifact itself. JSON is descriptor.json, Data is the decoded
+// descriptor.data bytes, and URLs are descriptor.urls.
+type ModuleArtifact struct {
+	URLs []string       `json:"urls,omitempty"`
+	JSON map[string]any `json:"json,omitempty"`
+	Data []byte         `json:"data,omitempty"`
+}
+
 // Module defines the necessary data for a module.
 type Module interface {
 	GetAnnotations() map[string]string
@@ -31,6 +40,7 @@ type Module interface {
 	GetID() uint64
 	GetData() map[string]any
 	GetArtifactMediaType() string
+	GetArtifact() *ModuleArtifact
 }
 
 // Skill defines the necessary data for a skill.

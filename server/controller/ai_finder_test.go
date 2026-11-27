@@ -798,6 +798,13 @@ func TestExportAgent_DefaultFormat(t *testing.T) {
 	assert.Equal(t, "application/json", resp.GetContentType())
 }
 
+func TestMediaTypeFilterForType_AICatalog(t *testing.T) {
+	filter := mediaTypeFilterForType(catalogv1.CatalogMediaType)
+	require.NotNil(t, filter)
+	assert.Equal(t, catalogv1.AICatalogModuleName, filter.ModuleName)
+	assert.Empty(t, filter.ArtifactMediaType)
+}
+
 func TestExportAgent_NoStore(t *testing.T) {
 	ctrl := NewAIFinderController("hostId", &fakeCatalogDB{}, servesEverything(), config.HTTPGatewayConfig{}, nil)
 

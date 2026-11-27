@@ -44,6 +44,8 @@ type agentFilter struct {
 
 func mediaTypeFilterForType(mediaType string) *types.MediaTypeFilter {
 	switch strings.ToLower(strings.TrimSpace(mediaType)) {
+	case catalogv1.CatalogMediaType:
+		return &types.MediaTypeFilter{ModuleName: catalogv1.AICatalogModuleName}
 	case catalogv1.ProtocolA2ACardJsonMediaType:
 		return &types.MediaTypeFilter{ModuleName: translator.A2AModuleName}
 	case catalogv1.ProtocolMCPCardJsonMediaType:

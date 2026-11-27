@@ -8,6 +8,11 @@ import (
 	coretypes "github.com/agntcy/dir/api/core/types"
 )
 
+// aiCatalogModuleName is the OASF module whose document lives on the artifact.
+// It matches catalog/v1.AICatalogModuleName. This package cannot import catalog
+// (that import cycles through core/v1).
+const aiCatalogModuleName = "integration/ai_catalog"
+
 type v1Adapter struct {
 	cid    string
 	record *typesv1.Record
@@ -75,8 +80,16 @@ func (v *v1Adapter) GetModules() []coretypes.Module {
 	modules := make([]coretypes.Module, 0, len(v.record.GetModules()))
 	for _, m := range v.record.GetModules() {
 		artifactMediaType := ""
-		if artifact := m.GetArtifact(); artifact != nil {
-			artifactMediaType = artifact.GetMediaType()
+
+		var artifact *coretypes.ModuleArtifact
+
+		if descriptor := m.GetArtifact(); descriptor != nil {
+			artifactMediaType = descriptor.GetMediaType()
+			// Only an AI Catalog module carries its document on the artifact.
+			// Other modules keep the media type; their payload stays in data.
+			if m.GetName() == aiCatalogModuleName {
+				artifact = moduleArtifact(descriptor)
+			}
 		}
 
 		modules = append(modules, &module{
@@ -85,10 +98,32 @@ func (v *v1Adapter) GetModules() []coretypes.Module {
 			ID:                uint64(m.GetId()),
 			Data:              m.GetData().AsMap(),
 			ArtifactMediaType: artifactMediaType,
+			Artifact:          artifact,
 		})
 	}
 
 	return modules
+}
+
+// moduleArtifact copies the descriptor payload. An empty descriptor is absent.
+func moduleArtifact(descriptor *typesv1.Descriptor) *coretypes.ModuleArtifact {
+	if descriptor == nil {
+		return nil
+	}
+
+	artifact := &coretypes.ModuleArtifact{
+		URLs: append([]string(nil), descriptor.GetUrls()...),
+		Data: append([]byte(nil), descriptor.GetData()...),
+	}
+	if payload := descriptor.GetJson(); payload != nil {
+		artifact.JSON = payload.AsMap()
+	}
+
+	if len(artifact.URLs) == 0 && len(artifact.Data) == 0 && artifact.JSON == nil {
+		return nil
+	}
+
+	return artifact
 }
 
 func (v *v1Adapter) GetName() string {

@@ -26,6 +26,7 @@ type catalogModuleFixture struct {
 	name              string
 	data              map[string]any
 	artifactMediaType string
+	artifact          *coretypes.ModuleArtifact
 }
 
 // GetAnnotations implements [types.Module].
@@ -34,6 +35,9 @@ func (m *catalogModuleFixture) GetID() uint64                     { return m.id 
 func (m *catalogModuleFixture) GetName() string                   { return m.name }
 func (m *catalogModuleFixture) GetData() map[string]any           { return m.data }
 func (m *catalogModuleFixture) GetArtifactMediaType() string      { return m.artifactMediaType }
+func (m *catalogModuleFixture) GetArtifact() *coretypes.ModuleArtifact {
+	return m.artifact
+}
 
 func catalogRecord(cid, name, createdAt string, modules []coretypes.Module) coretypes.Record {
 	return catalogRecordWithTags(cid, name, createdAt, modules, []coretypes.Skill{&testSkill{id: 1, name: "test_skill"}}, nil, nil)
@@ -414,4 +418,33 @@ func TestGetCatalogEntries_ScanManifestExcludesFailedReports(t *testing.T) {
 			assert.Equal(t, tt.wantSafe, manifest.GetStructValue().GetFields()["isSafe"].GetBoolValue())
 		})
 	}
+}
+
+func TestGetCatalogEntries_AICatalogArtifact(t *testing.T) {
+	db := setupTestDB(t)
+
+	record := catalogRecord("cid-catalog", "stored-catalog", "2024-07-01T00:00:00Z", []coretypes.Module{
+		&catalogModuleFixture{
+			id:   205,
+			name: catalogv1.AICatalogModuleName,
+			data: map[string]any{"spec_version": "1.0"},
+			artifact: &coretypes.ModuleArtifact{
+				JSON: map[string]any{
+					"specVersion": "1.0",
+					"entries":     []any{},
+				},
+			},
+		},
+	})
+	require.NoError(t, db.AddRecord(record))
+
+	entries, _, err := db.GetCatalogEntries()
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	assert.Equal(t, catalogv1.CatalogMediaType, entries[0].GetType())
+
+	fields := entries[0].GetData().GetStructValue().GetFields()
+	assert.Equal(t, "1.0", fields["specVersion"].GetStringValue())
+	_, hasModuleField := fields["spec_version"]
+	assert.False(t, hasModuleField)
 }
