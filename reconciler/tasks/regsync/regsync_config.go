@@ -170,7 +170,7 @@ func (c *RegsyncConfig) AddSync(source, target string, tags []string) {
 		Source:    source,
 		Target:    target,
 		Type:      "repository",
-		Referrers: true, // Always enable referrers for signatures
+		Referrers: true, // Always enable referrers for signatures (scan reports travel too, but are not imported: see indexer.Task.indexRecord)
 	}
 
 	if len(tags) > 0 {
