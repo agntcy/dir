@@ -5,6 +5,7 @@ package v1
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -39,6 +40,7 @@ const (
 
 	// OASF module names.
 	AgentSkillsModuleName = "core/language_model/agentskills"
+	AICatalogModuleName   = "integration/ai_catalog"
 
 	TrustStatusMetadataKey    = "org.agntcy.dir.trust.v1.Status"
 	ScanResultExtensionKey    = "org.agntcy.dir.security.v1.ScanResult"
@@ -84,6 +86,9 @@ var catalogModules = map[string]catalogModuleProjection{
 	AgentSkillsModuleName: {
 		// Markdown vs bundle is resolved from module data in getModuleMediaType.
 		MediaType: ProtocolAgentSkillsMdMediaType, Label: "Skill", Suffix: "skill",
+	},
+	AICatalogModuleName: {
+		MediaType: CatalogMediaType, Label: "AI Catalog", Suffix: "catalog",
 	},
 }
 
@@ -285,26 +290,71 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 
 // moduleToCatalogEntry builds a leaf catalog entry for a single module.
 //
-// A catalog entry requires exactly one of `url` or `data`. We always carry
-// the module's structured data inline via `data` in OASF.
+// A catalog entry requires exactly one of `url` or `data`. Integration modules
+// carry their structured data inline. An AI Catalog module carries the catalog
+// document on the OASF artifact, and embedded json or data becomes the entry
+// data. artifact.urls is a mirror of that document and is not projected.
 func moduleToCatalogEntry(module coretypes.Module) *CatalogEntry {
 	proj, known := catalogModules[module.GetName()]
 	if !known {
 		return nil
 	}
 
-	data, err := structpb.NewStruct(module.GetData())
-	if err != nil {
+	artifact, ok := moduleCatalogArtifact(module)
+	if !ok {
 		return nil
 	}
 
 	return &CatalogEntry{
-		Type: getModuleMediaType(module, proj),
-		Artifact: &CatalogEntry_Data{
-			Data: structpb.NewStructValue(data),
-		},
-		Tags: getAnnotationTags(module.GetAnnotations()),
+		Type:     getModuleMediaType(module, proj),
+		Artifact: artifact,
+		Tags:     getAnnotationTags(module.GetAnnotations()),
 	}
+}
+
+// moduleCatalogArtifact returns the entry payload. An AI Catalog document is
+// the embedded module artifact: json, or data when json is absent. A descriptor
+// that only has urls does not project, because the schema requires the
+// document itself. Other modules keep projecting module data.
+func moduleCatalogArtifact(module coretypes.Module) (isCatalogEntry_Artifact, bool) {
+	if module.GetName() != AICatalogModuleName {
+		data, err := structpb.NewStruct(module.GetData())
+		if err != nil {
+			return nil, false
+		}
+
+		return &CatalogEntry_Data{Data: structpb.NewStructValue(data)}, true
+	}
+
+	artifact := module.GetArtifact()
+	if artifact == nil {
+		return nil, false
+	}
+
+	if artifact.JSON != nil {
+		data, err := structpb.NewStruct(artifact.JSON)
+		if err != nil {
+			return nil, false
+		}
+
+		return &CatalogEntry_Data{Data: structpb.NewStructValue(data)}, true
+	}
+
+	if len(artifact.Data) > 0 {
+		var document map[string]any
+		if err := json.Unmarshal(artifact.Data, &document); err != nil {
+			return nil, false
+		}
+
+		data, err := structpb.NewStruct(document)
+		if err != nil {
+			return nil, false
+		}
+
+		return &CatalogEntry_Data{Data: structpb.NewStructValue(data)}, true
+	}
+
+	return nil, false
 }
 
 func getModuleMediaType(module coretypes.Module, proj catalogModuleProjection) string {
@@ -327,8 +377,13 @@ func knownCatalogModules(rd coretypes.Record) []coretypes.Module {
 			continue
 		}
 
-		// Skip modules with no data
-		if module.GetData() == nil {
+		// An AI Catalog module is projectable from its artifact. Other modules
+		// are projectable from their structured data.
+		if module.GetName() == AICatalogModuleName {
+			if _, ok := moduleCatalogArtifact(module); !ok {
+				continue
+			}
+		} else if module.GetData() == nil {
 			continue
 		}
 

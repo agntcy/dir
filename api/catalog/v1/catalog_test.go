@@ -5,6 +5,7 @@ package v1
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -198,6 +199,107 @@ func TestRecordToCatalog(t *testing.T) {
 	}
 }
 
+func TestRecordToCatalog_AICatalogModule(t *testing.T) {
+	t.Parallel()
+
+	document := map[string]any{
+		"specVersion": "1.0",
+		"entries":     []any{},
+	}
+	payload, err := structpb.NewStruct(document)
+	require.NoError(t, err)
+
+	raw, err := json.Marshal(document)
+	require.NoError(t, err)
+
+	catalogURL := "https://example.com/.well-known/ai-catalog.json"
+
+	for _, tc := range []struct {
+		name     string
+		artifact *oasftypesv1.Descriptor
+		wantErr  bool
+	}{
+		{
+			name: "embedded json",
+			artifact: &oasftypesv1.Descriptor{
+				MediaType: CatalogMediaType,
+				Json:      payload,
+			},
+		},
+		{
+			name: "embedded bytes",
+			artifact: &oasftypesv1.Descriptor{
+				MediaType: CatalogMediaType,
+				Data:      raw,
+			},
+		},
+		{
+			name: "embedded json preferred over url",
+			artifact: &oasftypesv1.Descriptor{
+				MediaType: CatalogMediaType,
+				Json:      payload,
+				Urls:      []string{catalogURL},
+			},
+		},
+		{
+			name:    "module data without an artifact",
+			wantErr: true,
+		},
+		{
+			name: "urls without a document",
+			artifact: &oasftypesv1.Descriptor{
+				MediaType: CatalogMediaType,
+				Urls:      []string{catalogURL},
+			},
+			wantErr: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			record := corev1.New(&oasftypesv1.Record{
+				SchemaVersion: "1.0.0",
+				Name:          "Catalog",
+				Description:   "A stored catalog",
+				Version:       "1.0.0",
+				CreatedAt:     "2024-01-01T00:00:00Z",
+				Authors:       []string{"publisher"},
+				Skills: []*oasftypesv1.Skill{{
+					Name: "example/skill",
+				}},
+				Modules: []*oasftypesv1.Module{{
+					Name: AICatalogModuleName,
+					Data: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"spec_version": structpb.NewStringValue("1.0"),
+					}},
+					Artifact: tc.artifact,
+				}},
+			})
+
+			adapter, err := record.Decode()
+			require.NoError(t, err)
+
+			got, err := RecordToCatalog(adapter)
+			if tc.wantErr {
+				require.Error(t, err)
+
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, CatalogMediaType, got.GetType())
+			assert.Equal(t, "Catalog", got.GetDisplayName())
+			assert.Empty(t, got.GetUrl())
+
+			require.NotNil(t, got.GetData().GetStructValue())
+			fields := got.GetData().GetStructValue().GetFields()
+			assert.Equal(t, "1.0", fields["specVersion"].GetStringValue())
+			_, hasModuleField := fields["spec_version"]
+			assert.False(t, hasModuleField)
+		})
+	}
+}
+
 func TestRecordToCatalog_AgentSkillsMediaTypes(t *testing.T) {
 	t.Parallel()
 
@@ -297,6 +399,7 @@ func TestKnownCatalogModuleNames(t *testing.T) {
 	assert.Equal(t, []string{
 		AgentSkillsModuleName,
 		"integration/a2a",
+		AICatalogModuleName,
 		"integration/mcp",
 	}, KnownCatalogModuleNames())
 }

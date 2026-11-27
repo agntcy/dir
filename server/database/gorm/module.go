@@ -6,6 +6,7 @@ package gorm
 import (
 	"time"
 
+	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	coretypes "github.com/agntcy/dir/api/core/types"
 )
 
@@ -27,6 +28,10 @@ type Module struct {
 	// TODO: this is a temporary solution. The module data will be stored as a
 	// separate artifact in the future and will need to be retrieved differently.
 	Data map[string]any `gorm:"column:data;serializer:json"`
+
+	// Artifact is the AI Catalog document (urls, json, or data). Only an
+	// integration/ai_catalog module stores it; other modules leave it empty.
+	Artifact *coretypes.ModuleArtifact `gorm:"column:artifact;serializer:json"`
 }
 
 func (module *Module) GetName() string {
@@ -50,16 +55,26 @@ func (module *Module) GetArtifactMediaType() string {
 	return module.ArtifactMediaType
 }
 
+func (module *Module) GetArtifact() *coretypes.ModuleArtifact {
+	return module.Artifact
+}
+
 // convertModules transforms interface types to Database structs.
 func convertModules(modules []coretypes.Module, recordCID string) []Module {
 	result := make([]Module, len(modules))
 	for i, module := range modules {
+		var artifact *coretypes.ModuleArtifact
+		if module.GetName() == catalogv1.AICatalogModuleName {
+			artifact = module.GetArtifact()
+		}
+
 		result[i] = Module{
 			RecordCID:         recordCID,
 			Name:              module.GetName(),
 			ModuleID:          module.GetID(),
 			Data:              module.GetData(),
 			ArtifactMediaType: module.GetArtifactMediaType(),
+			Artifact:          artifact,
 		}
 	}
 
