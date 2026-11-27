@@ -17,6 +17,7 @@ import (
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
+	securityv1 "github.com/agntcy/dir/api/security/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/api/version"
@@ -345,6 +346,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 
 	catalogv1.RegisterAIFinderServiceServer(grpcServer, controller.NewAIFinderController(routingAPI.GetPeerID(), servedDB, recordGate, cfg.HTTPGateway, storeAPI, aiFinderOpts...))
 	registerPolicyAudit(grpcServer, cfg.Authz.Enabled, databaseAPI, storeAPI, enforced)
+	registerScanService(grpcServer, cfg.Authz.Enabled, databaseAPI)
 
 	// Register health service
 	healthChecker.Register(grpcServer)
@@ -576,4 +578,20 @@ func (s Server) Start(ctx context.Context) error {
 	}()
 
 	return nil
+}
+
+// registerScanService offers the scan service when authorization is enabled.
+// It is an admin API protected by its own permission alone, so without
+// authorization anyone could queue scans. It uses the unfiltered database so
+// an administrator can scan any indexed record, including one the content
+// policies exclude.
+func registerScanService(registrar grpc.ServiceRegistrar, authzEnabled bool, db types.DatabaseAPI) {
+	if !authzEnabled {
+		logger.Info("Scan service not offered: it requires authorization to be enabled")
+
+		return
+	}
+
+	securityv1.RegisterScanServiceServer(registrar, controller.NewScanController(db))
+	logger.Info("Scan service offered to the SPIFFE IDs the authorization policies name for it")
 }

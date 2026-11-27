@@ -90,6 +90,7 @@ func (db *DB) migrate() error {
 		Publication{},
 		SignatureVerification{},
 		ScanReport{},
+		SecurityScan{},
 		PolicyEvaluation{},
 		PolicyVersion{},
 		PolicyFactDependency{},
