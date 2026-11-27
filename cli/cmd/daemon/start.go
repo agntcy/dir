@@ -123,19 +123,7 @@ func runStart(cmd *cobra.Command, _ []string) error {
 
 		logger.Info("Runtime discovery instance selected", "instance_id", cfg.Runtime.InstanceID)
 
-		if cfg.Runtime.InstanceID != "" {
-			workloads, listErr := runtimeStore.ListWorkloads(ctx)
-			if listErr != nil {
-				logger.Warn("Could not inspect existing runtime workloads for migration", "error", listErr)
-			} else {
-				for _, adapterType := range cfg.Runtime.EffectiveAdapterTypes() {
-					if count := countLegacyWorkloads(workloads, adapterType); count > 0 {
-						logger.Warn("Unowned runtime workloads cannot be pruned by this instance",
-							"adapter", adapterType, "count", count)
-					}
-				}
-			}
-		}
+		warnLegacyRuntimeWorkloads(ctx, cfg.Runtime, runtimeStore)
 
 		startRuntimeDiscovery(ctx, cfg.Runtime, cfg.Runtime.EffectiveResolver(cfg.Server.ListenAddress), runtimeStore, discoveryErrCh)
 
@@ -194,6 +182,26 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
 	return waitForShutdown(ctx, sigCh, discoveryErrCh, zotCtx.Done())
+}
+
+func warnLegacyRuntimeWorkloads(ctx context.Context, cfg RuntimeConfig, store runtimestoretypes.Store) {
+	if cfg.InstanceID == "" {
+		return
+	}
+
+	workloads, err := store.ListWorkloads(ctx)
+	if err != nil {
+		logger.Warn("Could not inspect existing runtime workloads for migration", "error", err)
+
+		return
+	}
+
+	for _, adapterType := range cfg.EffectiveAdapterTypes() {
+		if count := countLegacyWorkloads(workloads, adapterType); count > 0 {
+			logger.Warn("Unowned runtime workloads cannot be pruned by this instance",
+				"adapter", adapterType, "count", count)
+		}
+	}
 }
 
 func countLegacyWorkloads(workloads []*runtimev1.Workload, adapterType string) int {
