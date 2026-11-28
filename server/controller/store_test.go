@@ -79,3 +79,30 @@ func TestStoreDelete_NotFound(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, dbMock.removeRecordCalled, "RemoveRecord should be called even if store returns codes.NotFound")
 }
+
+type mockPullServer struct {
+	grpc.ServerStream
+	recvErr error
+}
+
+func (m *mockPullServer) Recv() (*corev1.RecordRef, error) {
+	return nil, m.recvErr
+}
+
+func (m *mockPullServer) Send(*corev1.Record) error {
+	return nil
+}
+
+func (m *mockPullServer) Context() context.Context {
+	return context.Background()
+}
+
+func TestStorePull_RecvCanceledKeepsCode(t *testing.T) {
+	ctrl := NewStoreController(&mockStore{}, &mockDB{}, nil, nil, nil, servesEverything())
+
+	stream := &mockPullServer{recvErr: status.Error(codes.Canceled, "context canceled")}
+
+	err := ctrl.Pull(stream)
+	require.Error(t, err)
+	assert.Equal(t, codes.Canceled, status.Code(err))
+}
