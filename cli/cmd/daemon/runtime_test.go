@@ -11,8 +11,10 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/agntcy/dir-runtime/discovery"
 	adapterprocess "github.com/agntcy/dir-runtime/discovery/runtime/process"
 	runtimestoresql "github.com/agntcy/dir-runtime/store/sql"
+	runtimestoretypes "github.com/agntcy/dir-runtime/store/types"
 	runtimev1 "github.com/agntcy/dir/api/runtime/v1"
 	"github.com/agntcy/dir/client"
 	"github.com/stretchr/testify/require"
@@ -90,6 +92,137 @@ func TestLoadConfigRuntimeAdapters(t *testing.T) {
 		require.Equal(t, []string{"process"}, cfg.Runtime.EffectiveAdapterTypes())
 		require.Equal(t, []string{"https://schema.oasf.outshift.com", "http://localhost:8080"}, cfg.Runtime.OASFSchemaURLs)
 	})
+
+	t.Run("environment sets the discovery instance ID", func(t *testing.T) {
+		t.Setenv("DIRECTORY_DAEMON_RUNTIME_INSTANCE_ID", "node-west")
+		opts = &Options{DataDir: t.TempDir()}
+
+		cfg, err := loadConfig()
+		require.NoError(t, err)
+		require.Equal(t, "node-west", cfg.Runtime.InstanceID)
+	})
+}
+
+func TestRuntimeInstanceIDForSharedStore(t *testing.T) {
+	dataDir := t.TempDir()
+	cfg := RuntimeConfig{}
+	cfg.Store.Type = runtimestoretypes.StoreType("etcd")
+
+	first, err := cfg.EffectiveInstanceID(dataDir)
+	require.NoError(t, err)
+	require.NotEmpty(t, first)
+
+	second, err := cfg.EffectiveInstanceID(dataDir)
+	require.NoError(t, err)
+	require.Equal(t, first, second, "restarting from the same data directory must retain ownership")
+
+	other, err := cfg.EffectiveInstanceID(t.TempDir())
+	require.NoError(t, err)
+	require.NotEqual(t, first, other, "different daemons must not share an owner ID")
+
+	cfg.InstanceID = "operator-selected"
+	override, err := cfg.EffectiveInstanceID(dataDir)
+	require.NoError(t, err)
+	require.Equal(t, "operator-selected", override)
+}
+
+func TestRuntimeInstanceIDConcurrentInitialization(t *testing.T) {
+	dataDir := t.TempDir()
+	cfg := RuntimeConfig{}
+	cfg.Store.Type = runtimestoretypes.StoreType("etcd")
+
+	const callers = 16
+
+	type result struct {
+		id  string
+		err error
+	}
+
+	start := make(chan struct{})
+
+	results := make(chan result, callers)
+	for range callers {
+		go func() {
+			<-start
+
+			id, err := cfg.EffectiveInstanceID(dataDir)
+			results <- result{id: id, err: err}
+		}()
+	}
+
+	close(start)
+
+	first := <-results
+	require.NoError(t, first.err)
+	require.NotEmpty(t, first.id)
+
+	for range callers - 1 {
+		got := <-results
+		require.NoError(t, got.err)
+		require.Equal(t, first.id, got.id)
+	}
+
+	data, err := os.ReadFile(filepath.Join(dataDir, runtimeInstanceIDFile))
+	require.NoError(t, err)
+	require.Equal(t, first.id+"\n", string(data))
+}
+
+func TestRuntimeInstanceIDKeepsLocalStoreCompatible(t *testing.T) {
+	dataDir := t.TempDir()
+	cfg := RuntimeConfig{}
+	cfg.Store.Type = runtimestoresql.StoreTypeSqlite
+	cfg.Store.SQLite.Path = filepath.Join(dataDir, "workloads.db")
+
+	id, err := cfg.EffectiveInstanceID(dataDir)
+	require.NoError(t, err)
+	require.Empty(t, id, "existing local workloads have no instance annotation")
+}
+
+func TestRuntimeInstanceIDForDefaultSQLiteStore(t *testing.T) {
+	dataDir := t.TempDir()
+	cfg := RuntimeConfig{}
+	cfg.Store.Type = runtimestoresql.StoreTypeSqlite
+	cfg.Store.SQLite.Path = runtimestoresql.DefaultPath
+
+	first, err := cfg.EffectiveInstanceID(dataDir)
+	require.NoError(t, err)
+	require.NotEmpty(t, first, "the default SQLite path is shared across daemon data directories")
+
+	second, err := cfg.EffectiveInstanceID(dataDir)
+	require.NoError(t, err)
+	require.Equal(t, first, second)
+
+	other, err := cfg.EffectiveInstanceID(t.TempDir())
+	require.NoError(t, err)
+	require.NotEqual(t, first, other)
+}
+
+func TestRuntimeInstanceIDForExplicitSharedSQLiteStore(t *testing.T) {
+	sharedPath := filepath.Join(t.TempDir(), "workloads.db")
+	cfg := RuntimeConfig{}
+	cfg.Store.Type = runtimestoresql.StoreTypeSqlite
+	cfg.Store.SQLite.Path = sharedPath
+
+	first, err := cfg.EffectiveInstanceID(t.TempDir())
+	require.NoError(t, err)
+	require.NotEmpty(t, first)
+
+	second, err := cfg.EffectiveInstanceID(t.TempDir())
+	require.NoError(t, err)
+	require.NotEqual(t, first, second)
+}
+
+func TestCountLegacyWorkloadsOnlyMatchesUnownedRuntimeType(t *testing.T) {
+	workloads := []*runtimev1.Workload{
+		{Runtime: "docker"},
+		{Runtime: "docker", Annotations: map[string]string{"other": "value"}},
+		{Runtime: "docker", Annotations: map[string]string{discovery.InstanceAnnotation: "node-west"}},
+		{Runtime: "process"},
+	}
+
+	require.Equal(t, 2, countLegacyWorkloads(workloads, "docker"))
+	require.Equal(t, 1, countLegacyWorkloads(workloads, "process"))
+	require.Zero(t, countLegacyWorkloads(workloads, "kubernetes"))
 }
 
 func TestEffectiveAdapterTypes(t *testing.T) {
