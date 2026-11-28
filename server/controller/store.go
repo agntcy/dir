@@ -108,6 +108,12 @@ func (s storeCtrl) Pull(stream storev1.StoreService_PullServer) error {
 		}
 
 		if err != nil {
+			// Keep the status code of a stream error (e.g. Canceled when the client
+			// goes away) instead of rewrapping it as Internal.
+			if _, ok := status.FromError(err); ok {
+				return err
+			}
+
 			return status.Errorf(codes.Internal, "failed to receive record reference: %v", err)
 		}
 
